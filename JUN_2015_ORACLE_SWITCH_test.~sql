@@ -1,0 +1,12 @@
+/*  1st IC Test PrintNSW   */
+
+  /*  Run validated PL/SQL and then SQLPlus script  */
+  EXECUTE EOM_REPORT_PKG.EOM_CREATE_TEMP_DATA_BIND('22NSWP','1-JUN-2015','30-JUN-2015');
+  THEN RUN AdminEOMMasterLINKVIC.sql
+  CHECK tbl_AdminData -Dump TO excel
+
+  /*  Run new PL/SQL  */
+  EXECUTE EOM_REPORT_PKG_TEST.Z_EOM_RUN_ALL('1-JUN-2015','30-JUN-2015','','22NSWP');
+  CHECK TMP_ALL_FEES -Dump TO excel
+
+  CHECK exlusive, unit price, qty

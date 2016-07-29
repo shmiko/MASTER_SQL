@@ -1,0 +1,79 @@
+--Admin Order Data
+/*decalre variables*/
+var cust varchar2(20)
+exec :cust := 'SUPERPART'
+var ordernum varchar2(20)
+exec :ordernum := '1359866'
+var stock varchar2(20)
+exec :stock := 'COURIER'
+
+var stockexclude  varchar2(20)
+exec :stockexclude := 'FEE%'
+
+
+var source varchar2(20)
+exec :source := 'BSPRINTNSW'
+var anal varchar2(20)
+exec :anal := '69'
+var start_date varchar2(20)
+exec :start_date := To_Date('8-Jul-2013')
+var end_date varchar2(20)
+exec :end_date := To_Date('14-Jul-2013')
+
+
+
+/* Get Pick Fees  */
+SELECT s.SH_ORDER, s.SH_CUST, t.ST_PICK,t.ST_PSLIP, t.ST_DESP_DATE, s.SH_ADDRESS, s.SH_SUBURB, s.SH_CITY,
+s.SH_STATE, s.SH_POST_CODE, s.SH_NOTE_1, s.SH_NOTE_2 ,Sum(SH_EXCL) AS "Excl_Total", Count(l.SL_ORDER_LINE) AS "NumOfLines", s.SH_NUM_LINES, t.ST_WEIGHT, t.ST_PACKAGES, NULL AS "Stock",
+l.SL_ORDER_LINE,NULL,NULL,NULL,NULL,s.SH_SPARE_DBL_9,SL_PICK,
+  CASE   WHEN l.SL_ORDER_LINE IS NOT NULL THEN 'Qty is ' || (SELECT Count(l2.SL_LINE) AS "Count"
+                                                              FROM  PWIN175.SH s2
+                                                                INNER JOIN PWIN175.ST t2  ON t2.ST_ORDER  = s2.SH_ORDER
+                                                                INNER JOIN PWIN175.SL l2  ON l2.SL_PICK = t2.ST_PICK
+                                                                INNER JOIN PWIN175.SD d2  ON d2.SD_LINE  = l2.SL_ORDER_LINE
+                                                              WHERE s2.SH_STATUS <> 3
+                                                              AND t2.ST_PSLIP IS NOT NULL
+                                                              AND       d2.SD_STOCK <> 'COURIER'
+                                                              AND       d2.SD_STOCK NOT LIKE 'FEE*'
+                                                              AND s2.SH_ORDER = d2.SD_ORDER
+                                                              AND TRIM(RTRIM(s2.SH_ORDER)) = TRIM(RTRIM(s.SH_ORDER))
+                                                              )
+         ELSE ''
+         END AS "Qty",
+  CASE   WHEN l.SL_ORDER_LINE IS NOT NULL THEN '' || (Select RM_XX_FEE16 from RM where RM_CUST = :cust) * (SELECT Count(l2.SL_LINE) AS "Count"
+                                                                                                              FROM  PWIN175.SH s2
+                                                                                                                INNER JOIN PWIN175.ST t2  ON t2.ST_ORDER  = s2.SH_ORDER
+                                                                                                                INNER JOIN PWIN175.SL l2  ON l2.SL_PICK = t2.ST_PICK
+                                                                                                                INNER JOIN PWIN175.SD d2  ON d2.SD_LINE  = l2.SL_ORDER_LINE
+                                                                                                              WHERE s2.SH_STATUS <> 3
+                                                                                                              AND t2.ST_PSLIP IS NOT NULL
+                                                                                                              AND       d2.SD_STOCK <> 'COURIER'
+                                                                                                              AND       d2.SD_STOCK NOT LIKE 'FEE*'
+                                                                                                              AND s2.SH_ORDER = d2.SD_ORDER
+                                                                                                              AND TRIM(RTRIM(s2.SH_ORDER)) = TRIM(RTRIM(s.SH_ORDER))
+                                                                                                                )
+         ELSE ''
+         END AS "Fee"
+FROM  PWIN175.SH s
+    INNER JOIN PWIN175.ST t  ON t.ST_ORDER  = s.SH_ORDER
+    INNER JOIN PWIN175.RM r  ON r.RM_CUST  = s.SH_CUST
+    INNER JOIN PWIN175.SL l  ON l.SL_PICK = t.ST_PICK
+    INNER JOIN PWIN175.SD d  ON d.SD_LINE  = l.SL_ORDER_LINE
+    INNER JOIN PWIN175.IM i  ON i.IM_STOCK = d.SD_STOCK
+
+WHERE s.SH_STATUS <> 3
+AND l.SL_PSLIP IS NOT NULL
+AND s.SH_ORDER = d.SD_ORDER
+AND r.RM_ANAL = :anal
+--AND TRIM(RTRIM(s.SH_ORDER)) = '1359866'
+AND d.SD_STOCK NOT LIKE 'COURIER'
+AND d.SD_STOCK NOT LIKE 'FEE*'
+AND d.SD_LINE = 1
+AND t.ST_DESP_DATE >= :start_date AND t.ST_DESP_DATE <= :end_date
+GROUP BY s.SH_ORDER, s.SH_CUST, t.ST_PICK,t.ST_PSLIP, t.ST_DESP_DATE, s.SH_ADDRESS, s.SH_SUBURB, s.SH_CITY,
+s.SH_STATE, s.SH_POST_CODE, s.SH_NOTE_1, s.SH_NOTE_2 ,s.SH_NUM_LINES, t.ST_WEIGHT, t.ST_PACKAGES,s.SH_SPARE_DBL_9,l.SL_PICK,l.SL_ORDER_LINE
+
+
+
+
+--SELECT * FROM Tmp_Admin_Data

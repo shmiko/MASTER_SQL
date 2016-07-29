@@ -1,0 +1,169 @@
+--Admin Order Data
+/*decalre variables*/
+var cust varchar2(20)
+exec :cust := 'BEYONDBLUE'
+var ordernum varchar2(20)
+exec :ordernum := '1364488'
+var stock varchar2(20)
+exec :stock := 'COURIER'
+
+var stockexclude  varchar2(20)
+exec :stockexclude := 'FEE%'
+
+
+var source varchar2(20)
+exec :source := 'BSPRINTNSW'
+var anal varchar2(20)
+exec :anal := '75'
+var start_date varchar2(20)
+exec :start_date := To_Date('8-Jul-2013')
+var end_date varchar2(20)
+exec :end_date := To_Date('14-Jul-2013')
+
+
+INSERT into Tmp_Admin_Data(
+            Customer,
+            Parent,
+            CostCentre,
+            OrderNum,
+            OrderwareNum,
+            CustRef,
+            Pickslip,
+            PickNum,
+            DespatchNote,
+            DespatchDate,
+            FeeType,
+            Item,
+            Description,
+            Qty,
+            UOI,
+            UnitPrice,
+            DExcl,
+            OWUnitPrice,
+            Excl_Total,
+            DIncl,
+            Incl_Total,
+            ReportingPrice,
+            Address,
+            Address2,
+            Suburb,
+            State,
+            Postcode,
+            DeliverTo,
+            AttentionTo,
+            Weight,
+            Packages,
+            OrderSource,
+            ILNOTE2,
+            NILOCN,
+            NIAVAILACTUAL,
+            CountOfStocks
+
+            )
+
+
+
+/*Get Tabcorp Inner/Outer PackingFee*/
+SELECT    s.SH_CUST                AS "Customer",
+          r.RM_PARENT              AS "Parent",
+          i.IM_XX_COST_CENTRE01         AS "CostCentre",
+          s.SH_ORDER               AS "Order",
+          s.SH_SPARE_STR_5         AS "OrderwareNum",
+          s.SH_CUST_REF            AS "CustomerRef",
+          t.ST_PICK                AS "Pickslip",
+          d.SD_XX_PICKLIST_NUM     AS "PickNum",
+          t.ST_PSLIP               AS "DespatchNote",
+          substr(To_Char(t.ST_DESP_DATE),0,10)            AS "DespatchDate",
+  CASE    WHEN (i.IM_XX_QTY_PER_PACK IS NOT NULL AND (d.SD_STOCK NOT like 'COURIER%' AND d.SD_STOCK NOT like 'FEE%'))  THEN 'Packing Fee'
+          ELSE NULL
+          END                      AS "FeeType",
+          d.SD_STOCK               AS "Item",
+          d.SD_DESC                AS "Description",
+  CASE    WHEN d.SD_LINE IS NOT NULL THEN  1
+          ELSE NULL
+          END                     AS "Qty",
+  CASE    WHEN d.SD_LINE IS NOT NULL THEN  '1'
+          ELSE NULL
+          END                     AS "UOI",
+
+  CASE   WHEN Upper(i.IM_XX_QTY_PER_PACK) = 'INNER'   THEN '' ||  (Select RM_XX_FEE08 from RM where RM_CUST = :cust)
+         WHEN Upper(i.IM_XX_QTY_PER_PACK) = 'OUTER'   THEN '' ||  (Select RM_XX_FEE09 from RM where RM_CUST = :cust)
+         ELSE ''
+         END                      AS "UnitPrice",
+   CASE  WHEN Upper(i.IM_XX_QTY_PER_PACK) = 'INNER'   THEN '' ||  (Select RM_XX_FEE08 from RM where RM_CUST = :cust)  * d.SD_QTY_DESP
+         WHEN Upper(i.IM_XX_QTY_PER_PACK) = 'OUTER'   THEN '' ||  (Select RM_XX_FEE09 from RM where RM_CUST = :cust)  * d.SD_QTY_DESP
+         ELSE ''
+         END                      AS "DExcl",
+          NULL                    AS "OWUnitPrice",
+          NULL                    AS "Excl_Total",
+    CASE WHEN Upper(i.IM_XX_QTY_PER_PACK) = 'INNER'   THEN '' ||  ((Select RM_XX_FEE08 from RM where RM_CUST = :cust) * d.SD_QTY_DESP) * 1.1
+         WHEN Upper(i.IM_XX_QTY_PER_PACK) = 'OUTER'   THEN '' ||  ((Select RM_XX_FEE09 from RM where RM_CUST = :cust) * d.SD_QTY_DESP) * 1.1
+         ELSE ''
+         END                      AS "DIncl",
+    CASE WHEN Upper(i.IM_XX_QTY_PER_PACK) = 'INNER'   THEN '' ||  ((Select RM_XX_FEE08 from RM where RM_CUST = :cust) * d.SD_QTY_DESP) * 1.1
+         WHEN Upper(i.IM_XX_QTY_PER_PACK) = 'OUTER'   THEN '' ||  ((Select RM_XX_FEE09 from RM where RM_CUST = :cust) * d.SD_QTY_DESP) * 1.1
+         ELSE ''
+         END                      AS "Incl_Total",
+  CASE    WHEN d.SD_STOCK NOT like 'COURIER%' THEN ''  || (Select i.IM_REPORTING_PRICE from IM i where i.IM_STOCK = d.SD_STOCK)
+          ELSE ''
+          END                      AS "ReportingPrice",
+          s.SH_ADDRESS             AS "Address",
+          s.SH_SUBURB              AS "Address2",
+          s.SH_CITY                AS "Suburb",
+          s.SH_STATE               AS "State",
+          s.SH_POST_CODE           AS "Postcode",
+          s.SH_NOTE_1              AS "DeliverTo",
+          s.SH_NOTE_2              AS "AttentionTo" ,
+          t.ST_WEIGHT              AS "Weight",
+          t.ST_PACKAGES            AS "Packages",
+          s.SH_SPARE_DBL_9         AS "OrderSource",
+          NULL AS "Pallet/Shelf Space", /*Pallet/Space*/
+	        NULL AS "Locn", /*Locn*/
+	        NULL AS "AvailSOH",/*Avail SOH*/
+	        NULL AS "CountOfStocks"
+
+
+FROM      PWIN175.SD d
+          INNER JOIN PWIN175.SH s  ON s.SH_ORDER  = d.SD_ORDER
+          INNER JOIN PWIN175.ST t  ON t.ST_ORDER  = s.SH_ORDER  AND t.ST_PICK = d.SD_LAST_PICK_NUM
+          INNER JOIN PWIN175.RM r  ON r.RM_CUST  = s.SH_CUST
+          INNER JOIN PWIN175.IM i  ON i.IM_STOCK = d.SD_STOCK
+
+WHERE     Upper(i.IM_XX_QTY_PER_PACK) IN ('INNER','OUTER')
+AND       r.RM_ANAL = :anal
+AND       s.SH_STATUS <> 3
+AND       s.SH_ORDER = t.ST_ORDER
+AND       t.ST_DESP_DATE >= :start_date AND t.ST_DESP_DATE <= :end_date
+GROUP BY  s.SH_CUST,
+          s.SH_SPARE_STR_4,
+          s.SH_ORDER,
+          t.ST_PICK,
+          d.SD_XX_PICKLIST_NUM,
+          t.ST_PSLIP,
+          t.ST_DESP_DATE,
+          i.IM_XX_QTY_PER_PACK,
+          d.SD_STOCK,
+          d.SD_DESC,
+          d.SD_LINE,
+          d.SD_EXCL,
+          d.SD_INCL,
+          d.SD_SELL_PRICE,
+          d.SD_XX_OW_UNIT_PRICE,
+          d.SD_QTY_ORDER,
+          d.SD_QTY_ORDER,
+          s.SH_ADDRESS,
+          s.SH_SUBURB,
+          s.SH_CITY,
+          s.SH_STATE,
+          s.SH_POST_CODE,
+          s.SH_NOTE_1,
+          s.SH_NOTE_2,
+          t.ST_WEIGHT,
+          t.ST_PACKAGES,
+          s.SH_SPARE_DBL_9,
+          d.SD_QTY_DESP,
+          r.RM_PARENT,
+          i.IM_XX_COST_CENTRE01,
+          s.SH_SPARE_STR_5,
+          s.SH_CUST_REF
+

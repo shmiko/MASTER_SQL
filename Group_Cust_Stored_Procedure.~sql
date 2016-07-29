@@ -1,0 +1,64 @@
+--Admin Order Data
+/*Set Stored Procedure*/
+
+CREATE OR REPLACE PROCEDURE GROUP_CUST (p_cust IN VARCHAR2 := 'TABCORP',
+                                           p_ordernum IN VARCHAR2 := '1363806',
+                                           p_stock IN VARCHAR2 := 'COURIER',
+                                           p_source IN VARCHAR2 := 'BSPRINTNSW',
+                                           p_anal IN VARCHAR2 := '72',
+                                           p_start_date IN VARCHAR2 := To_Date('1-Jul-2013'),
+                                           p_end_date IN VARCHAR2 := To_Date('7-Jul-2013')
+                                          ) AS
+  nCheckpoint  NUMBER;
+BEGIN
+
+  nCheckpoint := 1;
+
+  EXECUTE IMMEDIATE 'DROP TABLE Tmp_Group_Cust';
+
+  nCheckpoint := 2;
+
+  EXECUTE IMMEDIATE 'CREATE TABLE Tmp_Group_Cust ( sGroupCust VARCHAR2(20), sCust VARCHAR2(20), nLevel NUMBER)';
+
+  nCheckpoint := 3;
+
+  EXECUTE IMMEDIATE 'INSERT into Tmp_Group_Cust(sCust,sGroupCust,nLevel )
+                      SELECT RM_CUST
+                        ,(
+                          CASE
+                            WHEN LEVEL = 1 THEN RM_CUST
+                            WHEN LEVEL = 2 THEN RM_PARENT
+                            WHEN LEVEL = 3 THEN PRIOR RM_PARENT
+                            WHEN LEVEL = 4 THEN "COLESGROUP"
+                            ELSE "STILLNOGROUPCUST"
+                          END
+                        ) AS CC
+                        ,LEVEL
+                  FROM RM
+                  WHERE RM_TYPE = 0
+                  AND RM_ACTIVE = 1
+                  --AND Length(RM_GROUP_CUST) <=  1
+                  CONNECT BY PRIOR RM_CUST = RM_PARENT
+                  START WITH Length(RM_PARENT) <= 1';
+
+  nCheckpoint := 4;
+
+  EXECUTE IMMEDIATE 'SELECT * FROM Tmp_Group_Cust';
+
+
+
+
+
+
+  RETURN;
+EXCEPTION
+  WHEN OTHERS THEN
+    DBMS_OUTPUT.PUT_LINE('GROUP_CUST failed at checkpoint ' || nCheckpoint ||
+                         ' with error ' || SQLCODE || ' : ' || SQLERRM);
+    RAISE;
+END GROUP_CUST;
+
+
+
+/*SELECT * FROM Tmp_Admin_Data
+ORDER BY vOrder,vPickslip Asc    */

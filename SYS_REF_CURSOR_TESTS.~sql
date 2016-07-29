@@ -1,0 +1,95 @@
+  create or replace function get_dept_emps(p_deptno in number) return sys_refcursor is
+    v_rc sys_refcursor;
+  begin
+    open v_rc for 'select empno, ename, mgr, sal from emp where deptno = :deptno' using p_deptno;
+    return v_rc;
+  end;
+  /
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  create or replace function get_cust_stocks(r_coy_num in VARCHAR) return sys_refcursor is
+    v_rc sys_refcursor;
+  begin
+    open v_rc for 'SELECT RM_CUST, RM_COY_NUM, RM_REP, RM_STD_CB_BANK FROM RM WHERE RM_PARENT = :coynum' using r_coy_num;
+    return v_rc;
+  end;
+  /
+
+   --this is for SQLPLUS
+   var rc refcursor
+   exec :rc := get_cust_stocks('RTA');
+   print rc;
+   --do the print again
+   print rc; --not declared
+
+   declare
+      v_rc    sys_refcursor;
+    begin
+      v_rc := get_cust_stocks('RTA');  -- This returns an open cursor
+      dbms_output.put_line('Rows: '||v_rc%ROWCOUNT);
+      close v_rc;
+   end;
+   --no rows returned as we have not fetched any data yet.
+
+
+   --So let's fetch all our data and display it..
+   declare
+     v_rc    sys_refcursor;
+     v_cust   VARCHAR2(20);
+     v_coynum   VARCHAR2(20);
+     v_rep    VARCHAR2(20);
+     v_bank VARCHAR(20);
+    begin
+      v_rc := get_cust_stocks('RTA');  -- This returns an open cursor
+      dbms_output.put_line('Pre Fetch: Rows: '||v_rc%ROWCOUNT);
+      fetch v_rc into v_cust, v_coynum, v_rep, v_bank;
+      dbms_output.put_line('Post Fetch: Rows: '||v_rc%ROWCOUNT);
+      close v_rc;
+    end;
+    /
+    --This works in SQL tools
+
+    declare
+      v_rc    sys_refcursor;
+      v_cust   VARCHAR2(20);
+      v_coynum   VARCHAR2(20);
+      v_rep    VARCHAR2(20);
+      v_bank VARCHAR(20);
+    begin
+      v_rc := get_cust_stocks('RTA');  -- This returns an open cursor
+      loop
+      fetch v_rc into v_cust, v_coynum, v_rep, v_bank;
+      exit when v_rc%NOTFOUND;  -- Exit the loop when we've run out of data
+        dbms_output.put_line('Row: '||v_rc%ROWCOUNT||' # '||v_cust||','||v_coynum||','||v_rep||','||v_bank);
+      end loop;
+      close v_rc;
+    end;
+    /
+    --this takes 50ms
+
+    --this is for SQLPLUS
+    var rc refcursor
+    exec :rc := get_cust_stocks('RTA');
+    print rc;
+
+
+    --Now test the same via sql
+    SELECT RM_CUST, RM_COY_NUM, RM_REP, RM_STD_CB_BANK FROM RM WHERE RM_PARENT = 'RTA'
+    --this takes 15ms

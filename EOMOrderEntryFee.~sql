@@ -1,0 +1,131 @@
+--Admin Order Data
+/*decalre variables*/
+var cust varchar2(20)
+exec :cust := 'TABCORP'
+var ordernum varchar2(20)
+exec :ordernum := '1364488'
+var stock varchar2(20)
+exec :stock := 'COURIER'
+var source varchar2(20)
+exec :source := 'BSPRINTNSW'
+var anal varchar2(20)
+exec :anal := '72'
+var start_date varchar2(20)
+exec :start_date := To_Date('8-Jul-2013')
+var end_date varchar2(20)
+exec :end_date := To_Date('14-Jul-2013')
+
+
+
+INSERT into Tmp_Admin_Data(
+            vCustomer,
+            vCostCentre,
+            vOrder,
+            vPickslip,
+            vPickNum,
+            vDespatchNote,
+            vDespatchDate,
+            vFeeType,
+            vItem,
+            vDescription,
+            vQty,
+            vUOI,
+            vUnitPrice,
+            vDExcl,
+            vOWUnitPrice,
+            vExcl_Total,
+            vDIncl,
+            vIncl_Total,
+            vReportingPrice,
+            vAddress,
+            vAddress2,
+            vSuburb,
+            vState,
+            vPostcode,
+            vDeliverTo,
+            vAttentionTo,
+            vWeight,
+            vPackages,
+            vOrderSource )
+
+
+
+/*Get OrderEntryFee*/
+SELECT    s.SH_CUST               AS "Customer",
+          s.SH_SPARE_STR_4        AS "CostCentre",
+          s.SH_ORDER              AS "Order",
+          t.ST_PICK               AS "Pickslip",
+          NULL                    AS "PickNum",
+          t.ST_PSLIP              AS "DespatchNote",
+          t.ST_DESP_DATE          AS "DespatchDate",
+  CASE    /* Swap Stock code with Fee Type*/
+	        WHEN s.SH_SPARE_DBL_9 = 1 OR s.SH_SPARE_DBL_9 = 3 OR s.SH_SPARE_DBL_9 = 2 OR s.SH_SPARE_DBL_9 = 4 THEN  'OrderFee'
+          ELSE ''
+          END                     AS "FeeType",
+  CASE    WHEN s.SH_SPARE_DBL_9 = 1 OR s.SH_SPARE_DBL_9 = 3 OR s.SH_SPARE_DBL_9 = 2 OR s.SH_SPARE_DBL_9 = 4 THEN  'FEEORDERENTRYS'
+          ELSE ''
+          END                     AS "Item",
+  CASE    WHEN s.SH_SPARE_DBL_9 = 1 OR s.SH_SPARE_DBL_9 = 3 OR s.SH_SPARE_DBL_9 = 2 OR s.SH_SPARE_DBL_9 = 4 THEN  'Manual Order Entry Fee'
+          ELSE ''
+          END                     AS "Description",
+  CASE    WHEN d.SD_LINE = 1 THEN  '1'
+          ELSE ''
+          END                     AS "Qty",
+  CASE    WHEN d.SD_LINE = 1 THEN  '1'
+          ELSE ''
+          END                     AS "UOI",
+  CASE    WHEN s.SH_SPARE_DBL_9 = 1 OR s.SH_SPARE_DBL_9 = 3 OR s.SH_SPARE_DBL_9 = 2 OR s.SH_SPARE_DBL_9 = 4 THEN  NULL ||  (Select RM_XX_FEE01 from RM where RM_CUST = :cust)
+          ELSE ''
+          END                     AS "UnitPrice",
+          NULL                    AS "DExcl",
+          NULL                    AS "OWUnitPrice",
+          NULL                    AS "Excl_Total",
+          NULL                    AS "DIncl",
+          NULL                    AS "Incl_Total",
+          NULL                    AS "ReportingPrice",
+          s.SH_ADDRESS            AS "Address",
+          s.SH_SUBURB             AS "Address2",
+          s.SH_CITY               AS "Suburb",
+          s.SH_STATE              AS "State",
+          s.SH_POST_CODE          AS "Postcode",
+          s.SH_NOTE_1             AS "DeliverTo",
+          s.SH_NOTE_2             AS "AttentionTo" ,
+          t.ST_WEIGHT             AS "Weight",
+          t.ST_PACKAGES           AS "Packages",
+          s.SH_SPARE_DBL_9        AS "OrderSource"
+FROM      PWIN175.SH s
+          INNER JOIN PWIN175.SD d ON d.SD_ORDER  = s.SH_ORDER
+          INNER JOIN PWIN175.IM i ON i.IM_STOCK = d.SD_STOCK
+          INNER JOIN PWIN175.ST t ON t.ST_ORDER = s.SH_ORDER
+          INNER JOIN PWIN175.RM r ON r.RM_CUST  = s.SH_CUST
+WHERE     r.RM_ANAL = :anal
+AND       t.ST_DESP_DATE >= :start_date AND t.ST_DESP_DATE <= :end_date
+AND       (s.SH_SPARE_DBL_9 = 1 OR s.SH_SPARE_DBL_9 = 3 OR s.SH_SPARE_DBL_9 = 2 OR s.SH_SPARE_DBL_9 = 4)
+AND       d.SD_LINE = 1
+GROUP BY  s.SH_CUST,
+          s.SH_SPARE_STR_4,
+          s.SH_ORDER,
+          t.ST_PICK,
+          t.ST_PSLIP,
+          t.ST_DESP_DATE,
+          s.SH_SPARE_DBL_9,
+          d.SD_LINE,
+          s.SH_ADDRESS,
+          s.SH_SUBURB,
+          s.SH_CITY,
+          s.SH_STATE,
+          s.SH_POST_CODE,
+          s.SH_NOTE_1,
+          s.SH_NOTE_2,
+          t.ST_WEIGHT,
+          t.ST_PACKAGES,
+          s.SH_SPARE_DBL_9
+--ORDER BY  s.SH_ORDER Asc
+
+
+
+
+
+
+
+SELECT * FROM Tmp_Admin_Data

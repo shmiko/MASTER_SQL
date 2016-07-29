@@ -1,0 +1,106 @@
+var cust varchar2(20)
+exec :cust := 'RTA'
+var cust2 varchar2(20)
+exec :cust2 := 'BEYONDBLUE'
+var ordernum varchar2(20)
+exec :ordernum := '1363806'
+var stock varchar2(20)
+exec :stock := 'COURIER'
+var source varchar2(20)
+exec :source := 'BSPRINTNSW'
+var anal varchar2(20)
+exec :anal := '21VICP'
+var start_date varchar2(20)
+exec :start_date := To_Date('01-Jan-2014')
+var end_date varchar2(20)
+exec :end_date := To_Date('31-Jan-2014')
+var warehouse varchar2(20)
+exec :warehouse := 'SYDNEY'
+var warehouse2 varchar2(20)
+exec :warehouse2 := 'MELBOURNE'
+
+
+/*Total Despatches by Month all custs grouped by cust */  --Need to add splits by warehouse
+select  (CASE
+            WHEN RM_PARENT = ' ' THEN SH_CUST
+            WHEN RM_PARENT != ' ' THEN RM_PARENT
+            ELSE NULL END) AS "Cust",
+            count(ST_ORDER) AS TotalDespatches
+FROM PWIN175.ST INNER JOIN SH ON SH_ORDEr = ST_ORDER
+      INNER JOIN RM ON RM_CUST = SH_CUST
+WHERE ST_DESP_DATE >= :start_date AND ST_DESP_DATE <= :end_date AND ST_PSLIP <> 'CANCELLED'
+GROUP BY  (CASE WHEN RM_PARENT = ' ' THEN SH_CUST
+            WHEN RM_PARENT != ' ' THEN RM_PARENT
+            ELSE NULL END)
+ORDER BY 1
+
+
+
+/*Total Orders by Month all custs grouped by cust */ --Need to add splits by warehouse
+select  (CASE
+            WHEN RM_PARENT = ' ' THEN SH_CUST
+            WHEN RM_PARENT != ' ' THEN RM_PARENT
+            ELSE NULL END) AS "Cust",
+            count(SH_ORDER) AS TotalOrders
+FROM PWIN175.SH INNER JOIN RM ON RM_CUST = SH_CUST
+WHERE SH_ADD_DATE >= :start_date AND SH_ADD_DATE <= :end_date AND SH_STATUS <> 3
+GROUP BY  (CASE WHEN RM_PARENT = ' ' THEN SH_CUST
+            WHEN RM_PARENT != ' ' THEN RM_PARENT
+            ELSE NULL END)
+ORDER BY 1
+
+
+/*Total Lines by Month all custs grouped by cust */  --Need to add splits by warehouse
+select  (CASE
+            WHEN RM_PARENT = ' ' THEN SH_CUST
+            WHEN RM_PARENT != ' ' THEN RM_PARENT
+            ELSE NULL END) AS "Cust",
+            count(SL_ORDER) AS TotalLines
+FROM PWIN175.SL INNER JOIN SH ON SL_ORDER = SH_ORDER
+      INNER JOIN RM ON RM_CUST = SH_CUST
+WHERE SL_EDIT_DATE >= :start_date AND SL_EDIT_DATE <= :end_date
+GROUP BY  (CASE WHEN RM_PARENT = ' ' THEN SH_CUST
+            WHEN RM_PARENT != ' ' THEN RM_PARENT
+            ELSE NULL END)
+ORDER BY 1
+
+
+/*Total receipts by Month all custs grouped by cust */     --Need to add splits by warehouse
+select  i.IM_CUST AS "Cust",
+        count(ne.NE_ENTRY) AS TotalReceipts
+FROM PWIN175.SL INNER JOIN SH ON SL_ORDER = SH_ORDER
+      INNER JOIN RM ON RM_CUST = SH_CUST
+WHERE SL_EDIT_DATE >= :start_date AND SL_EDIT_DATE <= :end_date
+GROUP BY  (CASE WHEN RM_PARENT = ' ' THEN SH_CUST
+            WHEN RM_PARENT != ' ' THEN RM_PARENT
+            ELSE NULL END)
+ORDER BY 1
+
+
+
+/*This should list Total spaces by type grouped by warehouse for all customers */   --Need to add splits by warehouse
+SELECT i.IM_CUST, l.IL_IN_LOCN, Count(DISTINCT l.IL_LOCN),
+CASE WHEN Upper(substr(l.IL_NOTE_2,0,1)) = 'Y' THEN 'P' ELSE 'S' END AS CountOfPS
+FROM  NA n, IL l, NE e, IM i
+WHERE n.NA_STOCK = i.IM_STOCK
+AND   n.NA_EXT_TYPE = 1210067
+AND l.IL_UID = n.NA_EXT_KEY
+AND e.NE_AVAIL_ACTUAL >= '1'
+AND e.NE_ACCOUNT = n.NA_ACCOUNT
+--AND l.IL_IN_LOCN = :warehouse
+--OR l.IL_IN_LOCN = :warehouse2
+AND e.NE_STATUS =  1
+AND e.NE_STRENGTH = 3
+GROUP BY i.IM_CUST, l.IL_IN_LOCN, (CASE WHEN Upper(substr(l.IL_NOTE_2,0,1)) = 'Y' THEN 'P' ELSE 'S' END)
+ORDER BY l.IL_IN_LOCN,i.IM_CUST DESC
+/*This one works and is the master for spaces occupied monthly by cust by warehouse. */
+
+
+SELECT FT_TRAN, FT_BATCH, FT_STOCK, FT_DATE, NE_AVAIL_ACTUAL
+FROM IM, FT, NE, FB
+WHERE FT_ERA IS NULL
+AND FT_STOCK = IM_STOCK
+AND IM_STOCK = NE_STOCK
+AND NE_AVAIL_ACTUAL >= FT_QTY
+AND FB_BATCH = FT_BATCH
+AND FB_DESC = 'MNSWAuto Stock Issue'

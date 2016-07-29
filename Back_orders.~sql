@@ -1,0 +1,82 @@
+	select IM_CUST AS "Customer",n1.NI_DATE,
+	  IM_CUST AS "Parent",
+	  IM_XX_COST_CENTRE01     AS "CostCentre",
+		n1.NI_STOCK AS "Item",
+		IM_LEVEL_UNIT AS "UOI", /*UOI*/
+	 -- n1.IL_NOTE_2 AS "Pallet/Space", /*Pallet/Space*/
+		n1.NI_LOCN AS "Locn", /*Locn*/
+	  n1.NI_AVAIL_ACTUAL AS "Avail SOH",
+    n1.NI_ENTRY,
+    n1.NI_QUANTITY,n1.NI_TRAN_TYPE,n1.NI_SD_ORDER,NULL,'BO' AS "Kind"
+
+	FROM NI n1 INNER JOIN IM ON IM_STOCK = n1.NI_STOCK
+	--INNER JOIN SH ON SH_ORDER = n1.NI_SL_ORDER
+--INNER JOIN IL l1 ON l1.IL_LOCN = n1.NI_LOCN
+  ---INNER JOIN Tmp_Locn_Cnt_By_Cust ON sLocn = l1.IL_LOCN
+	WHERE IM_ACTIVE = 1
+			AND IM_CUST = 'CGU'
+      AND IM_STOCK = 'CV230CID0122'
+	AND n1.NI_SD_ORDER IS NOT NULL
+	AND n1.NI_STATUS IN (2)
+  AND n1.NI_TRAN_TYPE = 6
+  AND n1.NI_QUANTITY < 0
+  --ORDER BY  n1.NI_DATE, n1.NI_STOCK    Asc
+
+
+  UNION ALL
+
+
+	select IM_CUST AS "Customer",n1.NI_DATE,
+	  IM_CUST AS "Parent",
+	  IM_XX_COST_CENTRE01     AS "CostCentre",
+		n1.NI_STOCK AS "Item",
+		IM_LEVEL_UNIT AS "UOI", /*UOI*/
+	 -- n1.IL_NOTE_2 AS "Pallet/Space", /*Pallet/Space*/
+		n1.NI_LOCN AS "Locn", /*Locn*/
+	  n1.NI_AVAIL_ACTUAL AS "Avail SOH",
+    n1.NI_ENTRY,
+    n1.NI_QUANTITY,n1.NI_TRAN_TYPE,n1.NI_SL_ORDER,SH_STATUS,'D' AS "Kind"
+
+	FROM NI n1 INNER JOIN IM ON IM_STOCK = n1.NI_STOCK
+	INNER JOIN SH ON SH_ORDER = n1.NI_SL_ORDER
+--INNER JOIN IL l1 ON l1.IL_LOCN = n1.NI_LOCN
+  ---INNER JOIN Tmp_Locn_Cnt_By_Cust ON sLocn = l1.IL_LOCN
+	WHERE IM_ACTIVE = 1
+			AND IM_CUST = 'CGU'
+      AND IM_STOCK = 'CV230CID0122'
+	AND n1.NI_SL_ORDER IS NOT NULL
+	AND n1.NI_STATUS IN (2,4)
+  AND n1.NI_TRAN_TYPE = 6
+  AND n1.NI_QUANTITY < 0
+   AND SH_STATUS = 0
+   --ORDER BY  n1.NI_DATE, n1.NI_STOCK    Asc
+
+  UNION ALL
+
+
+  	select IM_CUST AS "Customer",n1.NI_DATE,
+	  IM_CUST AS "Parent",
+	  IM_XX_COST_CENTRE01     AS "CostCentre",
+		n1.NI_STOCK AS "Item",
+		IM_LEVEL_UNIT AS "UOI", /*UOI*/
+	 -- n1.IL_NOTE_2 AS "Pallet/Space", /*Pallet/Space*/
+		n1.NI_LOCN AS "Locn", /*Locn*/
+	  n1.NI_AVAIL_ACTUAL AS "Avail SOH",
+    n1.NI_ENTRY,
+    n1.NI_QUANTITY,n1.NI_TRAN_TYPE,n1.NI_SL_ORDER,NULL,'SH'   AS "Kind"
+
+	FROM NI n1 INNER JOIN IM ON IM_STOCK = n1.NI_STOCK
+	--INNER JOIN SH ON SH_ORDER = n1.NI_SL_ORDER
+  ---INNER JOIN Tmp_Locn_Cnt_By_Cust ON sLocn = l1.IL_LOCN
+	WHERE IM_ACTIVE = 1
+			AND IM_CUST = 'CGU'
+      AND IM_STOCK = 'CV230CID0122'
+	AND n1.NI_AVAIL_ACTUAL >= '1'
+	AND n1.NI_STATUS IN (1,2)
+  --AND SH_STATUS = 0
+  --AND n1.NI_TRAN_TYPE = 6
+  --AND n1.NI_QUANTITY < 0
+
+ -- ORDER BY  n1.NI_STOCK    Asc
+
+

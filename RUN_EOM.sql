@@ -1,0 +1,3 @@
+BEGIN
+  EOM_STATS_SP_EXEC();
+END;

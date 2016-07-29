@@ -1,0 +1,122 @@
+
+--Using STRONG REF CURSOR for multiple queries - reassinging cur_custs to children
+var cust varchar2(20)
+exec :cust := 'RTA'
+var query varchar2(100)
+exec :query := 'SELECT * FROM IM WHERE IM_EDIT_DATE = SYSDATE -1 AND IM_CUST = :cust'
+var query2 varchar2(100)
+exec :query2 := 'SELECT * FROM RM WHERE RM_CUST = :cust'
+
+DECLARE
+  TYPE rc_custs IS REF CURSOR RETURN PWIN175.RM%ROWTYPE;
+  cur_custs rc_custs;
+  rec_custs PWIN175.RM%ROWTYPE;
+BEGIN
+  OPEN cur_custs FOR SELECT * FROM PWIN175.RM WHERE RM_CUST = :cust;
+  FETCH cur_custs INTO rec_custs;
+  WHILE cur_custs%FOUND
+  LOOP
+    Dbms_Output.PUT_LINE(rec_custs.RM_CUST || ' is ' || rec_custs.RM_NAME);
+    FETCH cur_custs INTO rec_custs;
+  END LOOP;
+  CLOSE cur_custs;
+    Dbms_Output.PUT_LINE('--Children--------------------------');
+  OPEN cur_custs FOR SELECT * FROM PWIN175.RM WHERE RM_PARENT = :cust;
+  FETCH cur_custs INTO rec_custs;
+  WHILE cur_custs%FOUND
+  LOOP
+    Dbms_Output.PUT_LINE(rec_custs.RM_CUST || ' is ' || rec_custs.RM_NAME);
+    FETCH cur_custs INTO rec_custs;
+  END LOOP;
+  CLOSE cur_custs;
+END;
+
+--this is using a weak ref cursor without RETURN you can reuse cursor for other queries
+DECLARE
+  TYPE rc_custs IS REF CURSOR;
+  --RETURN PWIN175.RM%ROWTYPE;
+  cur_custs rc_custs;
+  rec_custs PWIN175.RM%ROWTYPE;
+  rec_cust_stocks PWIN175.IM%ROWTYPE;
+  l_filter   VARCHAR2 (100) := :cust;
+BEGIN
+  OPEN cur_custs FOR SELECT * FROM PWIN175.RM WHERE RM_CUST = l_filter;
+  FETCH cur_custs INTO rec_custs;
+  WHILE cur_custs%FOUND
+  LOOP
+    Dbms_Output.PUT_LINE(rec_custs.RM_CUST || ' is ' || rec_custs.RM_NAME);
+    FETCH cur_custs INTO rec_custs;
+  END LOOP;
+  CLOSE cur_custs;
+    Dbms_Output.PUT_LINE('--Stocks--------------------------');
+  OPEN cur_custs FOR SELECT * FROM PWIN175.IM WHERE IM_CUST = l_filter;
+  FETCH cur_custs INTO rec_cust_stocks;
+  WHILE cur_custs%FOUND
+  LOOP
+    Dbms_Output.PUT_LINE(rec_cust_stocks.IM_CUST || ' has ' || rec_cust_stocks.IM_STOCK);
+    FETCH cur_custs INTO rec_cust_stocks;
+  END LOOP;
+  CLOSE cur_custs;
+END;
+
+
+--this is using a variable for the query with ref cursor without RETURN - reuseable
+DECLARE
+  TYPE rc_stocks IS REF CURSOR;
+  cur_stocks rc_stocks;
+  rec_stocks PWIN175.IM%ROWTYPE;
+  rec_cust_stocks PWIN175.IM%ROWTYPE;
+  v_query VARCHAR2(100);
+  --query2 := SELECT * FROM RM WHERE RM_CUST = :cust;
+BEGIN
+  v_query := 'SELECT IM_CUST,IM_EDIT_DATE FROM PWIN175.IM WHERE IM_EDIT_DATE >= SYSDATE - 1 GROUP BY IM_CUST,IM_EDIT_DATE ';
+  OPEN cur_stocks FOR v_query ;
+  FETCH cur_stocks INTO rec_stocks;
+  WHILE cur_stocks%FOUND
+  LOOP
+    Dbms_Output.PUT_LINE(rec_stocks.IM_CUST);
+    FETCH cur_stocks INTO rec_stocks;
+  END LOOP;
+  CLOSE cur_stocks;
+    Dbms_Output.PUT_LINE('--Stocks--------------------------');
+  --v_query := :query2;
+  OPEN cur_stocks FOR SELECT * FROM PWIN175.IM WHERE IM_EDIT_DATE >= SYSDATE - 1;
+  FETCH cur_stocks INTO rec_cust_stocks;
+  WHILE cur_stocks%FOUND
+  LOOP
+    Dbms_Output.PUT_LINE(rec_cust_stocks.IM_CUST || ' has ' || rec_cust_stocks.IM_STOCK);
+    FETCH cur_stocks INTO rec_cust_stocks;
+  END LOOP;
+  CLOSE cur_stocks;
+END;
+
+
+--Return multiple rows   BULK COLLECT
+DECLARE
+   CURSOR cust_cur
+   IS
+      SELECT *
+        FROM RM;
+
+   TYPE custs_aat IS TABLE OF RM%ROWTYPE
+      INDEX BY PLS_INTEGER;
+
+   l_custs custs_aat;
+BEGIN
+   OPEN cust_cur;
+
+   LOOP
+      FETCH cust_cur
+      BULK COLLECT INTO l_custs LIMIT 100;
+
+      EXIT WHEN l_custs.COUNT = 0;
+
+      FOR indx IN 1 .. l_custs.COUNT
+      LOOP
+         process_cust ( l_custs ( indx ));
+      END LOOP;
+   END LOOP;
+
+   CLOSE cust_cur;
+END;
+/

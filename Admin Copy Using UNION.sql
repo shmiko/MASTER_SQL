@@ -1,0 +1,334 @@
+--Admin Order Data
+
+
+var cust varchar2(20)
+exec :cust := 'BEYONDBLUE'
+var stock varchar2(20)
+exec :stock := 'COURIER'
+var source varchar2(20)
+exec :source := 'BSPRINTNSW'
+var anal varchar2(20)
+exec :anal := '75'
+var start_date varchar2(20)
+exec :start_date := To_Date('1-Jun-2013')
+var end_date varchar2(20)
+exec :end_date := To_Date('30-Jun-2013')
+
+/*Get OrderEntryFee*/
+SELECT DISTINCT s.SH_ORDER, s.SH_CUST, t.ST_PICK,t.ST_PSLIP, t.ST_DESP_DATE, s.SH_ADDRESS, s.SH_SUBURB, s.SH_CITY,
+s.SH_STATE, s.SH_POST_CODE, s.SH_NOTE_1, s.SH_NOTE_2 , t.ST_WEIGHT, t.ST_PACKAGES,d.SD_STOCK AS "Stock", d.SD_LINE,d.SD_SELL_PRICE,d.SD_EXCL, d.SD_INCL, d.SD_XX_OW_UNIT_PRICE,s.SH_SPARE_DBL_9,SD_XX_PICKLIST_NUM,
+ CASE   /* Swap Stock code with Fee Type*/
+	        WHEN s.SH_SPARE_DBL_9 = 1 OR s.SH_SPARE_DBL_9 = 3 OR s.SH_SPARE_DBL_9 = 2 OR s.SH_SPARE_DBL_9 = 4 THEN  'OrderFee'
+          ELSE ''
+          END AS "FeeDescription",
+ CASE   /* Swap description with Fee Type*/
+	        WHEN s.SH_SPARE_DBL_9 = 1 OR s.SH_SPARE_DBL_9 = 3 OR s.SH_SPARE_DBL_9 = 2 OR s.SH_SPARE_DBL_9 = 4 THEN  NULL ||  (Select RM_XX_FEE01 from RM where RM_CUST = :cust)
+          ELSE ''
+          END AS "Fee",
+  CASE   WHEN d.SD_STOCK NOT like 'COURIER%' THEN 'Stock Unit Price is '  || (Select i.IM_REPORTING_PRICE from IM i where i.IM_STOCK = d.SD_STOCK)
+         ELSE ''
+         END AS "Stock Unit Price"
+FROM PWIN175.ST t
+INNER JOIN PWIN175.SD d ON d.SD_ORDER  = t.ST_ORDER
+INNER JOIN PWIN175.IM i ON i.IM_STOCK = d.SD_STOCK
+INNER JOIN PWIN175.SH s ON s.SH_ORDER = d.SD_ORDER
+INNER JOIN PWIN175.RM r ON r.RM_CUST  = s.SH_CUST
+--WHERE r.RM_SOURCE = :source
+WHERE r.RM_ANAL = :anal
+AND ((d.SD_LAST_PICK_NUM = t.ST_PICK OR d.SD_XX_PICKLIST_NUM = t.ST_PICK OR d.SD_STOCK = :stock ))
+AND t.ST_DESP_DATE >= :start_date AND t.ST_DESP_DATE <= :end_date
+--AND s.SH_ORDER = '   1344426'
+AND (s.SH_SPARE_DBL_9 = 1 OR s.SH_SPARE_DBL_9 = 3 OR s.SH_SPARE_DBL_9 = 2 OR s.SH_SPARE_DBL_9 = 4)
+AND d.SD_LINE = 1
+
+
+
+UNION ALL
+
+/*Get PackingFee*/
+SELECT DISTINCT s.SH_ORDER, s.SH_CUST, t.ST_PICK,t.ST_PSLIP, t.ST_DESP_DATE, s.SH_ADDRESS, s.SH_SUBURB, s.SH_CITY,
+s.SH_STATE, s.SH_POST_CODE, s.SH_NOTE_1, s.SH_NOTE_2 , t.ST_WEIGHT, t.ST_PACKAGES,d.SD_STOCK AS "Stock", d.SD_LINE,d.SD_SELL_PRICE,d.SD_EXCL, d.SD_INCL, d.SD_XX_OW_UNIT_PRICE,s.SH_SPARE_DBL_9,SD_XX_PICKLIST_NUM,
+  CASE   /* Swap Stock code with Fee Type*/
+	         WHEN i.IM_TYPE = 'BB_PACK'  THEN 'Packing Fee is '
+            ELSE ''
+          END AS "FeeDescription",
+  CASE    /* Get Packing Fees If stock is of type BB_PACK then charge sRM_XX_FEE08.AsDouble * SL_PSLIP_QTY  */
+	         WHEN i.IM_TYPE = 'BB_PACK'  THEN '' ||  (Select RM_XX_FEE08 from RM where RM_CUST = :cust)
+            ELSE ''
+            END AS "Fee",
+  CASE   WHEN d.SD_STOCK NOT like 'COURIER%' THEN 'Stock Unit Price is '  || (Select i.IM_REPORTING_PRICE from IM i where i.IM_STOCK = d.SD_STOCK)
+         ELSE ''
+         END AS "Stock Unit Price"
+FROM PWIN175.ST t
+INNER JOIN PWIN175.SD d ON d.SD_ORDER  = t.ST_ORDER
+INNER JOIN PWIN175.IM i ON i.IM_STOCK = d.SD_STOCK
+INNER JOIN PWIN175.SH s ON s.SH_ORDER = d.SD_ORDER
+INNER JOIN PWIN175.RM r ON r.RM_CUST  = s.SH_CUST
+--WHERE r.RM_SOURCE = :source
+WHERE (r.RM_ANAL = :anal)
+AND ((d.SD_LAST_PICK_NUM = t.ST_PICK OR d.SD_XX_PICKLIST_NUM = t.ST_PICK OR d.SD_STOCK = :stock ))
+AND (t.ST_DESP_DATE >= :start_date AND t.ST_DESP_DATE <= :end_date )
+AND (i.IM_TYPE = 'BB_PACK')
+AND d.SD_LINE = 1
+
+
+
+UNION ALL
+
+/* Get Destruction Fees*/
+SELECT DISTINCT s.SH_ORDER, s.SH_CUST, t.ST_PICK,t.ST_PSLIP, t.ST_DESP_DATE, s.SH_ADDRESS, s.SH_SUBURB, s.SH_CITY,
+s.SH_STATE, s.SH_POST_CODE, s.SH_NOTE_1, s.SH_NOTE_2 , t.ST_WEIGHT, t.ST_PACKAGES,d.SD_STOCK AS "Stock", d.SD_LINE,d.SD_SELL_PRICE,d.SD_EXCL, d.SD_INCL, d.SD_XX_OW_UNIT_PRICE,s.SH_SPARE_DBL_9,SD_XX_PICKLIST_NUM,
+  CASE   WHEN s.SH_NOTE_1 = 'DESTROY' OR s.SH_CAMPAIGN = 'OBSOLETE' THEN 'Destruction Fee is '
+         ELSE ''
+         END AS "FeeDescription",
+  CASE     WHEN s.SH_NOTE_1 = 'DESTROY' OR s.SH_CAMPAIGN = 'OBSOLETE' THEN '' ||  (Select RM_XX_FEE25 from RM where RM_CUST = :cust)
+         ELSE ''
+         END AS "Fee",
+  CASE   WHEN d.SD_STOCK NOT like 'COURIER%' THEN 'Stock Unit Price is '  || (Select i.IM_REPORTING_PRICE from IM i where i.IM_STOCK = d.SD_STOCK)
+         ELSE ''
+         END AS "Stock Unit Price"
+FROM PWIN175.ST t
+INNER JOIN PWIN175.SD d ON d.SD_ORDER  = t.ST_ORDER
+INNER JOIN PWIN175.IM i ON i.IM_STOCK = d.SD_STOCK
+INNER JOIN PWIN175.SH s ON s.SH_ORDER = d.SD_ORDER
+INNER JOIN PWIN175.RM r ON r.RM_CUST  = s.SH_CUST
+--WHERE r.RM_SOURCE = :source
+WHERE r.RM_ANAL = :anal
+AND ((d.SD_LAST_PICK_NUM = t.ST_PICK OR d.SD_XX_PICKLIST_NUM = t.ST_PICK OR d.SD_STOCK = :stock ))
+AND t.ST_DESP_DATE >= :start_date AND t.ST_DESP_DATE <= :end_date
+--AND s.SH_ORDER = '   1344426'
+AND (s.SH_NOTE_1 = 'DESTROY' OR s.SH_CAMPAIGN = 'OBSOLETE')
+AND d.SD_LINE = 1
+
+
+
+UNION ALL
+
+/* Get Emergency Fees*/
+SELECT DISTINCT s.SH_ORDER, s.SH_CUST, t.ST_PICK,t.ST_PSLIP, t.ST_DESP_DATE, s.SH_ADDRESS, s.SH_SUBURB, s.SH_CITY,
+s.SH_STATE, s.SH_POST_CODE, s.SH_NOTE_1, s.SH_NOTE_2 , t.ST_WEIGHT, t.ST_PACKAGES,d.SD_STOCK AS "Stock", d.SD_LINE,d.SD_SELL_PRICE,d.SD_EXCL, d.SD_INCL, d.SD_XX_OW_UNIT_PRICE,s.SH_SPARE_DBL_9,SD_XX_PICKLIST_NUM,
+  CASE   WHEN d.SD_STOCK = 'EMERQSRFEE' OR s.SH_CAMPAIGN = 'TABSPEC' THEN /*'Emergency Fee is '*/'' || CAST(d.SD_SELL_PRICE AS VARCHAR(20))
+         ELSE ''
+         END AS "FeeDescription",
+  CASE     WHEN d.SD_STOCK = 'EMERQSRFEE' OR s.SH_CAMPAIGN = 'TABSPEC' THEN /*'Emergency Fee is '*/'' || CAST(d.SD_SELL_PRICE AS VARCHAR(20))
+         ELSE ''
+         END AS "Fee",
+  CASE   WHEN d.SD_STOCK NOT like 'COURIER%' THEN 'Stock Unit Price is '  || (Select i.IM_REPORTING_PRICE from IM i where i.IM_STOCK = d.SD_STOCK)
+         ELSE ''
+         END AS "Stock Unit Price"
+FROM PWIN175.ST t
+INNER JOIN PWIN175.SD d ON d.SD_ORDER  = t.ST_ORDER
+INNER JOIN PWIN175.IM i ON i.IM_STOCK = d.SD_STOCK
+INNER JOIN PWIN175.SH s ON s.SH_ORDER = d.SD_ORDER
+INNER JOIN PWIN175.RM r ON r.RM_CUST  = s.SH_CUST
+--WHERE r.RM_SOURCE = :source
+WHERE r.RM_ANAL = :anal
+AND ((d.SD_LAST_PICK_NUM = t.ST_PICK OR d.SD_XX_PICKLIST_NUM = t.ST_PICK OR d.SD_STOCK = :stock ))
+AND t.ST_DESP_DATE >= :start_date AND t.ST_DESP_DATE <= :end_date
+--AND s.SH_ORDER = '   1344426'
+AND (d.SD_STOCK = 'EMERQSRFEE' OR s.SH_CAMPAIGN = 'TABSPEC')
+AND d.SD_LINE = 1
+
+
+UNION ALL
+
+/* Get Pallet Despatch Fees*/
+SELECT DISTINCT s.SH_ORDER, s.SH_CUST, t.ST_PICK,t.ST_PSLIP, t.ST_DESP_DATE, s.SH_ADDRESS, s.SH_SUBURB, s.SH_CITY,
+s.SH_STATE, s.SH_POST_CODE, s.SH_NOTE_1, s.SH_NOTE_2 , t.ST_WEIGHT, t.ST_PACKAGES,d.SD_STOCK AS "Stock", d.SD_LINE,d.SD_SELL_PRICE,d.SD_EXCL, d.SD_INCL, d.SD_XX_OW_UNIT_PRICE,s.SH_SPARE_DBL_9,SD_XX_PICKLIST_NUM,
+  CASE   WHEN ST_XX_NUM_PALLETS >= 1 THEN 'Pallet Fee is '
+         ELSE ''
+         END AS "FeeDescription",
+  CASE     WHEN ST_XX_NUM_PALLETS >= 1 THEN '' ||  (Select RM_XX_FEE17 from RM where RM_CUST = :cust )
+         ELSE ''
+         END AS "Fee",
+  CASE   WHEN d.SD_STOCK NOT like 'COURIER%' THEN 'Stock Unit Price is '  || (Select i.IM_REPORTING_PRICE from IM i where i.IM_STOCK = d.SD_STOCK)
+         ELSE ''
+         END AS "Stock Unit Price"
+FROM PWIN175.ST t
+INNER JOIN PWIN175.SD d ON d.SD_ORDER  = t.ST_ORDER
+INNER JOIN PWIN175.IM i ON i.IM_STOCK = d.SD_STOCK
+INNER JOIN PWIN175.SH s ON s.SH_ORDER = d.SD_ORDER
+INNER JOIN PWIN175.RM r ON r.RM_CUST  = s.SH_CUST
+--WHERE r.RM_SOURCE = :source
+WHERE r.RM_ANAL = :anal
+AND ((d.SD_LAST_PICK_NUM = t.ST_PICK OR d.SD_XX_PICKLIST_NUM = t.ST_PICK OR d.SD_STOCK = :stock ))
+AND t.ST_DESP_DATE >= :start_date AND t.ST_DESP_DATE <= :end_date
+--AND s.SH_ORDER = '   1344426'
+AND (ST_XX_NUM_PALLETS >= 1)
+AND d.SD_LINE = 1
+
+
+UNION ALL
+
+/* Get Carton Despatch Fees*/
+SELECT DISTINCT s.SH_ORDER, s.SH_CUST, t.ST_PICK,t.ST_PSLIP, t.ST_DESP_DATE, s.SH_ADDRESS, s.SH_SUBURB, s.SH_CITY,
+s.SH_STATE, s.SH_POST_CODE, s.SH_NOTE_1, s.SH_NOTE_2 , t.ST_WEIGHT, t.ST_PACKAGES,d.SD_STOCK AS "Stock", d.SD_LINE,d.SD_SELL_PRICE,d.SD_EXCL, d.SD_INCL, d.SD_XX_OW_UNIT_PRICE,s.SH_SPARE_DBL_9,SD_XX_PICKLIST_NUM,
+  CASE   WHEN ST_XX_NUM_CARTONS >= 1 THEN 'Carton Fee is '
+         ELSE ''
+         END AS "FeeDescription",
+  CASE     WHEN ST_XX_NUM_CARTONS >= 1 THEN '' ||  (Select RM_XX_FEE17 from RM where RM_CUST = :cust )
+         ELSE ''
+         END AS "Fee",
+  CASE   WHEN d.SD_STOCK NOT like 'COURIER%' THEN 'Stock Unit Price is '  || (Select i.IM_REPORTING_PRICE from IM i where i.IM_STOCK = d.SD_STOCK)
+         ELSE ''
+         END AS "Stock Unit Price"
+FROM PWIN175.ST t
+INNER JOIN PWIN175.SD d ON d.SD_ORDER  = t.ST_ORDER
+INNER JOIN PWIN175.IM i ON i.IM_STOCK = d.SD_STOCK
+INNER JOIN PWIN175.SH s ON s.SH_ORDER = d.SD_ORDER
+INNER JOIN PWIN175.RM r ON r.RM_CUST  = s.SH_CUST
+--WHERE r.RM_SOURCE = :source
+WHERE r.RM_ANAL = :anal
+AND ((d.SD_LAST_PICK_NUM = t.ST_PICK OR d.SD_XX_PICKLIST_NUM = t.ST_PICK OR d.SD_STOCK = :stock ))
+AND t.ST_DESP_DATE >= :start_date AND t.ST_DESP_DATE <= :end_date
+--AND s.SH_ORDER = '   1344426'
+AND (ST_XX_NUM_CARTONS >= 1)
+AND d.SD_LINE = 1
+
+
+UNION ALL
+
+/* Get ShrinkWrap Fees*/
+SELECT DISTINCT s.SH_ORDER, s.SH_CUST, t.ST_PICK,t.ST_PSLIP, t.ST_DESP_DATE, s.SH_ADDRESS, s.SH_SUBURB, s.SH_CITY,
+s.SH_STATE, s.SH_POST_CODE, s.SH_NOTE_1, s.SH_NOTE_2 , t.ST_WEIGHT, t.ST_PACKAGES,d.SD_STOCK AS "Stock", d.SD_LINE,d.SD_SELL_PRICE,d.SD_EXCL, d.SD_INCL, d.SD_XX_OW_UNIT_PRICE,s.SH_SPARE_DBL_9,SD_XX_PICKLIST_NUM,
+  CASE   WHEN ST_XX_NUM_PAL_SW >= 1 THEN 'ShrinkWrap Fee is '
+         ELSE ''
+         END AS "FeeDescription",
+  CASE     WHEN ST_XX_NUM_PAL_SW >= 1 THEN '' ||  (Select RM_XX_FEE18 from RM where RM_CUST = :cust )
+         ELSE ''
+         END AS "Fee",
+  CASE   WHEN d.SD_STOCK NOT like 'COURIER%' THEN 'Stock Unit Price is '  || (Select i.IM_REPORTING_PRICE from IM i where i.IM_STOCK = d.SD_STOCK)
+         ELSE ''
+         END AS "Stock Unit Price"
+FROM PWIN175.ST t
+INNER JOIN PWIN175.SD d ON d.SD_ORDER  = t.ST_ORDER
+INNER JOIN PWIN175.IM i ON i.IM_STOCK = d.SD_STOCK
+INNER JOIN PWIN175.SH s ON s.SH_ORDER = d.SD_ORDER
+INNER JOIN PWIN175.RM r ON r.RM_CUST  = s.SH_CUST
+--WHERE r.RM_SOURCE = :source
+WHERE r.RM_ANAL = :anal
+AND ((d.SD_LAST_PICK_NUM = t.ST_PICK OR d.SD_XX_PICKLIST_NUM = t.ST_PICK OR d.SD_STOCK = :stock ))
+AND t.ST_DESP_DATE >= :start_date AND t.ST_DESP_DATE <= :end_date
+--AND s.SH_ORDER = '   1344426'
+AND (ST_XX_NUM_PAL_SW >= 1)
+AND d.SD_LINE = 1
+
+
+UNION ALL
+
+/* Get Pick Fees
+SELECT DISTINCT s.SH_ORDER, s.SH_CUST, t.ST_PICK,t.ST_PSLIP, t.ST_DESP_DATE, s.SH_ADDRESS, s.SH_SUBURB, s.SH_CITY,
+s.SH_STATE, s.SH_POST_CODE, s.SH_NOTE_1, s.SH_NOTE_2 , t.ST_WEIGHT, t.ST_PACKAGES,d.SD_STOCK AS "Stock", d.SD_LINE,d.SD_SELL_PRICE,d.SD_EXCL, d.SD_INCL, d.SD_XX_OW_UNIT_PRICE,s.SH_SPARE_DBL_9,SD_XX_PICKLIST_NUM,
+  CASE   WHEN d.SD_STOCK NOT like 'COURIER%' THEN 'Pick Fee'
+         ELSE ''
+         END AS "Stock",
+  CASE   WHEN d.SD_STOCK NOT like 'COURIER%' THEN '' || (Select RM_XX_FEE16 from RM where RM_CUST = :cust)
+         ELSE ''
+         END AS "Fee",
+  CASE   WHEN d.SD_STOCK NOT like 'COURIER%' THEN 'Stock Unit Price is '  || (Select i.IM_REPORTING_PRICE from IM i where i.IM_STOCK = d.SD_STOCK)
+         ELSE ''
+         END AS "Stock Unit Price"
+FROM PWIN175.ST t
+INNER JOIN PWIN175.SD d ON d.SD_ORDER  = t.ST_ORDER
+INNER JOIN PWIN175.IM i ON i.IM_STOCK = d.SD_STOCK
+INNER JOIN PWIN175.SH s ON s.SH_ORDER = d.SD_ORDER
+INNER JOIN PWIN175.RM r ON r.RM_CUST  = s.SH_CUST
+--WHERE r.RM_SOURCE = :source
+WHERE r.RM_ANAL = :anal
+AND d.SD_STOCK NOT LIKE :stock
+AND t.ST_DESP_DATE >= :start_date AND t.ST_DESP_DATE <= :end_date
+AND LTRIM(RTRIM(ST_PICK)) = LTRIM(RTRIM(SD_LAST_PICK_NUM))
+--AND s.SH_ORDER = '   1334679'
+--AND d.SD_LINE = 1
+
+
+
+
+
+UNION ALL   */
+
+/* Get Handeling Fees*/
+SELECT DISTINCT s.SH_ORDER, s.SH_CUST, t.ST_PICK,t.ST_PSLIP, t.ST_DESP_DATE, s.SH_ADDRESS, s.SH_SUBURB, s.SH_CITY,
+s.SH_STATE, s.SH_POST_CODE, s.SH_NOTE_1, s.SH_NOTE_2 , t.ST_WEIGHT, t.ST_PACKAGES,d.SD_STOCK AS "Stock", d.SD_LINE,d.SD_SELL_PRICE,d.SD_EXCL, d.SD_INCL, d.SD_XX_OW_UNIT_PRICE,s.SH_SPARE_DBL_9,SD_XX_PICKLIST_NUM,
+  CASE   WHEN (d.SD_LINE = 1) THEN 'Handeling Fee is '
+         ELSE ''
+         END AS "FeeDescription",
+  CASE   WHEN d.SD_LINE = 1 THEN '' ||  (Select RM_XX_FEE06 from RM where RM_CUST = :cust)
+         ELSE ''
+         END AS "Fee",
+  CASE   WHEN d.SD_STOCK NOT like 'COURIER%' THEN 'Stock Unit Price is '  || (Select i.IM_REPORTING_PRICE from IM i where i.IM_STOCK = d.SD_STOCK)
+         ELSE ''
+         END AS "Stock Unit Price"
+FROM PWIN175.ST t
+INNER JOIN PWIN175.SD d ON d.SD_ORDER = t.ST_ORDER
+INNER JOIN PWIN175.IM i ON i.IM_STOCK = d.SD_STOCK
+INNER JOIN PWIN175.SH s ON s.SH_ORDER = d.SD_ORDER
+INNER JOIN PWIN175.RM r ON r.RM_CUST  = s.SH_CUST
+--WHERE r.RM_SOURCE = :source
+WHERE r.RM_ANAL = :anal
+AND ((d.SD_LAST_PICK_NUM = t.ST_PICK OR d.SD_XX_PICKLIST_NUM = t.ST_PICK OR d.SD_STOCK = :stock ))
+AND t.ST_DESP_DATE >= :start_date AND t.ST_DESP_DATE <= :end_date
+--AND s.SH_ORDER = '   1344426'
+AND d.SD_LINE = 1
+
+
+
+UNION ALL
+
+/* Get Freight Fees*/
+SELECT DISTINCT s.SH_ORDER, s.SH_CUST, t.ST_PICK,t.ST_PSLIP, t.ST_DESP_DATE, s.SH_ADDRESS, s.SH_SUBURB, s.SH_CITY,
+s.SH_STATE, s.SH_POST_CODE, s.SH_NOTE_1, s.SH_NOTE_2 , t.ST_WEIGHT, t.ST_PACKAGES,d.SD_STOCK AS "Stock", d.SD_LINE,d.SD_SELL_PRICE,d.SD_EXCL, d.SD_INCL, d.SD_XX_OW_UNIT_PRICE,s.SH_SPARE_DBL_9,SD_XX_PICKLIST_NUM,
+  CASE   WHEN d.SD_STOCK like 'COURIER%' THEN 'Freight Fee is '
+         ELSE 'Pick Fee is '
+         END AS "FeeDescription",
+  CASE   WHEN d.SD_STOCK like 'COURIER%' THEN '' || CAST(d.SD_SELL_PRICE AS VARCHAR(20))
+         ELSE '' || (Select RM_XX_FEE16 from RM where RM_CUST = :cust)
+         END AS "Fee",
+  CASE   WHEN d.SD_STOCK NOT like 'COURIER%' THEN 'Stock Unit Price is '  || (Select i.IM_REPORTING_PRICE from IM i where i.IM_STOCK = d.SD_STOCK)
+         ELSE ''
+         END AS "Stock Unit Price"
+FROM pwin175.SH s
+INNER JOIN PWIN175.RM r ON r.RM_CUST  = s.SH_CUST
+,pwin175.ST t
+INNER JOIN PWIN175.SD d ON d.SD_ORDER  = t.ST_ORDER
+WHERE SH_ORDER = SD_ORDER
+AND r.RM_ANAL = :anal
+AND SH_ORDER = ST_ORDER
+AND LTRIM(RTRIM(ST_PICK)) = LTRIM(RTRIM(SD_XX_PICKLIST_NUM))
+--AND SD_XX_PICKLIST_NUM <> ''
+--AND (SL_PICK_QTY >= 1)
+--AND SD_STOCK like :stock
+AND t.ST_DESP_DATE >= :start_date AND t.ST_DESP_DATE <= :end_date
+--AND s.SH_ORDER = '   1334679'
+
+
+
+UNION ALL
+
+/* Get Stock Lines*/
+SELECT DISTINCT s.SH_ORDER, s.SH_CUST, t.ST_PICK,t.ST_PSLIP, t.ST_DESP_DATE, s.SH_ADDRESS, s.SH_SUBURB, s.SH_CITY,
+s.SH_STATE, s.SH_POST_CODE, s.SH_NOTE_1, s.SH_NOTE_2 , t.ST_WEIGHT, t.ST_PACKAGES,d.SD_STOCK AS "Stock", d.SD_LINE,d.SD_SELL_PRICE,d.SD_EXCL, d.SD_INCL, d.SD_XX_OW_UNIT_PRICE,s.SH_SPARE_DBL_9,SD_XX_PICKLIST_NUM,
+  CASE   WHEN d.SD_STOCK NOT like 'COURIER%' THEN 'Pick Fee is '
+         ELSE ''
+         END AS "FeeDescription",
+  CASE   WHEN d.SD_STOCK NOT like 'COURIER%' THEN '' || (Select RM_XX_FEE16 from RM where RM_CUST = :cust)
+         ELSE ''
+         END AS "Fee",
+  CASE   WHEN d.SD_STOCK NOT like 'COURIER%' THEN 'Stock Unit Price is '  || (Select i.IM_REPORTING_PRICE from IM i where i.IM_STOCK = d.SD_STOCK)
+         ELSE ''
+         END AS "Stock Unit Price"
+FROM PWIN175.ST t
+INNER JOIN PWIN175.SD d ON d.SD_ORDER  = t.ST_ORDER
+INNER JOIN PWIN175.IM i ON i.IM_STOCK = d.SD_STOCK
+INNER JOIN PWIN175.SH s ON s.SH_ORDER = d.SD_ORDER
+INNER JOIN PWIN175.RM r ON r.RM_CUST  = s.SH_CUST
+--WHERE r.RM_SOURCE = :source
+WHERE r.RM_ANAL = :anal
+AND (d.SD_LAST_PICK_NUM = t.ST_PICK )
+AND t.ST_DESP_DATE >= :start_date AND t.ST_DESP_DATE <= :end_date
+AND d.SD_STOCK != :stock
+
+GROUP BY SH_ORDER, SH_CUST, ST_PICK,ST_PSLIP, ST_DESP_DATE, SH_ADDRESS, SH_SUBURB, SH_CITY,
+SH_STATE, SH_POST_CODE, SH_NOTE_1, SH_NOTE_2 , ST_WEIGHT, ST_PACKAGES,SD_STOCK, SD_LINE,SD_SELL_PRICE,SD_EXCL, SD_INCL, SD_XX_OW_UNIT_PRICE,SH_SPARE_DBL_9,SD_XX_PICKLIST_NUM,ST_XX_NUM_PALLETS,ST_XX_NUM_CARTONS,ST_XX_NUM_PAL_SW , SD_LINE ,IM_TYPE,d.SD_EXCL, d.SD_INCL, d.SD_XX_OW_UNIT_PRICE
+ORDER BY SH_ORDER, SD_LINE
+--End Admin Order Data

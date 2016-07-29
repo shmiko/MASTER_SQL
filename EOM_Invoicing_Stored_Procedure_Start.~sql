@@ -1,0 +1,112 @@
+--Admin Order Data
+/*Set Stored Procedure*/
+
+CREATE OR REPLACE PROCEDURE EOM_INVOICING (p_cust IN VARCHAR2 := 'TABCORP',
+                                           p_ordernum IN VARCHAR2 := '1363806',
+                                           p_stock IN VARCHAR2 := 'COURIER',
+                                           p_source IN VARCHAR2 := 'BSPRINTNSW',
+                                           p_anal IN VARCHAR2 := '72',
+                                           p_start_date IN VARCHAR2 := To_Date('1-Jul-2013'),
+                                           p_end_date IN VARCHAR2 := To_Date('7-Jul-2013')
+                                          ) AS
+  nCheckpoint  NUMBER;
+BEGIN
+
+  nCheckpoint := 1;
+
+  EXECUTE IMMEDIATE 'DROP TABLE Tmp_Admin_Data_Pickslips';
+
+  nCheckpoint := 2;
+
+  EXECUTE IMMEDIATE 'DROP TABLE Tmp_Admin_Data';
+
+  nCheckpoint := 3;
+
+  EXECUTE IMMEDIATE 'CREATE TABLE Tmp_Admin_Data_Pickslips (vPickslip VARCHAR(200),vPslip VARCHAR(10), vDateDesp VARCHAR(10), vPackages INTEGER, vWeight INTEGER, vST_XX_NUM_PAL_SW VARCHAR(10),vST_XX_NUM_PALLETS VARCHAR(10), vST_XX_NUM_CARTONS VARCHAR(10))';
+
+  nCheckpoint := 4;
+
+  EXECUTE IMMEDIATE 'INSERT INTO Tmp_Admin_Data_Pickslips
+                    SELECT LTrim(ST_PICK),LTrim(ST_PSLIP), substr(To_Char(ST_DESP_DATE),0,10), ST_WEIGHT, ST_PACKAGES,ST_XX_NUM_PAL_SW,ST_XX_NUM_PALLETS,ST_XX_NUM_CARTONS
+                    FROM ST INNER JOIN SH ON SH_ORDER = ST_ORDER
+                    WHERE ST_DESP_DATE >= :start_date AND ST_DESP_DATE <= :end_date
+                    AND ST_PSLIP <> "CANCELLED"
+                    AND SH_STATUS <> 3
+                    ';
+
+  nCheckpoint := 5;
+
+  EXECUTE IMMEDIATE 'DROP TABLE Tmp_Admin_Data_Pick_LineCounts';
+
+  nCheckpoint := 6;
+
+  EXECUTE IMMEDIATE 'CREATE TABLE Tmp_Admin_Data_Pick_LineCounts (  nCountOfLines INTEGER, vSLPickslipNum VARCHAR(10), vSLOrderNum VARCHAR2(10), vSLPslip VARCHAR(10), vDateDespSL VARCHAR(10)
+                    ,vPackagesSL INTEGER, vWeightSL INTEGER,vST_XX_NUM_PAL_SW_SL VARCHAR(10),vST_XX_NUM_PALLETS_SL VARCHAR(10), vST_XX_NUM_CARTONS_SL VARCHAR(10))
+                    ';
+
+  nCheckpoint := 7;
+
+  EXECUTE IMMEDIATE 'INSERT INTO Tmp_Admin_Data_Pick_LineCounts
+                    SELECT Count(SL_LINE),LTrim(SL_PICK), LTrim(SL_ORDER), LTrim(SL_PSLIP),TP.vDateDesp, TP.vPackages,TP.vWeight,TP.vST_XX_NUM_PAL_SW,TP.vST_XX_NUM_PALLETS,TP.vST_XX_NUM_CARTONS
+                    FROM Tmp_Admin_Data_Pickslips TP LEFT OUTER JOIN SL ON LTrim(SL_PICK) = TP.vPickslip   WHERE SL_PSLIP <> "CANCELLED"  GROUP BY SL_PICK,SL_ORDER,SL_PSLIP,TP.vDateDesp,TP.vPackages,TP.vWeight,TP.vST_XX_NUM_PAL_SW,TP.vST_XX_NUM_PALLETS,TP.vST_XX_NUM_CARTONS
+                    ';
+
+  nCheckpoint := 8;
+
+  EXECUTE IMMEDIATE 'CREATE TABLE Tmp_Admin_Data
+                      (vCustomer VARCHAR(255),--           AS "Customer",
+                      vCostCentre VARCHAR(255),--         AS "CostCentre",
+                      vOrder VARCHAR(255),--              AS "Order",
+                      vPickslip VARCHAR(255),--           AS "Pickslip",
+                      vPickNum VARCHAR(255),--            AS "PickNum",
+                      vDespatchNote VARCHAR(255),--       AS "DespatchNote",
+                      vDespatchDate VARCHAR(255),--       AS "DespatchDate",
+                      vFeeType VARCHAR(255),--            AS "FeeType",
+                      vItem VARCHAR(255),--               AS "Item",
+                      vDescription VARCHAR(255),--        AS "Description",
+                      vQty VARCHAR(255),--                AS "Qty",
+                      vUOI VARCHAR(255),--                AS "UOI",
+                      vUnitPrice VARCHAR(255),--          AS "UnitPrice",
+                      vDExcl VARCHAR(255),--              AS "DExcl",
+                      vOWUnitPrice VARCHAR(255),--        AS "OWUnitPrice",
+                      vExcl_Total VARCHAR(255),--         AS "Excl_Total",
+                      vDIncl VARCHAR(255),--              AS "DIncl",
+                      vIncl_Total VARCHAR(255),--         AS "Incl_Total",
+                      vReportingPrice VARCHAR(255),--     AS "ReportingPrice",
+                      vAddress VARCHAR(255),--            AS "Address",
+                      vAddress2 VARCHAR(255),--           AS "Address2",
+                      vSuburb VARCHAR(255),--             AS "Suburb",
+                      vState VARCHAR(255),--              AS "State",
+                      vPostcode VARCHAR(255),--           AS "Postcode",
+                      vDeliverTo VARCHAR(255),--          AS "DeliverTo",
+                      vAttentionTo VARCHAR(255),--        AS "AttentionTo" ,
+                      vWeight VARCHAR(255),--             AS "Weight",
+                      vPackages VARCHAR(255),--           AS "Packages",
+                      vOrderSource VARCHAR(255),--         AS "OrderSource"
+                      vIL_NOTE_2 VARCHAR(255),--           AS "Palett/Shelf"
+                      vNI_LOCN VARCHAR(255),--             AS "Location"
+                      vNI_AVAIL_ACTUAL VARCHAR(255),--     AS "SOH"
+                      vCountOfStocks VARCHAR(255)--       AS "Count"
+                    )';
+
+
+
+
+
+  RETURN;
+EXCEPTION
+  WHEN OTHERS THEN
+    DBMS_OUTPUT.PUT_LINE('EOM_INVOICING failed at checkpoint ' || nCheckpoint ||
+                         ' with error ' || SQLCODE || ' : ' || SQLERRM);
+    RAISE;
+END EOM_INVOICING;
+
+
+
+
+
+
+
+
+/*SELECT * FROM Tmp_Admin_Data
+ORDER BY vOrder,vPickslip Asc    */

@@ -1,0 +1,8 @@
+
+
+
+
+
+
+
+ SELECT * FROM SD WHERE SD_ORDER = '   1688128'

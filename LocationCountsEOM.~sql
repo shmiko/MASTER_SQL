@@ -1,0 +1,97 @@
+DROP TABLE Tmp_Storage_Data
+
+CREATE TABLE Tmp_Storage_Data
+(       vNI_ENTRY VARCHAR(255),
+        vNI_TRAN_TYPE VARCHAR(255),
+        vNI_ERA VARCHAR(255),
+        vNI_STATUS VARCHAR(255),
+        vNI_QUANTITY VARCHAR(255),
+        vNE_AVAIL_ACTUAL VARCHAR(255),
+        vIL_LOCN VARCHAR(255),
+        vIM_STOCK VARCHAR(255),
+        vIM_CUST VARCHAR(255),
+        vIL_NOTE_2 VARCHAR(255),
+        vCOUNT_NE_ENTRY VARCHAR(255),
+        vSUM_NE_AVAIL_ACTUAL VARCHAR(255),
+        vCOUNT_IL_LOCN VARCHAR(255)
+)
+
+
+/*decalre variables*/
+var cust varchar2(20)
+exec :cust := 'TABCORP'
+var stock varchar2(20)
+exec :stock := 'COURIER'
+var source varchar2(20)
+exec :source := 'BSPRINTNSW'
+var anal varchar2(20)
+exec :anal := '72'
+var start_date varchar2(20)
+exec :start_date := To_Date('26-Jun-2013')
+var end_date varchar2(20)
+exec :end_date := To_Date('30-Jun-2013')
+
+
+
+INSERT into Tmp_Storage_Data( vNI_ENTRY,
+                              vNI_TRAN_TYPE,
+                              vNI_STATUS,
+                              vNI_ERA,
+                              vNI_QUANTITY,
+                              vNE_AVAIL_ACTUAL,
+                              vIL_LOCN,
+                              vIM_STOCK,
+                              vIM_CUST,
+                              vIL_NOTE_2,
+                              vCOUNT_NE_ENTRY,
+                              vSUM_NE_AVAIL_ACTUAL,
+                              vCOUNT_IL_LOCN )
+--VALUES ('232323','Cust','Pick','Date', 'PickFee','1','Pickfee','Pickfee','5'),
+
+
+--Used for getting EOM storage lines*/           /*OK as of Nov 2012    */
+--Name: EOM_STORAGE_LINES
+SELECT  NI_ENTRY,
+        NI_TRAN_TYPE,
+        NI_STATUS,
+        NI_ERA,
+        NI_QUANTITY,
+        NE_AVAIL_ACTUAL,
+        IL_LOCN,
+        IM_STOCK,
+        IM_CUST,
+        IL_NOTE_2 ,
+        Count(NE_ENTRY) AS "NumEntries",
+        Sum(NE_AVAIL_ACTUAL) AS "TotalSOH",
+        Count(IL_LOCN) AS "NumOfLocns"
+FROM PWIN175.NI, PWIN175.NE, PWIN175.IL, PWIN175.IM
+WHERE IL_LOCN = NI_LOCN
+AND NI_ENTRY = NE_ENTRY
+AND NI_STOCK = IM_STOCK
+AND IM_CUST = :cust
+AND IM_STOCK IN ('153061','502075','AW003','AW003B','AW003C','AW012B','AW021','TAB2397'   )
+AND NE_AVAIL_ACTUAL >= '1'
+--AND IM_STOCK = '502075'
+GROUP BY NI_ENTRY, NI_TRAN_TYPE,NI_STATUS,NI_ERA, NI_QUANTITY, NE_AVAIL_ACTUAL, IL_LOCN, IM_STOCK, IM_CUST,IL_NOTE_2
+ORDER BY IM_STOCK
+
+
+
+
+
+
+
+SELECT vIL_LOCN, Count(*) AS "Num",vIL_NOTE_2,
+      CASE   WHEN vIL_NOTE_2 like 'Yes' OR vIL_NOTE_2 LIKE 'YES' OR vIL_NOTE_2 LIKE 'yes' THEN 'Pallet Fee is for  ' ||  Count(*) || ' stock(s)'
+            WHEN vIL_NOTE_2 NOT like 'No' OR vIL_NOTE_2 NOT LIKE 'YES' OR vIL_NOTE_2 NOT LIKE 'yes' THEN 'Shelf Fee is '  ||  Count(*) || ' stock(s)'
+            ELSE ''
+            END AS "FeeDescription",
+      CASE   WHEN vIL_NOTE_2 like 'Yes' OR vIL_NOTE_2 LIKE 'YES' OR vIL_NOTE_2 LIKE 'yes' THEN '' || (Select CAST(RM_XX_FEE11 AS decimal(10,5)) from RM where RM_CUST = :cust  ) / Count(*)
+            WHEN vIL_NOTE_2 NOT like 'No' OR vIL_NOTE_2  NOT LIKE 'YES' OR vIL_NOTE_2 NOT LIKE 'yes' THEN '' || (Select CAST(RM_XX_FEE12  AS decimal(10,5)) from RM where RM_CUST = :cust ) / Count(*)
+            ELSE ''
+            END AS "Fee"
+FROM Tmp_Storage_Data
+GROUP BY vIL_LOCN,vIL_NOTE_2
+ORDER BY vIL_LOCN,vIL_NOTE_2
+
+

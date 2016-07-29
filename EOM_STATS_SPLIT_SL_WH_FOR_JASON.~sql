@@ -1,0 +1,60 @@
+var cust varchar2(20)
+exec :cust := 'TABCORP'
+var cust2 varchar2(20)
+exec :cust2 := 'TABCORP'
+var ordernum varchar2(20)
+exec :ordernum := '1363806'
+var stock varchar2(20)
+exec :stock := 'COURIER'
+var source varchar2(20)
+exec :source := 'BSPRINTNSW'
+var anal varchar2(20)
+exec :anal := '21VICP'
+var start_date varchar2(20)
+exec :start_date := To_Date('01-Dec-2013')
+var end_date varchar2(20)
+exec :end_date := To_Date('31-Mar-2014')
+var warehouse varchar2(20)
+exec :warehouse := 'SYDNEY'
+var warehouse2 varchar2(20)
+exec :warehouse2 := 'MELBOURNE'
+var month_date varchar2(20)
+exec :month_date := substr(:end_date,4,3)
+var year_date varchar2(20)
+exec :year_date := substr(:end_date,8,2)
+
+
+
+
+--This one Jason uses to split lines between wh
+SELECT DISTINCT(SD_STOCK), SL_LINE,SL_ORDER,SL_PICK, SL_PICK_QTY,  IL_IN_LOCN AS Warehouse,
+                Count(IL_IN_LOCN) OVER (PARTITION BY SL_ORDER) / 2 AS TotalLines ,
+                'C- Lines' AS "Type"
+    FROM SL s1 INNER JOIN SD ON  SD_LINE = s1.SL_ORDER_LINE AND SD_ORDER = s1.SL_ORDER
+    LEFT JOIN Tmp_Group_Cust r ON r.sCust = SD_CUST
+    INNER JOIN IL ON IL_LOCN = s1.SL_LOCN
+WHERE s1.SL_EDIT_DATE >= :start_date AND s1.SL_EDIT_DATE <= :end_date
+AND   s1.SL_PSLIP IS NOT NULL
+AND ((SELECT SH_CAMPAIGN FROM SH WHERE SH_ORDER = SD_ORDER) NOT IN( 'ADMIN','OBSOLETE'))
+AND sGroupCust = :cust2
+AND SD_ORDER = '   1459419'
+GROUP BY ROLLUP (s1.SL_ORDER),s1.SL_ORDER, s1.SL_LINE,s1.SL_PICK, s1.SL_PICK_QTY, SD_STOCK,IL_IN_LOCN
+
+
+
+
+
+SELECT DISTINCT(SD_STOCK), SL_LINE,SL_ORDER,SL_PICK, SL_PICK_QTY,  IL_IN_LOCN AS Warehouse,
+                Count(IL_IN_LOCN) OVER (PARTITION BY SubStr(s1.SL_LOCN,0,1)) / 2 AS TotalLinesWH ,
+                'C- Lines' AS "Type"
+    FROM SL s1 INNER JOIN SD ON  SD_LINE = s1.SL_ORDER_LINE AND SD_ORDER = s1.SL_ORDER
+    LEFT JOIN Tmp_Group_Cust r ON r.sCust = SD_CUST
+    INNER JOIN IL ON IL_LOCN = s1.SL_LOCN
+WHERE s1.SL_EDIT_DATE >= :start_date AND s1.SL_EDIT_DATE <= :end_date
+AND   s1.SL_PSLIP IS NOT NULL
+AND ((SELECT SH_CAMPAIGN FROM SH WHERE SH_ORDER = SD_ORDER) NOT IN( 'ADMIN','OBSOLETE'))
+AND sGroupCust = :cust2
+--AND SD_ORDER = '   1459419'
+GROUP BY ROLLUP (s1.SL_ORDER),s1.SL_ORDER, s1.SL_LINE,s1.SL_PICK, s1.SL_PICK_QTY, SD_STOCK,IL_IN_LOCN,s1.SL_LOCN
+
+
