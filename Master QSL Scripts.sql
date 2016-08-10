@@ -4152,6 +4152,9 @@ SELECT Count(RM_CUST) FROM RM WHERE RM_SOURCE = 'BSPRINTNSW'   AND RM_ACTIVE = 1
 SELECT Count(RM_CUST) FROM RM WHERE RM_ANAL = '21VICP'   AND RM_ACTIVE = 1    AND RM_TYPE = 0
 
 
+  **********************************************************************
+  **********************************************************************
+
   --Now get all items with past warehouse items
   SELECT 
   i.IM_STOCK As "Stock",
