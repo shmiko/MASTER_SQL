@@ -4109,6 +4109,9 @@ order by
 
 spool off;
 
+  **********************************************************************
+  **********************************************************************
+
 
 alter table  "PWIN175"."TMP_GROUP_CUST" rename column "CAMPAIGN" to "AREA"
 alter table  "PWIN175"."TMP_GROUP_CUST" rename column "SPARE1" to "TERR"
