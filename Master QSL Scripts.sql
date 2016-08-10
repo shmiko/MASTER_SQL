@@ -4143,6 +4143,11 @@ SELECT * FROM SD WHERE Trim(SD_ORDER) IN ('1798461',
 '1796553'
 )
 
+
+  **********************************************************************
+  **********************************************************************
+
+
 SD_EDIT_DATE = '13-Oct-2015' AND SD_EDIT_OP = 'KOR'
 
 SELECT DISTINCT(RM_SOURCE) FROM RM ORDER BY RM_SOURCE Desc
