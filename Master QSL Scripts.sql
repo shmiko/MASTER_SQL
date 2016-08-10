@@ -4218,6 +4218,10 @@ SELECT Count(RM_CUST) FROM RM WHERE RM_ANAL = '21VICP'   AND RM_ACTIVE = 1    AN
   AND TOTAL_SOH_BY_STOCK(i.IM_STOCK) > 99999
  -- AND i.IM_STOCK = 'BL/0360'
   Group By i.IM_STOCK;
+  
+  
+  **********************************************************************
+  **********************************************************************
 
   --Now get all items with past warehouse items
   SELECT 
