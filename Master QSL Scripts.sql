@@ -4181,6 +4181,8 @@ SELECT Count(RM_CUST) FROM RM WHERE RM_ANAL = '21VICP'   AND RM_ACTIVE = 1    AN
   
   UNION ALL
   
+  
+  
   --Now get all items with available stock
   SELECT 
   i.IM_STOCK As "Stock",
