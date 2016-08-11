@@ -4309,3 +4309,83 @@ SELECT Count(RM_CUST) FROM RM WHERE RM_ANAL = '21VICP'   AND RM_ACTIVE = 1    AN
 SET   IM_LEVEL_UNIT = 'BOX_OF_50',
 		   IM_PRICE_UNIT = 'BOX_OF_50'
 WHERE IM_STOCK = 'TEST - 1'
+
+
+--Brand manager Updates
+CREATE OR REPLACE VIEW ORDER_DUMP_TODAY AS
+SELECT
+`weborder`.`id_order`,
+`vvv_client`.`cost_centres`,
+`weborder`.`po`,
+`weborder`.`username`,
+`vvv_client`.`name`,
+`vvv_client`.`code`,
+`weborder`.`date`,
+`weborder_item`.`sku`,
+`weborder_item`.`name` As 'description',
+`weborder_item`.`size`,
+`weborder_item`.`colour`,
+`weborder_item`.`unit_size`,
+`weborder_item`.`qty`,
+`weborder_item`.`price`,
+`weborder`.`ship_first_name`,
+`weborder`.`ship_last_name`,
+`weborder`.`ship_company`,
+`weborder`.`ship_phone`,
+`weborder`.`ship_phone`,
+`weborder`.`ship_street1`,
+`weborder`.`ship_street2`,
+`weborder`.`ship_street3`,
+`weborder`.`ship_suburb`,
+`weborder`.`ship_state`,
+`weborder`.`ship_postcode`,
+`weborder`.`freight`,
+`weborder`.`estimate_freight`,
+`surcharge`,`ship_email`
+FROM `weborder` INNER JOIN  `vvv_client` ON (`weborder`.`id_client` =  `vvv_client`.`id_client`)
+INNER JOIN `weborder_item` ON (`weborder`.`id_order` = `weborder_item`.`id_order`)
+AND `weborder`.`id_order` IN (131961,
+131979,
+131988,
+132101,
+132972,
+133163,
+133168,
+133779,
+133783,
+133784,
+133789,
+133802,
+133803,
+133819,
+133824,
+133830,
+133842,
+133867,
+133876,
+134024,
+134030,
+134041,
+134057,
+134064,
+134124,
+134134,
+134137,
+134149,
+134342,
+134343,
+134344,
+134345,
+134346,
+134347,
+134348,
+134349,
+134350,
+134351)
+WHERE  `date` = CURDATE() 
+INTO OUTFILE '\\xasudc01\Data\PWIN17P\PWCIMPORT\pwc_promote_daily_orders.csv' 
+FIELDS ENCLOSED BY '"' 
+TERMINATED BY ';' 
+ESCAPED BY '"' 
+LINES TERMINATED BY '\r\n';
+
