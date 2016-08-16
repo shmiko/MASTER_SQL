@@ -8,6 +8,7 @@ IS
     
     
     PROCEDURE A_EOM_GROUP_CUST;
+    
      
     PROCEDURE B_EOM_START_RUN_ONCE_DATA(
          start_date IN VARCHAR2
@@ -184,6 +185,14 @@ IS
         ,enddate IN VARCHAR2-- := To_Date('30-Jun-2015')
         ,sCustomerCode IN VARCHAR2
         , sAnalysis_Start IN RM.RM_ANAL%TYPE
+    );
+    
+    PROCEDURE E0_ALL_ORD_FEES (
+      p_array_size IN PLS_INTEGER DEFAULT 100
+      ,startdate IN VARCHAR2-- := To_Date('1-Jun-2015') or format date as 01-Jun-15 -- use this when you want the date entered automatically
+      ,enddate IN VARCHAR2-- := To_Date('30-Jun-2015')
+      ,sCustomerCode IN VARCHAR2
+      ,sAnalysis IN RM.RM_ANAL%TYPE
     );
     
     PROCEDURE F8_Z_EOM_RUN_FREIGHT (
@@ -498,6 +507,11 @@ IS
        ,v_in_process VARCHAR2
        )
     RETURN VARCHAR2;
+    
+    PROCEDURE A01_TRUNC_ALL_TMP_TBLS;
+    PROCEDURE A01_DROP_UNUSED_TMP_TBLS;
+    PROCEDURE A01_COUNT_ALL_TMP_TBLS2;    
+    
 END EOM_REPORT_PKG_TEST;
 /
 
@@ -765,7 +779,7 @@ END B_EOM_START_RUN_ONCE_DATA;
                         END AS "Note",NULL,NULL,NULL,NULL
 						FROM IL INNER JOIN NI  ON IL_LOCN = NI_LOCN
 						INNER JOIN IM ON IM_STOCK = NI_STOCK
-						WHERE IM_CUST IN :customer
+						WHERE IM_CUST = :customer --OR IM_BRAND  LIKE :customer 
 						AND IM_ACTIVE = :v_p_IM_ACTIVE
 						AND NI_AVAIL_ACTUAL >= :v_p_NI_AVAIL_ACTUAL
 						AND NI_STATUS <> :v_p_NI_STATUS
@@ -855,16 +869,17 @@ END C_EOM_START_CUST_TEMP_DATA;
    nCheckpoint := 15;
   
 		v_query := q'{INSERT INTO Tmp_Locn_Cnt_By_Cust
-						SELECT Count(DISTINCT NI_STOCK) AS CountOfStocks, IL_LOCN, IM_CUST,
+						SELECT Count(DISTINCT NI_STOCK) AS CountOfStocks, IL_LOCN, r.sGroupCust,
                       CASE WHEN Upper(substr(IL_NOTE_2,0,1)) = 'Y' THEN 'E- Pallets'
                         ELSE 'F- Shelves'
                         END AS "Note",NULL,NULL,NULL,NULL
 						FROM IL INNER JOIN NI  ON IL_LOCN = NI_LOCN
 						INNER JOIN IM ON IM_STOCK = NI_STOCK
+            LEFT JOIN Tmp_Group_Cust r ON r.sCust = IM_CUST
 						WHERE IM_ACTIVE = 1
 						AND NI_AVAIL_ACTUAL >= 1
 						AND NI_STATUS <> 3
-						GROUP BY IL_LOCN, IM_CUST,IL_NOTE_2}';
+						GROUP BY r.sGroupCust,IL_LOCN, IM_CUST,IL_NOTE_2}';
         /*(SELECT RM_CUST FROM RM WHERE RM_ANAL = :sAnalysis AND RM_TYPE = :v_p_RM_TYPE AND RM_ACTIVE = :v_p_IM_ACTIVE )*/
     If F_IS_TABLE_EEMPTY('Tmp_Locn_Cnt_By_Cust') <= 0 Then
       EXECUTE IMMEDIATE v_query;-- USING p_IM_ACTIVE,p_NI_AVAIL_ACTUAL,p_NI_STATUS;
@@ -1101,7 +1116,219 @@ END C_EOM_START_ALL_TEMP_STOR_DATA;
                           ' with error ' || SQLCODE || ' : ' || SQLERRM);
       RAISE;
   END D_EOM_GET_CUST_RATES;
+  
+  /*   E0_ALL_ORD_FEES Run this once for each customer   */
+  /*   This gets all the Order Related Data   */
+  /*   Temp Tables Used   */
+  /*   1. TMP_ALL_ORD_FEES   */
+  /*   Prism Rate Fields Used   */
+  /*   A. RM_XX_FEE01,RM_XX_FEE02,RM_XX_FEE03,RM_XX_FEE07   */
+  PROCEDURE E0_ALL_ORD_FEES (
+      p_array_size IN PLS_INTEGER DEFAULT 100
+      ,startdate IN VARCHAR2-- := To_Date('1-Jun-2015') or format date as 01-Jun-15 -- use this when you want the date entered automatically
+      ,enddate IN VARCHAR2-- := To_Date('30-Jun-2015')
+      ,sCustomerCode IN VARCHAR2
+      ,sAnalysis IN RM.RM_ANAL%TYPE
+    )
+    IS
+    TYPE ARRAY IS TABLE OF TMP_ALL_ORD_FEES%ROWTYPE;
+    l_data ARRAY;
+    v_time_taken VARCHAR2(205);
+    v_out_tx          VARCHAR2(2000);
+    SQLQuery   VARCHAR2(6000);
+    v_query           VARCHAR2(2000);
+    v_query2          VARCHAR2(32767);
+		nCheckpoint       NUMBER;
+		nbreakpoint   NUMBER;
+    l_start number default dbms_utility.get_time;    
+    QueryTable5 VARCHAR2(600) := q'{SELECT To_Number(regexp_substr(RM_XX_FEE03,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = :sCustomerCode5}';
+    sCust_Rates5 RM.RM_XX_FEE03%TYPE;/*1 PhoneOrderEntryFee*/
+    QueryTable4 VARCHAR2(600) := q'{SELECT To_Number(regexp_substr(RM_XX_FEE02,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = :sCustomerCode4}';
+    sCust_Rates4 RM.RM_XX_FEE02%TYPE;/*EmailOrderEntryFee*/
+    QueryTable3 VARCHAR2(600) := q'{SELECT To_Number(regexp_substr(RM_XX_FEE07,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = :sCustomerCode3}';
+    sCust_Rates3 RM.RM_XX_FEE07%TYPE;/*FaxOrderEntryFee*/
+    QueryTable2 VARCHAR2(600) := q'{SELECT To_Number(regexp_substr(RM_XX_FEE01,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = :sCustomerCode3}';
+    sCust_Rates2 RM.RM_XX_FEE07%TYPE;/*ManOrderEntryFee*/
+    QueryTable1 VARCHAR2(600) := q'{SELECT To_Number(regexp_substr(RM_XX_FEE01,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = :sCustomerCode}';
+    sCust_Rates1 RM.RM_XX_FEE01%TYPE;/*VerbalOrderEntryFee*/
+    CURSOR c
+    IS
+    	/*PhoneOrderEntryFee*/
+    SELECT    s.SH_CUST,r.sGroupCust,
+			  CASE    WHEN i.IM_CUST <> 'TABCORP' THEN s.SH_SPARE_STR_4
+			  WHEN i.IM_CUST = 'TABCORP' THEN i.IM_XX_COST_CENTRE01
+			  ELSE s.SH_SPARE_STR_4
+			  END,
+			  s.SH_ORDER,s.SH_SPARE_STR_5,s.SH_CUST_REF,
+			  NULL,NULL,NULL,
+			  substr(To_Char(s.SH_ADD_DATE),0,10),
+        CASE  WHEN s.SH_SPARE_DBL_9 = 1 THEN  'OrderEntryFee'
+              WHEN s.SH_SPARE_DBL_9 = 3 THEN  'EmailOrderEntryFee'
+              WHEN s.SH_SPARE_DBL_9 = 2 THEN  'FaxOrderEntryFee'
+              WHEN s.SH_SPARE_DBL_9 = 2 THEN  'ManOrderEntryFee'
+              WHEN s.SH_SPARE_DBL_9 = 4 OR  s.SH_SPARE_DBL_9 = 9 THEN  'OrderEntryFee'
+              ELSE ''
+			  END,
+        CASE  WHEN s.SH_SPARE_DBL_9 = 1 THEN  'FEEORDERENTRYS'
+              WHEN s.SH_SPARE_DBL_9 = 3 THEN  'FEEORDERENTRYS'
+              WHEN s.SH_SPARE_DBL_9 = 2 THEN  'FEEORDERENTRYS'
+              WHEN s.SH_SPARE_DBL_9 = 2 THEN  'FEEORDERENTRYS'
+              WHEN s.SH_SPARE_DBL_9 = 4 OR  s.SH_SPARE_DBL_9 = 9 THEN  'FEEORDERENTRYS'
+              ELSE ''
+			  END,
+        CASE  WHEN s.SH_SPARE_DBL_9 = 1 THEN  'Phone Order Entry Fee'
+              WHEN s.SH_SPARE_DBL_9 = 3 THEN  'Email Order Entry Fee'
+              WHEN s.SH_SPARE_DBL_9 = 2 THEN  'Fax Order Entry Fee'
+              WHEN s.SH_SPARE_DBL_9 = 2 THEN  'Man Order Entry Fee'
+              WHEN s.SH_SPARE_DBL_9 = 4 OR  s.SH_SPARE_DBL_9 = 9 THEN  'Order Entry Fee'
+              ELSE ''
+			  END,
+        CASE  WHEN d.SD_LINE = 1 OR s.SH_SPARE_DBL_9 = 3 OR s.SH_SPARE_DBL_9 = 2  OR s.SH_SPARE_DBL_9 = 2 THEN  1
+              WHEN s.SH_SPARE_DBL_9 = 4 OR  s.SH_SPARE_DBL_9 = 9 THEN  1
+              ELSE NULL
+			  END,
+        CASE  WHEN d.SD_LINE = 1 THEN  '1'
+              ELSE ''
+			  END,
+        CASE  WHEN s.SH_SPARE_DBL_9 = 1 THEN sCust_Rates5--(Select To_Number(rm3.RM_XX_FEE03) from RM rm3 where rm3.RM_CUST = sCust)
+              WHEN s.SH_SPARE_DBL_9 = 3 THEN sCust_Rates4
+              WHEN s.SH_SPARE_DBL_9 = 2 THEN sCust_Rates3
+              WHEN s.SH_SPARE_DBL_9 = 2 THEN sCust_Rates2
+              WHEN s.SH_SPARE_DBL_9 = 4 OR  s.SH_SPARE_DBL_9 = 9 THEN  sCust_Rates1
+              ELSE NULL
+			  END,
+        CASE  WHEN s.SH_SPARE_DBL_9 = 1 THEN sCust_Rates5-- (Select To_Number(rm3.RM_XX_FEE03) from RM rm3 where rm3.RM_CUST = sCust)
+              WHEN s.SH_SPARE_DBL_9 = 3 THEN sCust_Rates4
+              WHEN s.SH_SPARE_DBL_9 = 2 THEN sCust_Rates3
+              WHEN s.SH_SPARE_DBL_9 = 2 THEN sCust_Rates2
+              WHEN s.SH_SPARE_DBL_9 = 4 OR  s.SH_SPARE_DBL_9 = 9 THEN  sCust_Rates1
+              ELSE NULL
+			  END,
+        CASE  WHEN s.SH_SPARE_DBL_9 = 1 THEN sCust_Rates5-- (Select To_Number(rm3.RM_XX_FEE03) from RM rm3 where rm3.RM_CUST = sCust)
+              WHEN s.SH_SPARE_DBL_9 = 3 THEN sCust_Rates4
+              WHEN s.SH_SPARE_DBL_9 = 2 THEN sCust_Rates3
+              WHEN s.SH_SPARE_DBL_9 = 2 THEN sCust_Rates2
+              WHEN s.SH_SPARE_DBL_9 = 4 OR  s.SH_SPARE_DBL_9 = 9 THEN  sCust_Rates1
+              ELSE NULL
+			  END,
+        CASE  WHEN s.SH_SPARE_DBL_9 = 1 THEN  sCust_Rates5--(Select To_Number(rm3.RM_XX_FEE03) from RM rm3 where rm3.RM_CUST = sCust)
+              WHEN s.SH_SPARE_DBL_9 = 3 THEN sCust_Rates4
+              WHEN s.SH_SPARE_DBL_9 = 2 THEN sCust_Rates3
+              WHEN s.SH_SPARE_DBL_9 = 2 THEN sCust_Rates2
+              WHEN s.SH_SPARE_DBL_9 = 4 OR  s.SH_SPARE_DBL_9 = 9 THEN  sCust_Rates1
+              ELSE NULL
+			  END,
+        CASE  WHEN s.SH_SPARE_DBL_9 = 1 THEN sCust_Rates5 * 1.1-- (Select To_Number(rm3.RM_XX_FEE03) from RM rm3 where rm3.RM_CUST = sCust) * 1.1
+              WHEN s.SH_SPARE_DBL_9 = 3 THEN sCust_Rates4 * 1.1
+              WHEN s.SH_SPARE_DBL_9 = 2 THEN sCust_Rates3 * 1.1
+              WHEN s.SH_SPARE_DBL_9 = 2 THEN sCust_Rates2 * 1.1
+              WHEN s.SH_SPARE_DBL_9 = 4 OR  s.SH_SPARE_DBL_9 = 9 THEN  sCust_Rates1 * 1.1
+              ELSE NULL
+			  END,
+        CASE  WHEN s.SH_SPARE_DBL_9 = 1 THEN sCust_Rates5 * 1.1-- (Select To_Number(rm3.RM_XX_FEE03) from RM rm3 where rm3.RM_CUST = sCust) * 1.1
+              WHEN s.SH_SPARE_DBL_9 = 3 THEN sCust_Rates4 * 1.1
+              WHEN s.SH_SPARE_DBL_9 = 2 THEN sCust_Rates3 * 1.1
+              WHEN s.SH_SPARE_DBL_9 = 2 THEN sCust_Rates2 * 1.1
+              WHEN s.SH_SPARE_DBL_9 = 4 OR  s.SH_SPARE_DBL_9 = 9 THEN  sCust_Rates1 * 1.1
+              ELSE NULL
+			  END,
+			  NULL,
+			  REPLACE(s.SH_ADDRESS, ','),REPLACE(s.SH_SUBURB, ','),
+			  s.SH_CITY,s.SH_STATE,s.SH_POST_CODE,REPLACE(s.SH_NOTE_1, ','),
+			  REPLACE(s.SH_NOTE_2, ','),
+        0,0,s.SH_SPARE_DBL_9,NULL,NULL,0,
+        CASE  WHEN regexp_substr(s.SH_SPARE_STR_3,'[a-z]+', 1, 2) IS NOT NULL THEN  s.SH_SPARE_STR_3 || '@' || s.SH_SPARE_STR_1
+              ELSE ''
+        END,
+        'N/A',i.IM_OWNED_By,i.IM_PROFILE,
+        s.SH_XX_FEE_WAIVE,d.SD_COST_PRICE,
+        s.SH_SPARE_INT_4,s.SH_CAMPAIGN,
+        d.SD_NOTE_1,d.SD_COST_PRICE,d.SD_XX_FREIGHT_CHG
+	FROM  PWIN175.SH s
+			  INNER JOIN PWIN175.SD d ON d.SD_ORDER  = s.SH_ORDER
+			  INNER JOIN PWIN175.IM i ON i.IM_STOCK = d.SD_STOCK
+			  --//INNER JOIN PWIN175.ST t ON t.ST_ORDER = s.SH_ORDER AND t.ST_PICK = s.SH_LAST_PICK_NUM
+			  LEFT JOIN Tmp_Group_Cust r ON r.sCust = s.SH_CUST
+			  --LEFT JOIN PWIN175.RM r2 ON r2.RM_ANAL = r.RM_ANAL AND r2.RM_CUST = :cust
+	WHERE (r.sGroupCust = sCustomerCode OR r.sCust = sCustomerCode)
+  --AND       TO_CHAR(t.ST_DESP_DATE,'YYYY-MM-DD') >= start_date AND TO_CHAR(t.ST_DESP_DATE,'YYYY-MM-DD') <= end_date
+ --AND       t.ST_DESP_DATE >= startdate AND t.ST_DESP_DATE <= enddate
+  AND       s.SH_ADD_DATE >= startdate AND s.SH_ADD_DATE <= enddate
+	AND       LTrim(s.SH_PREV_PSLIP_NUM) IS NULL -- so as to stop charging twice for the same order fee when the despatches have been split
+	AND       s.SH_SPARE_DBL_9 = 1
+	AND       d.SD_LINE = 1
+  --AND (SELECT To_Number(regexp_substr(RM_XX_FEE03,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode) > 0.1
+	GROUP BY   s.SH_CUST,r.sGroupCust,i.IM_CUST,s.SH_SPARE_STR_4,i.IM_XX_COST_CENTRE01,
+        s.SH_ORDER,s.SH_SPARE_STR_5,s.SH_CUST_REF,s.SH_SPARE_DBL_9,d.SD_LINE,
+        s.SH_ADDRESS,s.SH_SUBURB,s.SH_CITY,s.SH_STATE,s.SH_POST_CODE,s.SH_NOTE_1,s.SH_NOTE_2,s.SH_SPARE_STR_3,
+        i.IM_OWNED_By,i.IM_PROFILE,s.SH_XX_FEE_WAIVE,d.SD_COST_PRICE,s.SH_SPARE_INT_4,s.SH_SPARE_STR_1,
+        --t.ST_PACKAGES,t.ST_WEIGHT,t.ST_ORDER,t.ST_PICK,
+        i.IM_OWNED_By,i.IM_PROFILE,
+        s.SH_XX_FEE_WAIVE,d.SD_COST_PRICE,
+        s.SH_SPARE_INT_4,s.SH_CAMPAIGN,
+        d.SD_NOTE_1,d.SD_COST_PRICE,
+        d.SD_XX_FREIGHT_CHG,s.SH_ADD_DATE,d.SD_COST_PRICE,
+        s.SH_LAST_PICK_NUM,r.sCust,s.SH_PREV_PSLIP_NUM,i.IM_TYPE,s.SH_STATUS,
+        i.IM_BRAND,d.SD_LAST_PICK_NUM,s.SH_CAMPAIGN,d.SD_ORDER,d.SD_STOCK;
+      
 
+    BEGIN
+    nCheckpoint := 10;
+
+    EXECUTE IMMEDIATE QueryTable5 INTO sCust_Rates5 USING sCustomerCode;/*1 PhoneOrderEntryFee*/
+    
+      nCheckpoint := 11;
+      v_query := 'TRUNCATE TABLE TMP_ALL_ORD_FEES';
+      EXECUTE IMMEDIATE v_query;
+      
+    IF sCust_Rates5 IS NOT NULL THEN
+      --DBMS_OUTPUT.PUT_LINE('E1_PHONE_ORD_FEES rates are $' || sCust_Rates5 || '. Prism rate field is RM_XX_FEE03.');     
+
+    nCheckpoint := 2;
+        OPEN c;
+        --DBMS_OUTPUT.PUT_LINE(sCust || '.' );
+        LOOP
+        FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
+
+        FORALL i IN 1..l_data.COUNT
+        --DBMS_OUTPUT.PUT_LINE(i || '.' );
+        INSERT INTO TMP_ALL_ORD_FEES VALUES l_data(i);
+        --USING sCust;
+
+        EXIT WHEN c%NOTFOUND;
+
+        END LOOP;
+       -- DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+        CLOSE c;
+--       FOR i IN l_data.FIRST .. l_data.LAST LOOP
+--        DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+--      END LOOP;
+    v_query2 :=  SQL%ROWCOUNT;
+    COMMIT;
+    IF v_query2 > 0 THEN
+      v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
+      EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'E1_PHONE_ORD_FEES','SH','TMP_PHONE_ORD_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+      DBMS_OUTPUT.PUT_LINE('E0_ALL_ORD_FEES for the date range '
+      || startdate || ' -- ' || enddate || ' - ' || v_query2
+      || ' records inserted into table TMP_ALL_ORD_FEES in ' || round((dbms_utility.get_time-l_start)/100, 6)
+      || ' Seconds...for customer ' || sCustomerCode );
+    Else
+      DBMS_OUTPUT.PUT_LINE('E0_ALL_ORD_FEES rates are not empty - but there was no data, still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) ||
+      ' Seconds...for customer ' || sCustomerCode);
+    END IF;
+  Else
+      DBMS_OUTPUT.PUT_LINE('E0_ALL_ORD_FEES rates are empty - skipped procedure to save time, still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) ||
+      ' Seconds...for customer ' || sCustomerCode);
+    END IF;
+  EXCEPTION
+    WHEN OTHERS THEN
+      DBMS_OUTPUT.PUT_LINE('E0_ALL_ORD_FEES failed at checkpoint ' || nCheckpoint ||
+                          ' with error ' || SQLCODE || ' : ' || SQLERRM);
+      RAISE;
+
+  END E0_ALL_ORD_FEES;
+
+  
   /*   E1_PHONE_ORD_FEES Run this once for each customer   */
   /*   This gets all the Phone Order Related Data   */
   /*   Temp Tables Used   */
@@ -1322,7 +1549,7 @@ END C_EOM_START_ALL_TEMP_STOR_DATA;
     nbreakpoint   NUMBER;
     l_start number default dbms_utility.get_time;
     QueryTable4 VARCHAR2(600) := q'{SELECT To_Number(regexp_substr(RM_XX_FEE02,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = :sCustomerCode4}';
-  sCust_Rates4 RM.RM_XX_FEE02%TYPE;/*EmailOrderEntryFee*/
+    sCust_Rates4 RM.RM_XX_FEE02%TYPE;/*EmailOrderEntryFee*/
     CURSOR c
     IS
 
@@ -1506,7 +1733,7 @@ END C_EOM_START_ALL_TEMP_STOR_DATA;
     nbreakpoint   NUMBER;
     l_start number default dbms_utility.get_time;
     QueryTable3 VARCHAR2(600) := q'{SELECT To_Number(regexp_substr(RM_XX_FEE07,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = :sCustomerCode3}';
-  sCust_Rates3 RM.RM_XX_FEE07%TYPE;/*FaxOrderEntryFee*/
+    sCust_Rates3 RM.RM_XX_FEE07%TYPE;/*FaxOrderEntryFee*/
 
     CURSOR c
     IS
@@ -1687,7 +1914,7 @@ END C_EOM_START_ALL_TEMP_STOR_DATA;
     nbreakpoint   NUMBER;
     l_start number default dbms_utility.get_time;
     QueryTable3 VARCHAR2(600) := q'{SELECT To_Number(regexp_substr(RM_XX_FEE01,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = :sCustomerCode3}';
-  sCust_Rates3 RM.RM_XX_FEE07%TYPE;/*FaxOrderEntryFee*/
+    sCust_Rates3 RM.RM_XX_FEE01%TYPE;/*FaxOrderEntryFee*/
 
     CURSOR c
     IS
@@ -2045,7 +2272,7 @@ END C_EOM_START_ALL_TEMP_STOR_DATA;
     nbreakpoint   NUMBER;
     l_start number default dbms_utility.get_time;
     QueryTable VARCHAR2(600) := q'{SELECT To_Number(regexp_substr(RM_XX_FEE25,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = :sCustomerCode1}';
-  sCust_Rates RM.RM_XX_FEE25%TYPE;/*Destruction Fee*/
+    sCust_Rates RM.RM_XX_FEE25%TYPE;/*Destruction Fee*/
 
      CURSOR c
     IS
@@ -2636,7 +2863,7 @@ END C_EOM_START_ALL_TEMP_STOR_DATA;
 
   END F_EOM_TMP_MAN_FREIGHT_ALL;
   
-   /*   F_EOM_TMP_MAN_FREIGHT_ALL Run this once for each customer   */
+  /*   F_EOM_TMP_ALL_FREIGHT_ALL Run this once for each customer   */
   /*   This gets all Freight data for queries   */
   /*   Temp Tables Used   */
   /*   1. TMP_ALL_FREIGHT_ALL   TO TEST AS MANUAL*/
@@ -4034,7 +4261,7 @@ END C_EOM_START_ALL_TEMP_STOR_DATA;
     /*Stocks*/
     SELECT
           s.SH_CUST                AS "Customer",
-          r.sGroupCust              AS "Parent",
+          i.IM_CUST              AS "Parent",
           CASE   WHEN i.IM_CUST <> 'TABCORP' AND s.SH_SPARE_STR_4 IS NULL THEN s.SH_CUST
           WHEN i.IM_CUST <> 'TABCORP' THEN s.SH_SPARE_STR_4
           WHEN i.IM_CUST = 'TABCORP' THEN i.IM_XX_COST_CENTRE01
@@ -4125,7 +4352,9 @@ END C_EOM_START_ALL_TEMP_STOR_DATA;
         INNER JOIN PWIN175.NI n  ON n.NI_NV_EXT_KEY = l.SL_UID
     WHERE NI_NV_EXT_TYPE = 1810105 AND NI_STRENGTH = 3 AND NI_DATE = t.ST_DESP_DATE AND NI_STOCK = d.SD_STOCK AND NI_STATUS <> 0
         AND     s.SH_STATUS <> 3
-        AND     i.IM_CUST  = sCustomerCode
+        --AND     i.IM_CUST  = sCustomerCode
+        AND (r.sGroupCust = sCustomerCode OR r.sCust = sCustomerCode)
+  
         AND       s.SH_ORDER = t.ST_ORDER
         --AND       TO_CHAR(t.ST_DESP_DATE,'YYYY-MM-DD') >= start_date AND TO_CHAR(t.ST_DESP_DATE,'YYYY-MM-DD') <= end_date
         AND       t.ST_DESP_DATE >= startdate AND t.ST_DESP_DATE <= enddate
@@ -4302,7 +4531,9 @@ END C_EOM_START_ALL_TEMP_STOR_DATA;
       v_query := 'TRUNCATE TABLE TMP_PACKING_FEES';
       EXECUTE IMMEDIATE v_query;
 
-      IF To_Number(regexp_substr(sCust_Rates,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) != 0 Then
+      IF To_Number(regexp_substr(sCust_Rates,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) != 0 
+      AND sCustomerCode != 'BEYONDBLUE'
+      Then
         --DBMS_OUTPUT.PUT_LINE('G3_PACKING_FEES Inner rates are $' || sCust_Rates || '. G3_PACKING_FEES Outer rates are $' || sCust_Rates2 || '. Prism rate fields are RM_XX_FEE08 * RM_XX_FEE09.');      
         
         nCheckpoint := 2;
@@ -4775,6 +5006,7 @@ END C_EOM_START_ALL_TEMP_STOR_DATA;
   INNER JOIN SL l ON l.SL_PICK = t.ST_PICK
 	LEFT JOIN Tmp_Group_Cust r ON r.sCust = s.SH_CUST
 	WHERE   s.SH_STATUS <> 3
+  AND t.ST_PSLIP NOT LIKE 'CANCELLED%'
   AND (r.sGroupCust = sCustomerCode OR r.sCust = sCustomerCode)
   AND (SELECT To_Number(regexp_substr(RM_XX_FEE16,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode) > 0.1
   AND t.ST_DESP_DATE >= startdate AND t.ST_DESP_DATE <= enddate
@@ -5190,7 +5422,7 @@ END C_EOM_START_ALL_TEMP_STOR_DATA;
   --AND IM_CUST = sCustomerCode
 	AND n1.NI_AVAIL_ACTUAL >= '1'
 	AND n1.NI_STATUS <> 0
-  AND F_CONFIRM_SLOW_MOVER(IM_STOCK) >= SYSDATE - 90;
+  AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW';
   --palett
     CURSOR po
     IS
@@ -5308,7 +5540,7 @@ END C_EOM_START_ALL_TEMP_STOR_DATA;
   --AND IM_CUST = sCustomerCode
 	AND n1.NI_AVAIL_ACTUAL >= '1'
 	AND n1.NI_STATUS <> 0
-  AND F_CONFIRM_SLOW_MOVER(IM_STOCK) >= SYSDATE - 90;
+  AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW';
 
   --shelf
     CURSOR so
@@ -5428,7 +5660,7 @@ END C_EOM_START_ALL_TEMP_STOR_DATA;
   --AND IM_CUST = sCustomerCode
 	AND n1.NI_AVAIL_ACTUAL >= '1'
 	AND n1.NI_STATUS <> 0
-  AND F_CONFIRM_SLOW_MOVER(IM_STOCK) >= SYSDATE - 90;
+  AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW';
 
   QueryTable VARCHAR2(600) := q'{SELECT To_Number(regexp_substr(RM_XX_FEE11,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = :sCustomerCode}';
   sCust_Rates RM.RM_XX_FEE11%TYPE;
@@ -5628,7 +5860,7 @@ END C_EOM_START_ALL_TEMP_STOR_DATA;
     IS
   /* EOM Storage Fees */
 	select IM_CUST AS "Customer",
-	  IM_CUST AS "Parent",
+	  r.sGroupCust AS "Parent",
 	  IM_XX_COST_CENTRE01     AS "CostCentre",
 	  NULL               AS "Order",
 	  NULL               AS "OrderwareNum",
@@ -5638,27 +5870,19 @@ END C_EOM_START_ALL_TEMP_STOR_DATA;
     NULL               AS "DespatchNote",
     NULL             AS "OrderDate",
 		CASE /*Fee Type*/
-			WHEN (l1.IL_NOTE_2 like 'Yes'
-          OR l1.IL_NOTE_2 LIKE 'YES'
-          OR l1.IL_NOTE_2 LIKE 'yes') AND F_CONFIRM_SLOW_MOVER(IM_STOCK) >= SYSDATE - 91
+			WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW'
         THEN 'FEEPALLETS'
-      WHEN (l1.IL_NOTE_2 like 'Yes'
-          OR l1.IL_NOTE_2 LIKE 'YES'
-          OR l1.IL_NOTE_2 LIKE 'yes') AND F_CONFIRM_SLOW_MOVER(IM_STOCK) <= SYSDATE - 90
+      WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW'
         THEN 'SLOWFEEPALLETS'
-      WHEN (l1.IL_NOTE_2 like 'no'
-          OR l1.IL_NOTE_2 LIKE 'NO'
-          OR l1.IL_NOTE_2 LIKE 'No') AND F_CONFIRM_SLOW_MOVER(IM_STOCK) >= SYSDATE - 91
+      WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW'
         THEN 'FEESHELFS'
-      WHEN (l1.IL_NOTE_2 like 'no'
-          OR l1.IL_NOTE_2 LIKE 'NO'
-          OR l1.IL_NOTE_2 LIKE 'No') AND F_CONFIRM_SLOW_MOVER(IM_STOCK) <= SYSDATE - 90
+      WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW'
         THEN 'SLOWFEESHELFS'
 			ELSE 'UNKNOWN'
 			END AS "FeeType",
 		n1.NI_STOCK AS "Item",
 		CASE /*explanation of charge*/
-			WHEN (l1.IL_NOTE_2 like 'Yes'	OR l1.IL_NOTE_2 LIKE 'YES' OR l1.IL_NOTE_2 LIKE 'yes')
+			WHEN UPPER(l1.IL_NOTE_2) = 'YES' 
         THEN 'Pallet Space Utilisation Fee (per month) is split across ' || tmp.NCOUNTOFSTOCKS || ' stock(s)'
 			ELSE 'Shelf SPace Utilisation Fee (per month) is split across ' ||	tmp.NCOUNTOFSTOCKS  || ' stock(s)'
 			END AS "Description",
@@ -5666,156 +5890,127 @@ END C_EOM_START_ALL_TEMP_STOR_DATA;
       WHEN l1.IL_NOTE_2 IS NOT NULL THEN  1
       ELSE 0
       END                     AS "Qty",
-		IM_LEVEL_UNIT AS "UOI", /*UOI*/
+		IM_LEVEL_UNIT AS "UOI", 
 	  CASE
-			WHEN (l1.IL_NOTE_2 like 'Yes' OR l1.IL_NOTE_2 LIKE 'YES' OR l1.IL_NOTE_2 LIKE 'yes')  AND F_CONFIRM_SLOW_MOVER(IM_STOCK) >= SYSDATE - 91 THEN --pallet for fast moving
-        (SELECT To_Number(regexp_substr(RM_XX_FEE11,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) / tmp.NCOUNTOFSTOCKS
-			WHEN (l1.IL_NOTE_2 not like 'Yes' OR l1.IL_NOTE_2 NOT LIKE 'YES' OR l1.IL_NOTE_2 NOT LIKE 'yes') AND F_CONFIRM_SLOW_MOVER(IM_STOCK) >= SYSDATE - 91 THEN --shelf for fast moving
-				(SELECT To_Number(regexp_substr(RM_XX_FEE12,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) / tmp.NCOUNTOFSTOCKS
-	    WHEN (l1.IL_NOTE_2 like 'Yes' OR l1.IL_NOTE_2 LIKE 'YES' OR l1.IL_NOTE_2 LIKE 'yes')AND F_CONFIRM_SLOW_MOVER(IM_STOCK) <= SYSDATE - 90 AND (SELECT To_Number(regexp_substr(RM_SPARE_CHAR_3,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) IS NOT NULL THEN --pallet for slow moving if slow rate exists
-       (SELECT To_Number(regexp_substr(RM_SPARE_CHAR_3,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) / tmp.NCOUNTOFSTOCKS
-			WHEN (l1.IL_NOTE_2 not like 'Yes' OR l1.IL_NOTE_2 NOT LIKE 'YES' OR l1.IL_NOTE_2 NOT LIKE 'yes')AND F_CONFIRM_SLOW_MOVER(IM_STOCK) <= SYSDATE - 90 AND (SELECT To_Number(regexp_substr(RM_SPARE_CHAR_3,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) IS NOT NULL THEN --shelf for slow moving if slow rate exists
-				(SELECT To_Number(regexp_substr(RM_XX_FEE30,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) / tmp.NCOUNTOFSTOCKS
-	    WHEN (l1.IL_NOTE_2 like 'Yes' OR l1.IL_NOTE_2 LIKE 'YES' OR l1.IL_NOTE_2 LIKE 'yes')AND F_CONFIRM_SLOW_MOVER(IM_STOCK) <= SYSDATE - 90 AND (SELECT To_Number(regexp_substr(RM_SPARE_CHAR_3,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) IS  NULL THEN --pallet for slow moving if slow rate DOESN't exist, revert to normal charge
-       (SELECT To_Number(regexp_substr(RM_XX_FEE11,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) / tmp.NCOUNTOFSTOCKS
-			WHEN (l1.IL_NOTE_2 not like 'Yes' OR l1.IL_NOTE_2 NOT LIKE 'YES' OR l1.IL_NOTE_2 NOT LIKE 'yes') AND F_CONFIRM_SLOW_MOVER(IM_STOCK) <= SYSDATE - 90 AND (SELECT To_Number(regexp_substr(RM_SPARE_CHAR_3,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) IS  NULL THEN --shelf for slow moving if slow rate DOESN't exist
-				(SELECT To_Number(regexp_substr(RM_XX_FEE12,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) / tmp.NCOUNTOFSTOCKS
-	    ELSE 0
+			WHEN UPPER(l1.IL_NOTE_2) = 'YES'  AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --pallet for fast moving
+        f_get_fee('RM_XX_FEE11',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+			WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --shelf for fast moving
+				f_get_fee('RM_XX_FEE12',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+	    WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) !=0 THEN --pallet for slow moving if slow rate exists
+       f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+			WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',r.sGroupCust) !=0 THEN --shelf for slow moving if slow rate exists
+				f_get_fee('RM_XX_FEE30',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+	    WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) =0 THEN --pallet for slow moving if slow rate DOESN't exist, revert to normal charge
+       f_get_fee('RM_XX_FEE11',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+			WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',r.sGroupCust) =0 THEN --shelf for slow moving if slow rate DOESN't exist
+				f_get_fee('RM_XX_FEE12',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+	    ELSE 999
 	    END AS "UnitPrice",
-		CASE
-			WHEN (l1.IL_NOTE_2 like 'Yes' OR l1.IL_NOTE_2 LIKE 'YES' OR l1.IL_NOTE_2 LIKE 'yes')  AND F_CONFIRM_SLOW_MOVER(IM_STOCK) >= SYSDATE - 91  THEN
-        (SELECT To_Number(regexp_substr(RM_XX_FEE11,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) / tmp.NCOUNTOFSTOCKS
-				--SELECT To_Number(RM_XX_FEE11) FROM RM where RM_CUST = 'TABCORP' 	/ tmp.NCOUNTOFSTOCKS
-			WHEN (l1.IL_NOTE_2 not like 'Yes' OR l1.IL_NOTE_2 NOT LIKE 'YES' OR l1.IL_NOTE_2 NOT LIKE 'yes')  AND F_CONFIRM_SLOW_MOVER(IM_STOCK) >= SYSDATE - 91  THEN
-				(SELECT To_Number(regexp_substr(RM_XX_FEE12,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) / tmp.NCOUNTOFSTOCKS
-        --SELECT To_Number(RM_XX_FEE12) FROM RM where RM_CUST = 'TABCORP'  / tmp.NCOUNTOFSTOCKS
-	    WHEN (l1.IL_NOTE_2 like 'Yes' OR l1.IL_NOTE_2 LIKE 'YES' OR l1.IL_NOTE_2 LIKE 'yes') AND F_CONFIRM_SLOW_MOVER(IM_STOCK) <= SYSDATE - 90 AND (SELECT To_Number(regexp_substr(RM_SPARE_CHAR_3,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) IS NOT NULL THEN
-        (SELECT To_Number(regexp_substr(RM_SPARE_CHAR_3,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) / tmp.NCOUNTOFSTOCKS
-				--SELECT To_Number(RM_XX_FEE11) FROM RM where RM_CUST = 'TABCORP' 	/ tmp.NCOUNTOFSTOCKS
-			WHEN (l1.IL_NOTE_2 not like 'Yes' OR l1.IL_NOTE_2 NOT LIKE 'YES' OR l1.IL_NOTE_2 NOT LIKE 'yes') AND F_CONFIRM_SLOW_MOVER(IM_STOCK) <= SYSDATE - 90 AND (SELECT To_Number(regexp_substr(RM_SPARE_CHAR_3,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) IS NOT NULL THEN
-				(SELECT To_Number(regexp_substr(RM_XX_FEE30,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) / tmp.NCOUNTOFSTOCKS
-        --SELECT To_Number(RM_XX_FEE12) FROM RM where RM_CUST = 'TABCORP'  / tmp.NCOUNTOFSTOCKS
-	    WHEN (l1.IL_NOTE_2 like 'Yes' OR l1.IL_NOTE_2 LIKE 'YES' OR l1.IL_NOTE_2 LIKE 'yes') AND F_CONFIRM_SLOW_MOVER(IM_STOCK) <= SYSDATE - 90 AND (SELECT To_Number(regexp_substr(RM_SPARE_CHAR_3,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) IS  NULL THEN
-        (SELECT To_Number(regexp_substr(RM_XX_FEE11,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) / tmp.NCOUNTOFSTOCKS
-				--SELECT To_Number(RM_XX_FEE11) FROM RM where RM_CUST = 'TABCORP' 	/ tmp.NCOUNTOFSTOCKS
-			WHEN (l1.IL_NOTE_2 not like 'Yes' OR l1.IL_NOTE_2 NOT LIKE 'YES' OR l1.IL_NOTE_2 NOT LIKE 'yes') AND F_CONFIRM_SLOW_MOVER(IM_STOCK) <= SYSDATE - 90 AND (SELECT To_Number(regexp_substr(RM_SPARE_CHAR_3,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) IS  NULL THEN
-				(SELECT To_Number(regexp_substr(RM_XX_FEE12,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) / tmp.NCOUNTOFSTOCKS
-        --SELECT To_Number(RM_XX_FEE12) FROM RM where RM_CUST = 'TABCORP'  / tmp.NCOUNTOFSTOCKS
-	    ELSE 0
+    CASE
+			WHEN UPPER(l1.IL_NOTE_2) = 'YES'  AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --pallet for fast moving
+        f_get_fee('RM_XX_FEE11',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+			WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --shelf for fast moving
+				f_get_fee('RM_XX_FEE12',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+	    WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) !=0 THEN --pallet for slow moving if slow rate exists
+       f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+			WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',r.sGroupCust) !=0 THEN --shelf for slow moving if slow rate exists
+				f_get_fee('RM_XX_FEE30',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+	    WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) =0 THEN --pallet for slow moving if slow rate DOESN't exist, revert to normal charge
+       f_get_fee('RM_XX_FEE11',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+			WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',r.sGroupCust) =0 THEN --shelf for slow moving if slow rate DOESN't exist
+				f_get_fee('RM_XX_FEE12',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+	    ELSE 999
 	    END AS "OWUnitPrice",
 		CASE
-			WHEN (l1.IL_NOTE_2 like 'Yes' OR l1.IL_NOTE_2 LIKE 'YES' OR l1.IL_NOTE_2 LIKE 'yes')  AND F_CONFIRM_SLOW_MOVER(IM_STOCK) >= SYSDATE - 91  THEN
-        (SELECT To_Number(regexp_substr(RM_XX_FEE11,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) / tmp.NCOUNTOFSTOCKS
-				--SELECT To_Number(RM_XX_FEE11) FROM RM where RM_CUST = 'TABCORP' 	/ tmp.NCOUNTOFSTOCKS
-			WHEN (l1.IL_NOTE_2 not like 'Yes' OR l1.IL_NOTE_2 NOT LIKE 'YES' OR l1.IL_NOTE_2 NOT LIKE 'yes')  AND F_CONFIRM_SLOW_MOVER(IM_STOCK) >= SYSDATE - 91  THEN
-				(SELECT To_Number(regexp_substr(RM_XX_FEE12,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) / tmp.NCOUNTOFSTOCKS
-        --SELECT To_Number(RM_XX_FEE12) FROM RM where RM_CUST = 'TABCORP'  / tmp.NCOUNTOFSTOCKS
-	    WHEN (l1.IL_NOTE_2 like 'Yes' OR l1.IL_NOTE_2 LIKE 'YES' OR l1.IL_NOTE_2 LIKE 'yes')AND F_CONFIRM_SLOW_MOVER(IM_STOCK) <= SYSDATE - 90 AND (SELECT To_Number(regexp_substr(RM_SPARE_CHAR_3,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) IS NOT NULL THEN
-        (SELECT To_Number(regexp_substr(RM_SPARE_CHAR_3,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) / tmp.NCOUNTOFSTOCKS
-				--SELECT To_Number(RM_XX_FEE11) FROM RM where RM_CUST = 'TABCORP' 	/ tmp.NCOUNTOFSTOCKS
-			WHEN (l1.IL_NOTE_2 not like 'Yes' OR l1.IL_NOTE_2 NOT LIKE 'YES' OR l1.IL_NOTE_2 NOT LIKE 'yes')AND F_CONFIRM_SLOW_MOVER(IM_STOCK) <= SYSDATE - 90 AND (SELECT To_Number(regexp_substr(RM_SPARE_CHAR_3,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) IS NOT NULL THEN
-				(SELECT To_Number(regexp_substr(RM_XX_FEE30,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) / tmp.NCOUNTOFSTOCKS
-        --SELECT To_Number(RM_XX_FEE12) FROM RM where RM_CUST = 'TABCORP'  / tmp.NCOUNTOFSTOCKS
-	    WHEN (l1.IL_NOTE_2 like 'Yes' OR l1.IL_NOTE_2 LIKE 'YES' OR l1.IL_NOTE_2 LIKE 'yes')AND F_CONFIRM_SLOW_MOVER(IM_STOCK) <= SYSDATE - 90 AND (SELECT To_Number(regexp_substr(RM_SPARE_CHAR_3,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) IS NULL THEN
-        (SELECT To_Number(regexp_substr(RM_XX_FEE11,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) / tmp.NCOUNTOFSTOCKS
-				--SELECT To_Number(RM_XX_FEE11) FROM RM where RM_CUST = 'TABCORP' 	/ tmp.NCOUNTOFSTOCKS
-			WHEN (l1.IL_NOTE_2 not like 'Yes' OR l1.IL_NOTE_2 NOT LIKE 'YES' OR l1.IL_NOTE_2 NOT LIKE 'yes')AND F_CONFIRM_SLOW_MOVER(IM_STOCK) <= SYSDATE - 90 AND (SELECT To_Number(regexp_substr(RM_SPARE_CHAR_3,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) IS NULL THEN
-				(SELECT To_Number(regexp_substr(RM_XX_FEE12,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) / tmp.NCOUNTOFSTOCKS
-        --SELECT To_Number(RM_XX_FEE12) FROM RM where RM_CUST = 'TABCORP'  / tmp.NCOUNTOFSTOCKS
-	    ELSE 0
+			WHEN UPPER(l1.IL_NOTE_2) = 'YES'  AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --pallet for fast moving
+        f_get_fee('RM_XX_FEE11',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+			WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --shelf for fast moving
+				f_get_fee('RM_XX_FEE12',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+	    WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) !=0 THEN --pallet for slow moving if slow rate exists
+       f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+			WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',r.sGroupCust) !=0 THEN --shelf for slow moving if slow rate exists
+				f_get_fee('RM_XX_FEE30',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+	    WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) =0 THEN --pallet for slow moving if slow rate DOESN't exist, revert to normal charge
+       f_get_fee('RM_XX_FEE11',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+			WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',r.sGroupCust) =0 THEN --shelf for slow moving if slow rate DOESN't exist
+				f_get_fee('RM_XX_FEE12',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+	    ELSE 999
       END AS "DExcl",
 		CASE
-			WHEN (l1.IL_NOTE_2 like 'Yes' OR l1.IL_NOTE_2 LIKE 'YES' OR l1.IL_NOTE_2 LIKE 'yes')  AND F_CONFIRM_SLOW_MOVER(IM_STOCK) >= SYSDATE - 91  THEN
-        (SELECT To_Number(regexp_substr(RM_XX_FEE11,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) / tmp.NCOUNTOFSTOCKS
-				--SELECT To_Number(RM_XX_FEE11) FROM RM where RM_CUST = 'TABCORP' 	/ tmp.NCOUNTOFSTOCKS
-			WHEN (l1.IL_NOTE_2 not like 'Yes' OR l1.IL_NOTE_2 NOT LIKE 'YES' OR l1.IL_NOTE_2 NOT LIKE 'yes')  AND F_CONFIRM_SLOW_MOVER(IM_STOCK) >= SYSDATE - 91  THEN
-				--r1.RM_XX_FEE12 / tmp.NCOUNTOFSTOCKS
-       (SELECT To_Number(regexp_substr(RM_XX_FEE12,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) / tmp.NCOUNTOFSTOCKS
-	    WHEN (l1.IL_NOTE_2 like 'Yes' OR l1.IL_NOTE_2 LIKE 'YES' OR l1.IL_NOTE_2 LIKE 'yes')AND F_CONFIRM_SLOW_MOVER(IM_STOCK) <= SYSDATE - 90 AND (SELECT To_Number(regexp_substr(RM_SPARE_CHAR_3,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) IS NOT NULL THEN
-        (SELECT To_Number(regexp_substr(RM_SPARE_CHAR_3,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) / tmp.NCOUNTOFSTOCKS
-				--SELECT To_Number(RM_XX_FEE11) FROM RM where RM_CUST = 'TABCORP' 	/ tmp.NCOUNTOFSTOCKS
-			WHEN (l1.IL_NOTE_2 not like 'Yes' OR l1.IL_NOTE_2 NOT LIKE 'YES' OR l1.IL_NOTE_2 NOT LIKE 'yes') AND F_CONFIRM_SLOW_MOVER(IM_STOCK) <= SYSDATE - 90 AND (SELECT To_Number(regexp_substr(RM_SPARE_CHAR_3,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) IS NOT NULL THEN
-				(SELECT To_Number(regexp_substr(RM_XX_FEE30,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) / tmp.NCOUNTOFSTOCKS
-        --SELECT To_Number(RM_XX_FEE12) FROM RM where RM_CUST = 'TABCORP'  / tmp.NCOUNTOFSTOCKS
-	    WHEN (l1.IL_NOTE_2 like 'Yes' OR l1.IL_NOTE_2 LIKE 'YES' OR l1.IL_NOTE_2 LIKE 'yes')AND F_CONFIRM_SLOW_MOVER(IM_STOCK) <= SYSDATE - 90 AND (SELECT To_Number(regexp_substr(RM_SPARE_CHAR_3,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) IS NULL THEN
-        (SELECT To_Number(regexp_substr(RM_XX_FEE11,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) / tmp.NCOUNTOFSTOCKS
-				--SELECT To_Number(RM_XX_FEE11) FROM RM where RM_CUST = 'TABCORP' 	/ tmp.NCOUNTOFSTOCKS
-			WHEN (l1.IL_NOTE_2 not like 'Yes' OR l1.IL_NOTE_2 NOT LIKE 'YES' OR l1.IL_NOTE_2 NOT LIKE 'yes') AND F_CONFIRM_SLOW_MOVER(IM_STOCK) <= SYSDATE - 90 AND (SELECT To_Number(regexp_substr(RM_SPARE_CHAR_3,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) IS NULL THEN
-				(SELECT To_Number(regexp_substr(RM_XX_FEE12,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) / tmp.NCOUNTOFSTOCKS
-        --SELECT To_Number(RM_XX_FEE12) FROM RM where RM_CUST = 'TABCORP'  / tmp.NCOUNTOFSTOCKS
-	    ELSE 0
+			WHEN UPPER(l1.IL_NOTE_2) = 'YES'  AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --pallet for fast moving
+        f_get_fee('RM_XX_FEE11',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+			WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --shelf for fast moving
+				f_get_fee('RM_XX_FEE12',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+	    WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) !=0 THEN --pallet for slow moving if slow rate exists
+       f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+			WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',r.sGroupCust) !=0 THEN --shelf for slow moving if slow rate exists
+				f_get_fee('RM_XX_FEE30',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+	    WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) =0 THEN --pallet for slow moving if slow rate DOESN't exist, revert to normal charge
+       f_get_fee('RM_XX_FEE11',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+			WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',r.sGroupCust) =0 THEN --shelf for slow moving if slow rate DOESN't exist
+				f_get_fee('RM_XX_FEE12',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+	    ELSE 999
       END AS "Excl_Total",
 		CASE 
-      WHEN (l1.IL_NOTE_2 like 'Yes'  OR l1.IL_NOTE_2 LIKE 'YES' OR l1.IL_NOTE_2 LIKE 'yes')  AND F_CONFIRM_SLOW_MOVER(IM_STOCK) >= SYSDATE - 91 THEN
-				((SELECT To_Number(regexp_substr(RM_XX_FEE11,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) / tmp.NCOUNTOFSTOCKS )  * 1.1
-			WHEN (l1.IL_NOTE_2 not like 'Yes' OR l1.IL_NOTE_2 NOT LIKE 'YES' OR l1.IL_NOTE_2 NOT LIKE 'yes')  AND F_CONFIRM_SLOW_MOVER(IM_STOCK) >= SYSDATE - 91  THEN
-				((SELECT To_Number(regexp_substr(RM_XX_FEE12,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) / tmp.NCOUNTOFSTOCKS )  * 1.1
-	    WHEN (l1.IL_NOTE_2 like 'Yes'  OR l1.IL_NOTE_2 LIKE 'YES' OR l1.IL_NOTE_2 LIKE 'yes')AND F_CONFIRM_SLOW_MOVER(IM_STOCK) <= SYSDATE - 90  AND (SELECT To_Number(regexp_substr(RM_SPARE_CHAR_3,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) IS NOT NULL  THEN
-				((SELECT To_Number(regexp_substr(RM_SPARE_CHAR_3,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) / tmp.NCOUNTOFSTOCKS )  * 1.1
-			WHEN (l1.IL_NOTE_2 not like 'Yes' OR l1.IL_NOTE_2 NOT LIKE 'YES' OR l1.IL_NOTE_2 NOT LIKE 'yes')  AND F_CONFIRM_SLOW_MOVER(IM_STOCK) <= SYSDATE - 90  AND (SELECT To_Number(regexp_substr(RM_SPARE_CHAR_3,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) IS NOT NULL THEN
-				((SELECT To_Number(regexp_substr(RM_XX_FEE30,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) / tmp.NCOUNTOFSTOCKS )  * 1.1
-	    WHEN (l1.IL_NOTE_2 like 'Yes'  OR l1.IL_NOTE_2 LIKE 'YES' OR l1.IL_NOTE_2 LIKE 'yes')AND F_CONFIRM_SLOW_MOVER(IM_STOCK) <= SYSDATE - 90  AND (SELECT To_Number(regexp_substr(RM_SPARE_CHAR_3,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) IS NULL  THEN
-				((SELECT To_Number(regexp_substr(RM_XX_FEE11,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) / tmp.NCOUNTOFSTOCKS )  * 1.1
-			WHEN (l1.IL_NOTE_2 not like 'Yes' OR l1.IL_NOTE_2 NOT LIKE 'YES' OR l1.IL_NOTE_2 NOT LIKE 'yes')  AND F_CONFIRM_SLOW_MOVER(IM_STOCK) <= SYSDATE - 90  AND (SELECT To_Number(regexp_substr(RM_SPARE_CHAR_3,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) IS NULL THEN
-				((SELECT To_Number(regexp_substr(RM_XX_FEE12,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) / tmp.NCOUNTOFSTOCKS )  * 1.1
-	    END AS "DIncl",
+      WHEN UPPER(l1.IL_NOTE_2) = 'YES'  AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --pallet for fast moving
+        (f_get_fee('RM_XX_FEE11',r.sGroupCust) / tmp.NCOUNTOFSTOCKS) * 1.1
+			WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --shelf for fast moving
+				(f_get_fee('RM_XX_FEE12',r.sGroupCust) / tmp.NCOUNTOFSTOCKS) * 1.1
+	    WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) !=0 THEN --pallet for slow moving if slow rate exists
+        (f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) / tmp.NCOUNTOFSTOCKS) * 1.1
+			WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',r.sGroupCust) !=0 THEN --shelf for slow moving if slow rate exists
+				(f_get_fee('RM_XX_FEE30',r.sGroupCust) / tmp.NCOUNTOFSTOCKS) * 1.1
+	    WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) =0 THEN --pallet for slow moving if slow rate DOESN't exist, revert to normal charge
+        (f_get_fee('RM_XX_FEE11',r.sGroupCust) / tmp.NCOUNTOFSTOCKS) * 1.1
+			WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',r.sGroupCust) =0 THEN --shelf for slow moving if slow rate DOESN't exist
+				(f_get_fee('RM_XX_FEE12',r.sGroupCust) / tmp.NCOUNTOFSTOCKS) * 1.1
+	    ELSE 999
+      END AS "DIncl",
     CASE 
-      WHEN (l1.IL_NOTE_2 like 'Yes'  OR l1.IL_NOTE_2 LIKE 'YES' OR l1.IL_NOTE_2 LIKE 'yes')  AND F_CONFIRM_SLOW_MOVER(IM_STOCK) >= SYSDATE - 91 THEN
-				((SELECT To_Number(regexp_substr(RM_XX_FEE11,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) / tmp.NCOUNTOFSTOCKS )  * 1.1
-			WHEN (l1.IL_NOTE_2 not like 'Yes' OR l1.IL_NOTE_2 NOT LIKE 'YES' OR l1.IL_NOTE_2 NOT LIKE 'yes')  AND F_CONFIRM_SLOW_MOVER(IM_STOCK) >= SYSDATE - 91  THEN
-				((SELECT To_Number(regexp_substr(RM_XX_FEE12,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) / tmp.NCOUNTOFSTOCKS )  * 1.1
-	    WHEN (l1.IL_NOTE_2 like 'Yes'  OR l1.IL_NOTE_2 LIKE 'YES' OR l1.IL_NOTE_2 LIKE 'yes')AND F_CONFIRM_SLOW_MOVER(IM_STOCK) <= SYSDATE - 90  AND (SELECT To_Number(regexp_substr(RM_SPARE_CHAR_3,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) IS NOT NULL THEN
-				((SELECT To_Number(regexp_substr(RM_SPARE_CHAR_3,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) / tmp.NCOUNTOFSTOCKS )  * 1.1
-			WHEN (l1.IL_NOTE_2 not like 'Yes' OR l1.IL_NOTE_2 NOT LIKE 'YES' OR l1.IL_NOTE_2 NOT LIKE 'yes')  AND F_CONFIRM_SLOW_MOVER(IM_STOCK) <= SYSDATE - 90  AND (SELECT To_Number(regexp_substr(RM_SPARE_CHAR_3,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) IS NOT NULL  THEN
-				((SELECT To_Number(regexp_substr(RM_XX_FEE30,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) / tmp.NCOUNTOFSTOCKS )  * 1.1
-	    WHEN (l1.IL_NOTE_2 like 'Yes'  OR l1.IL_NOTE_2 LIKE 'YES' OR l1.IL_NOTE_2 LIKE 'yes')AND F_CONFIRM_SLOW_MOVER(IM_STOCK) <= SYSDATE - 90  AND (SELECT To_Number(regexp_substr(RM_SPARE_CHAR_3,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) IS  NULL THEN
-				((SELECT To_Number(regexp_substr(RM_XX_FEE11,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) / tmp.NCOUNTOFSTOCKS )  * 1.1
-			WHEN (l1.IL_NOTE_2 not like 'Yes' OR l1.IL_NOTE_2 NOT LIKE 'YES' OR l1.IL_NOTE_2 NOT LIKE 'yes')  AND F_CONFIRM_SLOW_MOVER(IM_STOCK) <= SYSDATE - 90  AND (SELECT To_Number(regexp_substr(RM_SPARE_CHAR_3,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) IS  NULL  THEN
-				((SELECT To_Number(regexp_substr(RM_XX_FEE12,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = IM_CUST) / tmp.NCOUNTOFSTOCKS )  * 1.1
-	    END AS "Incl_Total",
-	  CASE    
-      WHEN l1.IL_LOCN IS NOT NULL THEN (Select To_Number(i.IM_REPORTING_PRICE) from IM i where i.IM_STOCK = 'COURIERM')
-      ELSE NULL
-      END                      AS "ReportingPrice",
-        --next add slow pricing case F_CONFIRM_SLOW_MOVER(IM_STOCK) <= SYSDATE - 90
-			  NULL             AS "Address",
-			  NULL              AS "Address2",
-			  NULL                AS "Suburb",
-			  NULL               AS "State",
-			  NULL           AS "Postcode",
-			  NULL              AS "DeliverTo",
-			  NULL              AS "AttentionTo" ,
-			  0              AS "Weight",
-			  0            AS "Packages",
-			  0         AS "OrderSource",
-	  l1.IL_NOTE_2 AS "Pallet/Space", /*Pallet/Space*/
-		n1.NI_LOCN AS "Locn", /*Locn*/
-		--n1.NI_AVAIL_ACTUAL AS "Avail SOH",
+      WHEN UPPER(l1.IL_NOTE_2) = 'YES'  AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --pallet for fast moving
+        (f_get_fee('RM_XX_FEE11',r.sGroupCust) / tmp.NCOUNTOFSTOCKS) * 1.1
+			WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --shelf for fast moving
+				(f_get_fee('RM_XX_FEE12',r.sGroupCust) / tmp.NCOUNTOFSTOCKS) * 1.1
+	    WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) !=0 THEN --pallet for slow moving if slow rate exists
+        (f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) / tmp.NCOUNTOFSTOCKS) * 1.1
+			WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',r.sGroupCust) !=0 THEN --shelf for slow moving if slow rate exists
+				(f_get_fee('RM_XX_FEE30',r.sGroupCust) / tmp.NCOUNTOFSTOCKS) * 1.1
+	    WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) =0 THEN --pallet for slow moving if slow rate DOESN't exist, revert to normal charge
+        (f_get_fee('RM_XX_FEE11',r.sGroupCust) / tmp.NCOUNTOFSTOCKS) * 1.1
+			WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',r.sGroupCust) =0 THEN --shelf for slow moving if slow rate DOESN't exist
+				(f_get_fee('RM_XX_FEE12',r.sGroupCust) / tmp.NCOUNTOFSTOCKS) * 1.1
+	    ELSE 999
+      END AS "Incl_Total",
+    TO_NUMBER(IM_REPORTING_PRICE),
+    NULL             AS "Address",
+    NULL              AS "Address2",
+    NULL                AS "Suburb",
+    NULL               AS "State",
+    NULL           AS "Postcode",
+    NULL              AS "DeliverTo",
+    NULL              AS "AttentionTo" ,
+    0              AS "Weight",
+    0            AS "Packages",
+    0         AS "OrderSource",
+	  l1.IL_NOTE_2 AS "Pallet/Space", 
+		n1.NI_LOCN AS "Locn",
 		tmp.NCOUNTOFSTOCKS AS CountCustStocks,
     NULL AS Email,
-              IM_BRAND AS Brand,
-           IM_OWNED_By AS    OwnedBy,
-           IM_PROFILE AS    sProfile,
-           NULL AS    WaiveFee,
-           NULL As   Cost,
-           NULL AS PaymentType,NULL,NULL,NULL,NULL
+    IM_BRAND AS Brand,
+    IM_OWNED_By AS    OwnedBy,
+    IM_PROFILE AS    sProfile,
+    NULL AS    WaiveFee,
+    NULL As   Cost,
+    NULL AS PaymentType,NULL,NULL,NULL,NULL
 
 	FROM NI n1 INNER JOIN IM ON IM_STOCK = n1.NI_STOCK
 	INNER JOIN IL l1 ON l1.IL_LOCN = n1.NI_LOCN
   INNER JOIN Tmp_Locn_Cnt_By_Cust tmp ON tmp.SLOCN = l1.IL_LOCN
-  --INNER JOIN RM R1 ON RM_CUST = IM_CUST
-  LEFT JOIN Tmp_Group_Cust r ON r.sCust = IM_CUST
+  LEFT JOIN Tmp_Group_Cust r ON r.sCust = IM_CUST 
 	WHERE  IM_ACTIVE = 1
-  --AND IM_CUST = sCustomerCode
-	AND n1.NI_AVAIL_ACTUAL >= '1'
-	AND n1.NI_STATUS <> 0
-  GROUP BY n1.NI_LOCN,IM_CUST,
-	  IM_XX_COST_CENTRE01,l1.IL_NOTE_2
-    ,n1.NI_STOCK,IM_STOCK,IM_LEVEL_UNIT,IM_BRAND,
-    IM_OWNED_By,IM_PROFILE,tmp.NCOUNTOFSTOCKS;
- -- AND F_CONFIRM_SLOW_MOVER(IM_STOCK) >= SYSDATE - 90;
-  --palett
-  
+  AND n1.NI_AVAIL_ACTUAL >= '1'
+	AND n1.NI_STATUS <> 0GROUP BY l1.IL_LOCN,IM_CUST,IM_BRAND,IM_OWNED_By,IM_PROFILE,l1.IL_NOTE_2,n1.NI_LOCN,n1.NI_STOCK,
+	tmp.NCOUNTOFSTOCKS,IM_REPORTING_PRICE,r.sGroupCust,IM_LEVEL_UNIT,IM_XX_COST_CENTRE01,IM_STOCK;
 
   QueryTable VARCHAR2(600) := q'{SELECT To_Number(regexp_substr(RM_XX_FEE11,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = :sCustomerCode}';
   sCust_Rates RM.RM_XX_FEE11%TYPE;
@@ -8935,6 +9130,9 @@ UNION ALL
           Select * From TMP_PACKING_FEES
           UNION ALL
           Select * From TMP_MISC_FEES
+          UNION ALL --TMP_ALL_ORD_FEES
+          Select * From TMP_ALL_ORD_FEES
+          /*
           UNION ALL
           Select * From TMP_PHONE_ORD_FEES
           UNION ALL
@@ -8942,10 +9140,12 @@ UNION ALL
           UNION ALL
           Select * From TMP_MAN_ORD_FEES
           UNION ALL
-          Select * From TMP_DESTROY_ORD_FEES
-          UNION ALL
           Select * From TMP_EMAIL_ORD_FEES
-          UNION ALL
+          UNION ALL,          
+          */
+          UNION ALL         
+          Select * From TMP_DESTROY_ORD_FEES         
+          UNION ALL          
           Select * From TMP_PAL_DESP_FEES
           UNION ALL
           Select * From TMP_PAL_IN_FEES
@@ -9100,8 +9300,6 @@ UNION ALL
        Tables used:
        TMP_ALL_FEES
        Tmp_Group_Cust
-  
-  
   */
   PROCEDURE Z_EOM_RUN_ALL (
       p_array_size_start IN PLS_INTEGER DEFAULT 100
@@ -9225,7 +9423,7 @@ UNION ALL
           --this suggests that the bulk storage data is fresh BUT the customer storage data is NOT fresh - re run just cust data
           DBMS_OUTPUT.PUT_LINE(''
           || 'this suggests that the bulk freight data is fresh BUT the customer freight data is NOT fresh - re run just cust data!!!'
-          || '6th Need to RUN_ONCE F8_Z_EOM_RUN_FREIGHT for customer ' || UPPER(sCust_start) || ' as table data is for a different customer.'
+          || ' 5th Need to RUN_ONCE F_EOM_TMP_ALL_FREIGHT_ALL for all customers as table is from different dates and different customer.' 
           || ' Last Cust match was ' ||  UPPER(v_query_result2) 
           || ' and this cust was ' ||  UPPER(sCust_start)
           || ' and to date was ' ||  UPPER(v_query_result)
@@ -9233,6 +9431,18 @@ UNION ALL
           );
           --EOM_REPORT_PKG_TEST.F_EOM_TMP_ALL_FREIGHT_ALL(p_array_size_start,start_date,end_date);
           EOM_REPORT_PKG_TEST.F8_Z_EOM_RUN_FREIGHT(p_array_size_start,start_date,end_date,sCust_start);    
+        ELSIF UPPER(v_query_result) IS NULL
+        OR UPPER(v_query_result2) IS NULL Then
+        DBMS_OUTPUT.PUT_LINE(''
+          || 'this suggests that the bulk freight data missing - no log files - re run just cust data!!!'
+          || ' 5th Need to RUN_ONCE F_EOM_TMP_ALL_FREIGHT_ALL & F8_Z_EOM_RUN_FREIGHT for all customers as table is from different dates and different customer.' 
+          || ' Last Cust match was ' ||  UPPER(v_query_result2) 
+          || ' and this cust was ' ||  UPPER(sCust_start)
+          || ' and to date was ' ||  UPPER(v_query_result2)
+          || ' and this date was ' ||  UPPER(v_tmp_date) 
+          );
+          EOM_REPORT_PKG_TEST.H4_EOM_ALL_STOR_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start);
+          EOM_REPORT_PKG_TEST.H4_EOM_ALL_STOR(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start);  
         Else
           DBMS_OUTPUT.PUT_LINE('5th No matches for running F_EOM_TMP_ALL_FREIGHT_ALL & F8_Z_EOM_RUN_FREIGHT,' 
           || 'still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) || 'Seconds...'
@@ -9298,20 +9508,35 @@ UNION ALL
           );
           --EOM_REPORT_PKG_TEST.H4_EOM_ALL_STOR_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start);
           EOM_REPORT_PKG_TEST.H4_EOM_ALL_STOR(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start);       
+        ELSIF UPPER(v_query_result) IS NULL
+        OR UPPER(v_query_result2) IS NULL Then
+        DBMS_OUTPUT.PUT_LINE(''
+          || 'this suggests that the bulk storage data missing - no log files - re run just cust data!!!'
+          || '6th Need to RUN_ONCE H4_EOM_ALL_STOR for customer ' || UPPER(sCust_start) || ' as table data is for a different customer.
+          Last Cust match was ' ||  UPPER(v_query_result) 
+          || ' and this cust was ' ||  UPPER(sCust_start)
+          || ' and to date was ' ||  UPPER(v_query_result2)
+          || ' and this date was ' ||  UPPER(v_tmp_date) 
+          );
+          EOM_REPORT_PKG_TEST.H4_EOM_ALL_STOR_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start);
+          EOM_REPORT_PKG_TEST.H4_EOM_ALL_STOR(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start);  
         Else
           DBMS_OUTPUT.PUT_LINE('6th No matches for running H4_EOM_ALL_STOR_FEES & H4_EOM_ALL_STOR,' 
           || 'still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) || 'Seconds...'
           || ' for customer ' || sCust_start);
         End If;
         
-      nCheckpoint := 71;
-      EOM_REPORT_PKG_TEST.E1_PHONE_ORD_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start);
+      nCheckpoint := 71; --E0_ALL_ORD_FEES
+      EOM_REPORT_PKG_TEST.E0_ALL_ORD_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start);
+      
+    /*EOM_REPORT_PKG_TEST.E1_PHONE_ORD_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start);
       nCheckpoint := 72;
       EOM_REPORT_PKG_TEST.E2_EMAIL_ORD_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start);
       nCheckpoint := 73;
       EOM_REPORT_PKG_TEST.E3_FAX_ORD_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start);
       nCheckpoint := 74;
       EOM_REPORT_PKG_TEST.E3_MAN_ORD_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start);
+     */ 
       nCheckpoint := 75;
       EOM_REPORT_PKG_TEST.E5_DESTOY_ORD_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start);
 
@@ -9343,6 +9568,14 @@ UNION ALL
         || ' and to date was ' ||  UPPER(v_query_result2)
         || ' and this date was ' ||  UPPER(v_tmp_date) 
         );
+      ELSIf UPPER(v_query_result) IS NULL 
+      OR UPPER(v_query_result2) IS NULL Then
+        DBMS_OUTPUT.PUT_LINE('7th Need to RUN_ONCE G4_HANDLING_FEES_F for all customers as LOGFILE is missing. result was ' || UPPER(v_query_result) 
+        || ' and this cust was ' ||  UPPER(sCust_start)
+        || ' and to date was ' ||  UPPER(v_query_result2)
+        || ' and this date was ' ||  UPPER(v_tmp_date) 
+        );
+        EOM_REPORT_PKG_TEST.G4_HANDLING_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start);
       Else
         EOM_REPORT_PKG_TEST.G4_HANDLING_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start);
         DBMS_OUTPUT.PUT_LINE('7th No matches for running G4_HANDLING_FEES_F, ran it just in case still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) ||
@@ -9370,6 +9603,14 @@ UNION ALL
         || ' and to date was ' ||  UPPER(v_query_result2)
         || ' and this date was ' ||  UPPER(v_tmp_date)
         );
+      ELSIf UPPER(v_query_result) IS NULL 
+      OR UPPER(v_query_result2) IS NULL Then
+        DBMS_OUTPUT.PUT_LINE('8th Need to RUN_ONCE G5_PICK_FEES_F for all customers as LOGFILE is missing. cust result was ' || UPPER(v_query_result) 
+        || ' and this cust was ' ||  UPPER(sCust_start)
+        || ' and to date was ' ||  UPPER(v_query_result2)
+        || ' and this date was ' ||  UPPER(v_tmp_date)
+         );
+        EOM_REPORT_PKG_TEST.G5_PICK_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start);
       Else
         EOM_REPORT_PKG_TEST.G5_PICK_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start);
         DBMS_OUTPUT.PUT_LINE('8th No matches for running G5_PICK_FEES_F, ran it just in case still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) ||
@@ -9794,7 +10035,7 @@ UNION ALL
       ) AS
     BEGIN
      INSERT INTO TMP_EOM_LOGS
-     VALUES (v_in_DATETIME,v_in_FROM_DATE,v_in_TO_DATE,v_in_ORIGIN_PROCESS,v_in_ORIGIN_TBL,v_in_DEST_TBL,v_in_TIME_TAKEN,v_in_LAST_TOUCH,v_in_CUST );
+     VALUES (v_in_DATETIME,v_in_FROM_DATE,v_in_TO_DATE,v_in_ORIGIN_PROCESS,v_in_ORIGIN_TBL,v_in_DEST_TBL,v_in_TIME_TAKEN,v_in_CUST,v_in_LAST_TOUCH );
    /* DBMS_OUTPUT.PUT_LINE('EOM_INSERT_LOG for the date ' || v_in_DATETIME 
         || ' the FROM_DAATE field was set to ' || v_in_FROM_DATE
         || ' the TO_DAATE field was set to ' || v_in_TO_DATE
@@ -9850,6 +10091,89 @@ UNION ALL
           FROM TMP_EOM_LOGS Where DEST_TBL = v_in_tbl AND ROWNUM <= 1;
           RETURN v_rtn_rslt;
     END F_EOM_CHECK_CUST_LOG;
+    
+    
+    PROCEDURE A01_TRUNC_ALL_TMP_TBLS IS
+      v_query VARCHAR2(500) := q'{select table_name from user_tables where table_name LIKE 'TMP_%' order by table_name}';
+      szSql varchar2(2048);
+      l_start number default dbms_utility.get_time;
+      nbreakpoint   NUMBER;
+      v_time_taken VARCHAR2(20);
+      cursor c_t is select table_name from user_tables where table_name IN ('TMP_Admin_Data_BreakPrices','TMP_Admin_Data_Pick_LineCounts','TMP_Admin_Data_Pickslips','TMP_ALL_FEES','TMP_ALL_FEES_F','TMP_ALL_FREIGHT_ALL','TMP_ALL_FREIGHT_F','TMP_ALL_ORD_FEES','TMP_CTN_DESP_FEES','TMP_CTN_IN_FEES','TMP_CUSTOMER_FEES','TMP_DESTROY_ORD_FEES','TMP_FREIGHT','TMP_Group_Cust','TMP_HANDLING_FEES','TMP_Locn_Cnt_By_Cust','TMP_MISC_FEES','TMP_PACKING_FEES','TMP_PAL_CTN_FEES','TMP_PAL_DESP_FEES','TMP_PICK_FEES','TMP_SHRINKWRAP_FEES','TMP_STOCK_FEES','TMP_STOR_ALL_FEES','TMP_STOR_FEES','TMP_V_FREIGHT') order by table_name;
+      --cursor c_t is select table_name from user_tables where table_name LIKE 'TMP_%' AND table_name != 'TMP_EOM_LOGS' order by table_name;
+    BEGIN
+      nbreakpoint := 1;
+      --OPEN c_t;
+      for rec in c_t loop
+        szSql := 'TRUNCATE table '||rec.table_name;
+        dbms_output.put_line(szSql);
+        execute immediate szSql;
+        EXIT WHEN c_t%NOTFOUND;
+      END LOOP;
+      --CLOSE c_t;
+       COMMIT;
+        v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
+         EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'A01_TRUNC_ALL_TMP_TBLS','TRUNCATE','TMP_ALL_TBLS',v_time_taken,SYSTIMESTAMP,NULL);
+     EXCEPTION
+    WHEN OTHERS THEN
+      DBMS_OUTPUT.PUT_LINE('A01_TRUNC_ALL_TMP_TBLS failed at checkpoint ' || nbreakpoint ||
+                          ' with error ' || SQLCODE || ' : ' || SQLERRM);
+      RAISE;
+    END A01_TRUNC_ALL_TMP_TBLS;
+    
+  PROCEDURE A01_DROP_UNUSED_TMP_TBLS IS
+      v_query VARCHAR2(500) := q'{select table_name from user_tables where table_name LIKE 'TMP_%' order by table_name}';
+      szSql varchar2(2048);
+      nbreakpoint   NUMBER;
+      cursor c_t is select table_name from user_tables where table_name IN ('TMP_ADMIN','TMP_ADMIN_DATA_CUST','TMP_ADMIN_DATA2','TMP_ALL_FREIGHT','TMP_CTN_FEES','TMP_CUST_REPORTING','TMP_GROUP_CUST2','TMP_HAND_FEES','TMP_IM_LOG_DATA','TMP_LOG_CNTS','TMP_LOG_STATS','TMP_M_FREIGHT','TMP_M_XX_FREIGHT','TMP_ORD_FEES','TMP_PAL_FEES','TMP_SD_FR_DATA','TMP_SEC_STOR_FEES','TMP_SLOW_STOR_FEES','TMP_TBL_COUNTS','TMP_VERBAL_ORD_FEES' ) order by table_name;
+    BEGIN
+      nbreakpoint := 1;
+      --OPEN c_t;
+      for rec in c_t loop
+        szSql := 'DROP table '||rec.table_name;
+        dbms_output.put_line(szSql);
+        execute immediate szSql;
+        EXIT WHEN c_t%NOTFOUND;
+      END LOOP;
+      --CLOSE c_t;
+       COMMIT;
+     EXCEPTION
+    WHEN OTHERS THEN
+      DBMS_OUTPUT.PUT_LINE('A01_TRUNC_ALL_TMP_TBLS failed at checkpoint ' || nbreakpoint ||
+                          ' with error ' || SQLCODE || ' : ' || SQLERRM);
+      RAISE;
+    END A01_DROP_UNUSED_TMP_TBLS;
+    
+    PROCEDURE A01_COUNT_ALL_TMP_TBLS2   AS
+
+   CURSOR cdsg_cur IS
+   select
+          table_name AS "TBL",
+        TO_CHAR(LAST_ANALYZED, 'DD-MON-YY') As LAST_DATA_REFRESH 
+        , to_number(
+         extractvalue(
+            xmltype(
+               dbms_xmlgen.getxml('select count(*) c from '||table_name))
+          ,'/ROWSET/ROW/C')) AS "CNT" 
+      from 
+         user_tables
+      where table_name LIKE 'TMP_%'
+      order by 
+         table_name;
+   
+    cdsg_rec cdsg_cur%ROWTYPE;
+  BEGIN
+    OPEN cdsg_cur;
+    FETCH cdsg_cur INTO cdsg_rec;
+    WHILE cdsg_cur%FOUND
+    LOOP
+      DBMS_OUTPUT.PUT_LINE(cdsg_rec.TBL || ',' || cdsg_rec.CNT || ',' || cdsg_rec.LAST_DATA_REFRESH );
+      FETCH cdsg_cur INTO cdsg_rec;
+    END LOOP;
+  CLOSE cdsg_cur;
+ END A01_COUNT_ALL_TMP_TBLS2;
+    
+
   
 END EOM_REPORT_PKG_TEST;
 /
