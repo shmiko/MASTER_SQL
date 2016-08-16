@@ -12,7 +12,7 @@ GROUP BY SH_ORDER, SH_CUST, SH_NOTE_1, SH_NOTE_2 , SH_NUM_LINES,SH_SPARE_DBL_9, 
 
 var cust varchar2(20)
 exec :cust := 'TABCORP'
-/*Used for getting EOM storage lines*/           /*OK as of Nov 2012    */
+/*Used for getting EOM storage lines*/           OK as of Nov 2012    */
 
 
 SELECT DISTINCT l.IL_LOCN, Count(n1.NI_STOCK) AS "LocnCount",l.IL_NOTE_2,
