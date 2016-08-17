@@ -4389,3 +4389,41 @@ TERMINATED BY ';'
 ESCAPED BY '"' 
 LINES TERMINATED BY '\r\n';
 /
+
+
+select *
+FROM  TMP_ALL_FREIGHT_ALL t INNER JOIN TMP_ALL_FREIGHT_ALL t2 on t.ordernum = t2.ordernum
+WHERE t.description <> t2.description
+AND 
+t.ordernum = '   1872771' --and rownum =1
+GROUP BY t.PICKSLIP--,t.description,t.ordernum, t.countofstocks
+--AND t.ordernum = t2.ordernum;
+
+
+select t.description,  t.ordernum from (
+  select t.description,t.ordernum, 
+  row_number() over (partition by t.description order by t.ordernum asc) as rownumber 
+  from TMP_ALL_FREIGHT_ALL t
+) foo
+where rownumber = 1
+
+select col1, col2 from (
+  select col1, col2, 
+  row_number() over (partition by col1 order by col2 asc) as rownumber 
+  from tmp
+) foo
+where rownumber = 1
+
+SELECT department_id, last_name, salary, hire_date, 
+   FIRST_VALUE(last_name) OVER
+   (ORDER BY salary ASC, hire_date ROWS UNBOUNDED PRECEDING) AS fv
+   FROM (SELECT * FROM employees 
+   WHERE department_id = 90 ORDER BY employee_id DESC)
+   ORDER BY department_id, last_name, salary, hire_date;
+   
+   
+SELECT * FROM TMP_ALL_FREIGHT_ALL
+WHERE ROWID IN ( SELECT MAX(ROWID) FROM TMP_ALL_FREIGHT_ALL GROUP BY description ) AND ordernum = '   1872771' 
+
+
+SELECT MAX(ROWID) FROM TMP_ALL_FREIGHT_ALL GROUP BY description
