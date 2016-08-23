@@ -1,4 +1,4 @@
-create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
+create or replace PACKAGE BODY           "IQ_EOM" AS
     /*   A Group all customer down 3 tiers - this makes getting all children and grandchildren simples   */
     /*   Temp Tables Used   */
     /*   1. Tmp_Group_Cust   */
@@ -6021,7 +6021,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
           EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,gds_start_date_in,gds_end_date_in,'L_DESPATCH_REPORT','TMP_DESP_REPT','ST',v_time_taken,SYSTIMESTAMP,'LINK');
           sFileName := 'LINK-L_DESPATCH_REPORT-' || gds_start_date_in || '-TO-' || gds_end_date_in || '-RunOn-' || sFileTime || '_A.csv';
-          IQ_EOM_REPORTING.L_DESPATCH_REPORTB(p_array_size,gds_analysis,gds_next_start_date_in,gds_next_end_date_in);
+          IQ_EOM.L_DESPATCH_REPORTB(p_array_size,gds_analysis,gds_next_start_date_in,gds_next_end_date_in);
           Z2_TMP_FEES_TO_CSV(sFileName,'TMP_DESP_REPT');
           --DBMS_OUTPUT.PUT_LINE('TMP_DESP_REPT_TO_CSV for ' || sFileName || '.' );
      EXCEPTION
@@ -6533,16 +6533,16 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
    --  SELECT F_EOM_PROCESS_RUN_CHECK(TO_DATE(end_date, 'DD-MON-YY'),'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL','') INTO v_query_logfile FROM DUAL;
    --  SELECT F_EOM_PROCESS_RUN_CHECK(TO_DATE(end_date, 'DD-MON-YY'),'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL',sCust_start)INTO v_query_result2 FROM DUAL;
      --If v_query_logfile = 'RUNBOTH' Then
-        IQ_EOM_REPORTING.F_EOM_TMP_ALL_FREIGHT_ALL(p_array_size_start,start_date,end_date);
-        IQ_EOM_REPORTING.F8_Z_EOM_RUN_FREIGHT(p_array_size_start,start_date,end_date,sCust_start,sFilterBy); 
+        IQ_EOM.F_EOM_TMP_ALL_FREIGHT_ALL(p_array_size_start,start_date,end_date);
+        IQ_EOM.F8_Z_EOM_RUN_FREIGHT(p_array_size_start,start_date,end_date,sCust_start,sFilterBy); 
         --DBMS_OUTPUT.PUT_LINE('Running F_EOM_PROCESS_RUN_CHECK for ALL based on to date from EOM logs - v_query_logfile is ' || v_query_logfile || '- for end date being ' || TO_DATE(end_date, 'DD-MON-YY') || ' and process was F_EOM_TMP_ALL_FREIGHT_ALL' );
    
       --ElsIf v_query_result2  = 'RUNCUST' Then
-        --IQ_EOM_REPORTING.F_EOM_TMP_ALL_FREIGHT_ALL(p_array_size_start,start_date,end_date);
-        --IQ_EOM_REPORTING.F8_Z_EOM_RUN_FREIGHT(p_array_size_start,start_date,end_date,sCust_start,sFilterBy); 
+        --IQ_EOM.F_EOM_TMP_ALL_FREIGHT_ALL(p_array_size_start,start_date,end_date);
+        --IQ_EOM.F8_Z_EOM_RUN_FREIGHT(p_array_size_start,start_date,end_date,sCust_start,sFilterBy); 
         --DBMS_OUTPUT.PUT_LINE('Running F_EOM_PROCESS_RUN_CHECK for CUST based on to date from EOM logs - v_query_result2 is ' || v_query_result2 || '- for end date being ' || TO_DATE(end_date, 'DD-MON-YY') || ' and process was F_EOM_TMP_ALL_FREIGHT_ALL' );
     --ElsIf (F_EOM_PROCESS_RUN_CHECK(TO_DATE(end_date, 'DD-MON-YY'),'TMP_ALL_FREIGHT_F','F8_Z_EOM_RUN_FREIGHT',sCust_start) = 'RUNCUST') Then
-    --   IQ_EOM_REPORTING.F8_Z_EOM_RUN_FREIGHT(p_array_size_start,start_date,end_date,sCust_start,sFilterBy);
+    --   IQ_EOM.F8_Z_EOM_RUN_FREIGHT(p_array_size_start,start_date,end_date,sCust_start,sFilterBy);
     --   DBMS_OUTPUT.PUT_LINE('Running F_EOM_PROCESS_RUN_CHECK cust data for customer ' || sCust_start || ' for end date being ' || TO_DATE(end_date, 'DD-MON-YY') || ' and process was F_EOM_TMP_ALL_FREIGHT_ALL' );
     --Else
       --DBMS_OUTPUT.PUT_LINE('Running F_EOM_PROCESS_RUN_CHECK freight nothing - v_query_result2 is ' || v_query_result2 || ' and v_query_logfile is ' || v_query_logfile || '' );
@@ -6552,37 +6552,37 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
     -- SELECT F_EOM_PROCESS_RUN_CHECK(TO_DATE(end_date, 'DD-MON-YY'),'TMP_STOR_ALL_FEES','H4_EOM_ALL_STOR_FEES','') INTO v_query_logfile FROM DUAL;
     -- SELECT F_EOM_PROCESS_RUN_CHECK(TO_DATE(end_date, 'DD-MON-YY'),'TMP_STOR_ALL_FEES','H4_EOM_ALL_STOR_FEES',sCust_start)INTO v_query_result2 FROM DUAL;
      --If v_query_logfile = 'RUNBOTH' Then
-        IQ_EOM_REPORTING.H4_EOM_ALL_STOR_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start);
-        IQ_EOM_REPORTING.H4_EOM_ALL_STOR(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
+        IQ_EOM.H4_EOM_ALL_STOR_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start);
+        IQ_EOM.H4_EOM_ALL_STOR(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
        -- DBMS_OUTPUT.PUT_LINE('Running F_EOM_PROCESS_RUN_CHECK for ALL based on to date from EOM logs - v_query_logfile is ' || v_query_logfile || '- for end date being ' || TO_DATE(end_date, 'DD-MON-YY') || ' and process was H4_EOM_ALL_STOR_FEES' );
       --ElsIf v_query_result2 = 'RUNCUST' Then
-       -- IQ_EOM_REPORTING.H4_EOM_ALL_STOR(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
+       -- IQ_EOM.H4_EOM_ALL_STOR(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
        -- DBMS_OUTPUT.PUT_LINE('Running F_EOM_PROCESS_RUN_CHECK for CUST based on to date from EOM logs - v_query_result2 is ' || v_query_result2 || '-  for end date being ' || TO_DATE(end_date, 'DD-MON-YY') || ' and process was H4_EOM_ALL_STOR_FEES' );
      -- Else
        -- DBMS_OUTPUT.PUT_LINE('Running F_EOM_PROCESS_RUN_CHECK storage nothing' || 'v_query_result2 is ' || v_query_result2 || '-- v_query_logfile is ' || v_query_logfile || '-' );
      -- End If;
         
       nCheckpoint := 71; --E0_ALL_ORD_FEES
-      IQ_EOM_REPORTING.E0_ALL_ORD_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
+      IQ_EOM.E0_ALL_ORD_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
       
-    /*IQ_EOM_REPORTING.E1_PHONE_ORD_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start);
+    /*IQ_EOM.E1_PHONE_ORD_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start);
       nCheckpoint := 72;
-      IQ_EOM_REPORTING.E2_EMAIL_ORD_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start);
+      IQ_EOM.E2_EMAIL_ORD_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start);
       nCheckpoint := 73;
-      IQ_EOM_REPORTING.E3_FAX_ORD_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start);
+      IQ_EOM.E3_FAX_ORD_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start);
      */  
       nCheckpoint := 74;
-      IQ_EOM_REPORTING.E4_STD_ORD_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
+      IQ_EOM.E4_STD_ORD_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
      
       nCheckpoint := 75;
-      IQ_EOM_REPORTING.E5_DESTOY_ORD_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
+      IQ_EOM.E5_DESTOY_ORD_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
 
       nCheckpoint := 81;
       G1_SHRINKWRAP_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
       nCheckpoint := 82;
-      IQ_EOM_REPORTING.G2_STOCK_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
+      IQ_EOM.G2_STOCK_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
       --nCheckpoint := 83;
-      --IQ_EOM_REPORTING.G3_PACKING_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
+      --IQ_EOM.G3_PACKING_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
       
       
       nCheckpoint := 84;
@@ -6594,7 +6594,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
         --|| ' and to date was ' ||  UPPER(v_query_logfile)
         --|| ' and this date was ' ||  UPPER(v_tmp_date) 
        -- );
-        IQ_EOM_REPORTING.G4_HANDLING_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
+        IQ_EOM.G4_HANDLING_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
       ELSIf UPPER(v_query_result2) != UPPER(sCust_start) 
       AND UPPER(v_query_logfile) IS NOT NULL 
       AND UPPER(v_query_logfile) != UPPER(v_tmp_date) Then
@@ -6603,7 +6603,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
        -- || ' and to date was ' ||  UPPER(v_query_logfile)
        -- || ' and this date was ' ||  UPPER(v_tmp_date) 
        -- );
-        IQ_EOM_REPORTING.G4_HANDLING_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
+        IQ_EOM.G4_HANDLING_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
       --ELSIF  UPPER(v_query_result2) = UPPER(sCust_start) 
       --AND UPPER(v_query_result2) IS NOT NULL 
       --AND UPPER(v_query_logfile) = UPPER(v_tmp_date) Then
@@ -6619,16 +6619,16 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
        -- || ' and to date was ' ||  UPPER(v_query_logfile)
        -- || ' and this date was ' ||  UPPER(v_tmp_date) 
        -- );
-        IQ_EOM_REPORTING.G4_HANDLING_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
+        IQ_EOM.G4_HANDLING_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
       Else
-        IQ_EOM_REPORTING.G4_HANDLING_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
+        IQ_EOM.G4_HANDLING_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
         --DBMS_OUTPUT.PUT_LINE('7th No matches for running G4_HANDLING_FEES_F, ran it just in case still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) ||
        -- ' Seconds...for customer ' || sCust_start);
       END IF;
       
       
       nCheckpoint := 85;
-      Select (F_EOM_CHECK_CUST_LOG(sCust_start ,'TMP_PICK_FEES','G5_PICK_FEES_F')) INTO v_query_result2 From Dual;--v_query := q'{Select IQ_EOM_REPORTING.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
+      Select (F_EOM_CHECK_CUST_LOG(sCust_start ,'TMP_PICK_FEES','G5_PICK_FEES_F')) INTO v_query_result2 From Dual;--v_query := q'{Select IQ_EOM.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
       Select (F_EOM_CHECK_LOG(v_tmp_date ,'TMP_PICK_FEES','G5_PICK_FEES_F')) INTO v_query_logfile From Dual;
       If F_IS_TABLE_EEMPTY('TMP_PICK_FEES') <= 0 Then
         --DBMS_OUTPUT.PUT_LINE('8th Need to RUN_ONCE G5_PICK_FEES_F for all customers as table is  empty. cust result was ' || UPPER(v_query_result2) 
@@ -6636,7 +6636,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
        -- || ' and to date was ' ||  UPPER(v_query_logfile)
        -- || ' and this date was ' ||  UPPER(v_tmp_date)
        --  );
-        IQ_EOM_REPORTING.G5_PICK_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
+        IQ_EOM.G5_PICK_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
       ELSIf UPPER(v_query_result2) != UPPER(sCust_start) 
       AND UPPER(v_query_result2) IS NOT NULL 
       AND UPPER(v_query_logfile) != UPPER(v_tmp_date) Then
@@ -6645,7 +6645,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
        -- || ' and to date was ' ||  UPPER(v_query_logfile)
        -- || ' and this date was ' ||  UPPER(v_tmp_date)
         -- );
-        IQ_EOM_REPORTING.G5_PICK_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
+        IQ_EOM.G5_PICK_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
       --ELSIF UPPER(v_query_result2) = UPPER(sCust_start) 
       --AND UPPER(v_query_result2) IS NOT NULL 
       --AND UPPER(v_query_logfile) = UPPER(v_tmp_date) Then
@@ -6661,40 +6661,40 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
        -- || ' and to date was ' ||  UPPER(v_query_logfile)
         --|| ' and this date was ' ||  UPPER(v_tmp_date)
         -- );
-        IQ_EOM_REPORTING.G5_PICK_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
+        IQ_EOM.G5_PICK_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
       Else
-        IQ_EOM_REPORTING.G5_PICK_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
+        IQ_EOM.G5_PICK_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
         --DBMS_OUTPUT.PUT_LINE('8th No matches for running G5_PICK_FEES_F, ran it just in case still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) ||
         --' Seconds...for customer ' || sCust_start);
       END IF;
       nCheckpoint := 9;
-      IQ_EOM_REPORTING.I_EOM_MISC_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
+      IQ_EOM.I_EOM_MISC_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
 
       nCheckpoint := 10;
-      IQ_EOM_REPORTING.K1_PAL_DESP_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
+      IQ_EOM.K1_PAL_DESP_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
       nCheckpoint := 11;
-      IQ_EOM_REPORTING.K2_CTN_IN_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
+      IQ_EOM.K2_CTN_IN_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
       nCheckpoint := 12;
-      IQ_EOM_REPORTING.K3_PAL_IN_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
+      IQ_EOM.K3_PAL_IN_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
       nCheckpoint := 13;
-      IQ_EOM_REPORTING.K4_CTN_DESP_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
+      IQ_EOM.K4_CTN_DESP_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
 
 
      If ( sCust_start = 'VHAAUS' ) Then
         nCheckpoint := 14;
-        IQ_EOM_REPORTING.J_EOM_CUSTOMER_FEES_VHA(p_array_size_start,start_date,end_date,sCust_start);
+        IQ_EOM.J_EOM_CUSTOMER_FEES_VHA(p_array_size_start,start_date,end_date,sCust_start);
       ElsIf ( sCust_start = 'BEYONDBLUE' ) Then
         nCheckpoint := 15;
-        IQ_EOM_REPORTING.J_EOM_CUSTOMER_FEES_BB(p_array_size_start,start_date,end_date,sCust_start);
+        IQ_EOM.J_EOM_CUSTOMER_FEES_BB(p_array_size_start,start_date,end_date,sCust_start);
       ElsIf ( sCust_start = 'WBC' ) Then
         nCheckpoint := 15;
-        IQ_EOM_REPORTING.J_EOM_CUSTOMER_FEES_WBC(p_array_size_start,start_date,end_date,sCust_start);
+        IQ_EOM.J_EOM_CUSTOMER_FEES_WBC(p_array_size_start,start_date,end_date,sCust_start);
       ElsIf ( sCust_start = 'TABCORP' ) Then
         nCheckpoint := 16;
-        IQ_EOM_REPORTING.J_EOM_CUSTOMER_FEES_TAB(p_array_size_start,start_date,end_date,sCust_start);
+        IQ_EOM.J_EOM_CUSTOMER_FEES_TAB(p_array_size_start,start_date,end_date,sCust_start);
       --ElsIf ( sCust_start = 'IAG' ) Then
         --nCheckpoint := 60;
-        --IQ_EOM_REPORTING.Z_EOM_RUN_IAG(p_array_size_start,start_date,end_date,'CGU',sAnalysis_Start);
+        --IQ_EOM.Z_EOM_RUN_IAG(p_array_size_start,start_date,end_date,'CGU',sAnalysis_Start);
       End If;
 
       
@@ -6718,7 +6718,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
     -- --DBMS_OUTPUT.PUT_LINE('Z EOM Successfully Ran EOM_RUN_ALL for ' || sCust_start|| ' in ' ||(round((dbms_utility.get_time-l_start)/100, 2) ||
     --' Seconds...' );
       v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-      IQ_EOM_REPORTING.EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'Z_EOM_RUN_ALL','MERGE','NULL',v_time_taken,SYSTIMESTAMP,sCust_start);
+      IQ_EOM.EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'Z_EOM_RUN_ALL','MERGE','NULL',v_time_taken,SYSTIMESTAMP,sCust_start);
       --DBMS_OUTPUT.PUT_LINE('LAST EOM Successfully Ran EOM_RUN_ALL for the date range '
      -- || start_date || ' -- ' || end_date || ' - ' || v_query2 || ' records inserted in ' ||  (round((dbms_utility.get_time-l_start)/100, 6) ||
      -- ' Seconds... for customer '|| sCust_start ));
@@ -6869,7 +6869,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
 
        execute immediate 'alter session set nls_date_format=''dd-MON-yy'' ';
       -- v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-       --IQ_EOM_REPORTING.EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'Z1_TMP_ALL_FEES_TO_CSV','CSV','TMP_ALL_FEES_F',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+       --IQ_EOM.EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'Z1_TMP_ALL_FEES_TO_CSV','CSV','TMP_ALL_FEES_F',v_time_taken,SYSTIMESTAMP,sCustomerCode);
      
        --DBMS_OUTPUT.PUT_LINE('Z TMP_ALL_FEES for ' || p_filename || ' saved in ' || sPath );
     exception
@@ -6922,7 +6922,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
 
        execute immediate 'alter session set nls_date_format=''dd-MON-yy'' ';
        --v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-       --IQ_EOM_REPORTING.EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'Z2_TMP_FEES_TO_CSV','CSV',p_in_table,v_time_taken,SYSTIMESTAMP,sCustomerCode);
+       --IQ_EOM.EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'Z2_TMP_FEES_TO_CSV','CSV',p_in_table,v_time_taken,SYSTIMESTAMP,sCustomerCode);
      
        --DBMS_OUTPUT.PUT_LINE('Z2_TMP_FEES_TO_CSV for ' || p_filename || ' saved in ' || sPath || ', data was from ' || p_in_table );
     exception
@@ -7120,4 +7120,4 @@ BEGIN
   
 
 
-END IQ_EOM_REPORTING;
+END IQ_EOM;
