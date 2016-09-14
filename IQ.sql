@@ -1,0 +1,1 @@
+Select IM_STOCK From IM Where IM_STOCK LIKE 'RT45%'
