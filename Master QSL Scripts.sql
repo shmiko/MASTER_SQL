@@ -4600,12 +4600,12 @@ Select f1.DESPDATE,
       CASE   WHEN f1.FEETYPE like 'Stock' AND LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE THEN (Select f2.SELLEXCL From TMP_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND (f2.FEETYPE like 'Freight Fee' OR f2.FEETYPE like 'Manual Freight Fee') ) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
               ELSE 0
               END AS "Freight Charge"
-From TMP_ALL_FEES_F f1
-Where f1.FEETYPE = 'Stock'
---exclude addresses Casselden Place and/or Lonsdale Street - using SH_ADDRESS and SH_SUBURB --- run a seperate query to count despatches per day and apply a flat rate charge once only
---Also need to build query to work out cartons based on the following rates $2.43 per carton & 38.80 per pallet thereafetr 14.55 per pallet
---calc is 64 cartons per pallet eg 707 / 64 = 11.05 pallets
--- billed at 1 x pallet @ 38.80
---                10 x pallets @ 14.55
---   			   3 x Cartons @ 2.43
-AND ;
+ --Daily Van Freight        
+            CASE   WHEN f1.FEETYPE like 'Stock' AND LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE THEN (Select f2.SELLEXCL From TMP_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND (f2.FEETYPE like 'Freight Fee' OR f2.FEETYPE like 'Manual Freight Fee') ) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
+                    ELSE 0
+                    END AS "Daily Flat Rate Freight Charge"
+      From TMP_ALL_FEES_F f1
+      Where f1.FEETYPE = 'Stock' 
+      AND (SH_ADDRESS NOT LIKE '%Casselden%' Or SH_ADDRESS NOT LIKE '%Lonsdale%'
+      OR SH_SUBURB NOT LIKE '%Casselden%' Or SH_SUBURB NOT LIKE '%Lonsdale%')
+      }';    
