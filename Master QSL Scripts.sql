@@ -4601,8 +4601,8 @@ Select f1.DESPDATE,
             CASE   WHEN f1.FEETYPE like 'Stock' AND LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE THEN (Select f2.SELLEXCL From TMP_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND (f2.FEETYPE like 'Freight Fee' OR f2.FEETYPE like 'Manual Freight Fee') ) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
                     ELSE 0
                     END AS "Freight Charge",
-            --Daily Van Freight        
-            CASE   WHEN (Select Count(*) From TMP_ALL_FEES_F Where ((ADDRESS LIKE '%Casselden%' Or ADDRESS LIKE '%Lonsdale%') OR (ADDRESS2 LIKE '%Casselden%' Or ADDRESS2 LIKE '%Lonsdale%'))) THEN '30.71'
+                      --Daily Van Freight        
+            CASE   WHEN F_DAILY_FREIGHT_COUNT(startdate,enddate) >= 1 THEN '30.71' -- (Select Count(*) From TMP_ALL_FEES_F Where ((ADDRESS LIKE '%Casselden%' Or ADDRESS LIKE '%Lonsdale%') OR (ADDRESS2 LIKE '%Casselden%' Or ADDRESS2 LIKE '%Lonsdale%'))) THEN '30.71'
                     ELSE 0
                     END AS "Daily Flat Rate Freight Charge"
       From TMP_ALL_FEES_F f1
