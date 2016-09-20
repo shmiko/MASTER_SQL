@@ -4602,5 +4602,5 @@ Select f1.DESPDATE,
               END AS "Freight Charge"
 From TMP_ALL_FEES_F f1
 Where f1.FEETYPE = 'Stock'
---exclude addresses casseldon and lonsdale street - run a seperate query to count despatches per day and apply a flat rate charge once only
+--exclude addresses Casselden Place and/or Lonsdale Street - run a seperate query to count despatches per day and apply a flat rate charge once only
 AND ;
