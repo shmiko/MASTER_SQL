@@ -4609,3 +4609,29 @@ Select f1.DESPDATE,
       Where f1.FEETYPE = 'Stock' 
       AND ((ADDRESS NOT LIKE '%Casselden%' Or ADDRESS NOT LIKE '%Lonsdale%')
       OR (ADDRESS2 NOT LIKE '%Casselden%' Or ADDRESS2 NOT LIKE '%Lonsdale%'));
+
+	--To facilitate superpartners dailt freight query  
+	  create or replace FUNCTION F_DAILY_FREIGHT_COUNT(
+        startdate IN VARCHAR2
+        ,enddate IN VARCHAR2
+        )
+  RETURN NUMBER
+  RESULT_CACHE 
+  RELIES_ON (S)
+  AS
+
+  freight_count NUMBER;
+   nbreakpoint   NUMBER;
+  BEGIN
+    nbreakpoint := 1;
+        Select Count(*) 
+        INTO  freight_count	     
+        From TMP_ALL_FEES_F f3 Where ((f3.ADDRESS LIKE '%Casselden%' Or f3.ADDRESS LIKE '%Lonsdale%') OR (f3.ADDRESS2 LIKE '%Casselden%' Or f3.ADDRESS2 LIKE '%Lonsdale%'));
+        
+        RETURN freight_count;
+  EXCEPTION
+    WHEN OTHERS THEN
+      DBMS_OUTPUT.PUT_LINE('get daily freight count failed at checkpoint ' || nbreakpoint ||
+                          ' with error ' || SQLCODE || ' : ' || SQLERRM);
+      RAISE;  
+  END F_DAILY_FREIGHT_COUNT;      
