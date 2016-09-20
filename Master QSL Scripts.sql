@@ -4603,5 +4603,5 @@ Select f1.DESPDATE,
 From TMP_ALL_FEES_F f1
 Where f1.FEETYPE = 'Stock'
 --exclude addresses Casselden Place and/or Lonsdale Street - using SH_ADDRESS and SH_SUBURB --- run a seperate query to count despatches per day and apply a flat rate charge once only
---Also need to build query to work out cartons based on the following rates $2.43 per carton & 
+--Also need to build query to work out cartons based on the following rates $2.43 per carton & 38.80 per pallet
 AND ;
