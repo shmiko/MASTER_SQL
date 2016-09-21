@@ -4662,3 +4662,14 @@ AND r2.RM_ACTIVE = 1   --This was the problem
 GROUP BY ROLLUP ((EOM_REPORT_PKG.f_GetWarehouse_from_SD(s.SL_LOCN)), sGroupCust )
 HAVING EOM_REPORT_PKG.f_GetWarehouse_from_SD(s.SL_LOCN) LIKE :warehouse
       OR EOM_REPORT_PKG.f_GetWarehouse_from_SD(s.SL_LOCN) LIKE '%' 
+	  
+	  
+	  Select  
+       EXTRACT(DAY FROM TO_DATE(DESPDATE)),
+       Count(ORDERNUM),DESPDATE
+      From TMP_ALL_FEES_F
+      Where FEETYPE = 'Stock' 
+      AND ((ADDRESS NOT LIKE '%Casselden%' Or ADDRESS NOT LIKE '%Lonsdale%')
+      OR (ADDRESS2 NOT LIKE '%Casselden%' Or ADDRESS2 NOT LIKE '%Lonsdale%'))
+      GROUP BY EXTRACT(DAY FROM TO_DATE(DESPDATE)),DESPDATE;
+      
