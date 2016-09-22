@@ -4765,3 +4765,22 @@ select
 TRUNC (sysdate, 'mm') AS month_start_date,
 LAST_DAY (TRUNC (sysdate, 'mm')) + 1 - 1/86400 AS month_end_date
 from dual;
+
+select 
+TRUNC(sysdate, 'YEAR') Start_of_the_year,
+TRUNC(sysdate, 'MONTH') Start_of_the_month,
+TRUNC(sysdate, 'DAY') start_of_the_week,
+TRUNC(sysdate+365, 'YEAR')-1 End_of_the_year,
+TRUNC(sysdate+30, 'MONTH')-1 End_of_the_month,
+TRUNC(sysdate+6, 'DAY')-1 end_of_the_week
+from dual;
+
+
+select 
+TRUNC(sysdate, 'YEAR') Start_of_the_year,
+TRUNC(sysdate+365, 'YEAR')-1 End_of_the_year,
+TRUNC(sysdate, 'MONTH') Start_of_the_month,
+TRUNC(sysdate+30, 'MONTH')-1 End_of_the_month,
+TRUNC(sysdate, 'DAY')+1 start_of_the_week,  -- starting Monday
+TRUNC(sysdate+6, 'DAY') end_of_the_week     -- finish Sunday
+from dual;
