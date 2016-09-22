@@ -4742,3 +4742,14 @@ AND SH_CUST LIKE 'K1%'
 AND SD_QTY_BACK > 1 
 AND SD_ADD_DATE >= '01-Jan-2016'
 AND SD_STATUS = 3;
+
+
+            --Daily Van Freight      
+            -- (Select Count(*) From TMP_ALL_FEES_F Where ((ADDRESS LIKE '%Casselden%' Or ADDRESS LIKE '%Lonsdale%') OR (ADDRESS2 LIKE '%Casselden%' Or ADDRESS2 LIKE '%Lonsdale%'))) THEN '30.71'
+            /*  CASE  WHEN F_DAILY_FREIGHT_COUNT(startdate,enddate) >= 1 AND to_char(DESPDATE, 'D') = 1 THEN '30.71' --monday
+                    WHEN F_DAILY_FREIGHT_COUNT(startdate,enddate) >= 1 AND to_char(DESPDATE, 'D') = 2 THEN '30.71' --tuesday
+                    WHEN F_DAILY_FREIGHT_COUNT(startdate,enddate) >= 1 AND to_char(DESPDATE, 'D') = 3 THEN '30.71' --wednesday
+                    WHEN F_DAILY_FREIGHT_COUNT(startdate,enddate) >= 1 AND to_char(DESPDATE, 'D') = 4 THEN '30.71' --thursday
+                    WHEN F_DAILY_FREIGHT_COUNT(startdate,enddate) >= 1 AND to_char(DESPDATE, 'D') = 5 THEN '30.71' --friday
+                    ELSE 0
+                    END AS "Daily Flat Rate Freight Charge"*/
