@@ -4753,3 +4753,15 @@ AND SD_STATUS = 3;
                     WHEN F_DAILY_FREIGHT_COUNT(startdate,enddate) >= 1 AND to_char(DESPDATE, 'D') = 5 THEN '30.71' --friday
                     ELSE 0
                     END AS "Daily Flat Rate Freight Charge"*/
+					
+WEEK
+
+select TRUNC(sysdate, 'iw') AS iso_week_start_date,
+       TRUNC(sysdate, 'iw') + 7 - 1/86400 AS iso_week_end_date
+from dual;
+MONTH
+
+select 
+TRUNC (sysdate, 'mm') AS month_start_date,
+LAST_DAY (TRUNC (sysdate, 'mm')) + 1 - 1/86400 AS month_end_date
+from dual;
