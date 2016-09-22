@@ -4735,3 +4735,10 @@ GROUP BY ROLLUP ((EOM_REPORT_PKG.f_GetWarehouse_from_SD(s.SL_LOCN)), sGroupCust 
 HAVING EOM_REPORT_PKG.f_GetWarehouse_from_SD(s.SL_LOCN) LIKE :warehouse
       OR EOM_REPORT_PKG.f_GetWarehouse_from_SD(s.SL_LOCN) LIKE '%' 
       
+Select SD_STOCK, SD_QTY_BACK, SD_QTY_ORDER, SD_ORDER, SH_CUST,SD_ADD_DATE 
+From SD, SH 
+Where SD_ORDER = SH_ORDER 
+AND SH_CUST LIKE 'K1%' 
+AND SD_QTY_BACK > 1 
+AND SD_ADD_DATE >= '01-Jan-2016'
+AND SD_STATUS = 3;
