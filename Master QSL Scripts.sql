@@ -4838,4 +4838,14 @@ from dual;
                       END AS "Freight Charge"
       From TMP_ALL_FEES_F f1
       Where f1.FEETYPE = 'Stock' 
-
+	  
+	  
+Select  
+       --EXTRACT(DAY FROM TO_DATE(DESPDATE)),
+       Count(ORDERNUM),DESPDATE
+      From TMP_ALL_FEES_F
+      Where FEETYPE = 'Freight Fee' 
+      AND (InStr(UPPER(ADDRESS),'CASSELDEN') > 1 AND InStr(UPPER(ADDRESS2),'2 LONSDALE') > 1 )
+      GROUP BY 
+      --EXTRACT(DAY FROM TO_DATE(DESPDATE)),
+      DESPDATE;
