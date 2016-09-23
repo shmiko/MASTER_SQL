@@ -4875,3 +4875,43 @@ Select
       GROUP BY 
       --EXTRACT(DAY FROM TO_DATE(DESPDATE)),
       DESPDATE;
+
+	  create or replace FUNCTION F_DAILY_FREIGHT_COUNT2(
+        startdate IN VARCHAR2
+        ,enddate IN VARCHAR2
+        , inc IN NUMBER -- increment day -start at zero
+        )
+  RETURN NUMBER
+  RESULT_CACHE 
+  RELIES_ON (S)
+  AS
+
+  freight_count NUMBER;
+  nbreakpoint   NUMBER;
+  BEGIN
+    nbreakpoint := 1;
+  If F_IS_DAY_LAST_OF_MONTH(SYSDATE) = 0 
+     AND F_IS_DAY_LAST_OF_WEEK(SYSDATE)  = 0
+     AND F_IS_DAY_FIRST_OF_WEEK(SYSDATE)  = 0
+     AND F_IS_DAY_FIRST_OF_MONTH(SYSDATE) = 0 Then 
+     -- != 1  Then
+      Select Count(ORDERNUM)
+      INTO freight_count	
+      From TMP_ALL_FEES_F
+      Where FEETYPE = 'Freight Fee' 
+      AND startdate = F_IS_DAY_FIRST_OF_PREV_WEEK(SYSDATE) + inc
+      AND (InStr(UPPER(ADDRESS),'CASSELDEN') > 1 AND InStr(UPPER(ADDRESS2),'2 LONSDALE') > 1 );
+      --GROUP BY F_IS_DAY_FIRST_OF_PREV_WEEK(SYSDATE); 
+    RETURN freight_count;
+  --ELSE
+     --SELECT i_sd_sell INTO v_out_tx FROM SYS.DUAL;
+     --DBMS_OUTPUT.PUT_LINE('No markup applied. Result is ' || v_out_tx ); 
+    -- freight_count = 0;
+   -- RETURN freight_count;
+  END IF;
+  EXCEPTION
+    WHEN OTHERS THEN
+      DBMS_OUTPUT.PUT_LINE('get daily freight count failed at checkpoint ' || nbreakpoint ||
+                          ' with error ' || SQLCODE || ' : ' || SQLERRM);
+      RAISE;  
+  END F_DAILY_FREIGHT_COUNT2;
