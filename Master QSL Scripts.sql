@@ -4782,7 +4782,9 @@ TRUNC(sysdate+365, 'YEAR')-1 End_of_the_year,
 TRUNC(sysdate, 'MONTH') Start_of_the_month,
 TRUNC(sysdate+30, 'MONTH')-1 End_of_the_month,
 TRUNC(sysdate, 'DAY')+1 start_of_the_week,  -- starting Monday
-TRUNC(sysdate+6, 'DAY') end_of_the_week     -- finish Sunday
+TRUNC(sysdate+6, 'DAY') end_of_the_week,     -- finish Sunday
+TRUNC(sysdate+6, 'DAY')-2 end_of_the_week     -- finish Friday
+
 from dual;
 
 
