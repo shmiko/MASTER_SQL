@@ -1,0 +1,67 @@
+Select IM_STOCK
+      ,IM_DESC
+      ,IM_SPEC
+      ,IM_CAT
+      ,IJ_DESC
+      ,IJ_SALES_ACCT
+      ,IJ_PRCH_ACCT
+      ,IJ_ON_HAND_ACCT
+      ,IJ_CLOSING_ACCT
+      ,IJ_GL_COS
+      ,IJ_GL_INT_SALES
+      ,IJ_GL_INT_COS
+      ,IM_NOTE_1
+      ,IM_NOTE_2
+      ,IM_NOTE_3
+      ,IM_DBL_1
+      ,IM_DBL_2
+      ,IM_DBL_3
+      ,IM_GO_INACTIVE
+      ,IM_DIVISION
+      ,IM_BRAND
+      ,IR_DESC
+      ,IM_TYPE
+      ,IY_DESC
+      ,IY_NOTE_3
+      ,IM_FINISH
+      ,IM_MAIN_SUPP
+      ,IM_KEEP_LEVELS
+      ,IM_LEVEL_UNIT
+      ,IM_PRICE_UNIT
+      ,IM_CUST
+      ,IM_CUST_STOCK
+      ,IM_LOCN_USE
+      ,IM_STD_LOCN
+      ,IM_STD_VLOCN
+      ,IM_USE_ID
+      ,IM_PIC_PATH
+      ,IM_THUMB_PATH
+      ,IM_ISSUE_ORDER
+      ,IM_NEXT_ID
+      ,IM_REPLENISH
+      ,IM_SOP_FIFO_PRICE
+      ,IM_BRANCH
+      ,IM_RESERVE_STOCK
+      ,IM_FINISHED
+      ,IM_OWNED_BY
+      ,IM_REPORTING_PRICE
+      ,IM_PROFILE
+      ,VM_EMAIL
+      ,VM_NAME
+      ,VM_SURNAME
+      ,IM_KITSET_TYPE
+      ,IM_XX_ABSTRACT1
+      ,IM_XX_ABSTRACT2
+      ,IM_XX_COST_CENTRE01
+      ,IM_XX_KEYWORDS1
+      ,IM_XX_KEYWORDS2
+      ,IM_XX_MAX_QTY_ORDER
+      ,IM_XX_VERSION_DATE
+From IM,IJ,IH,IY,VM,RM,IR
+Where IM_CAT = IJ_CAT
+AND IM_TYPE = IY_TYPE
+AND IM_BRAND = IR_BRAND
+AND IM_FINISH = IH_FINISH
+AND IM_PROFILE = VM_PROFILE
+AND IM_CUST = RM_CUST
+AND IM_ACTIVE = 1;
