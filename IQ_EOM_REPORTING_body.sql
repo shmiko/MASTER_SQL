@@ -1054,75 +1054,75 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
         
         If sFilterBy = 'PARENT' 
         then
-           OPEN c1;
+           OPEN c1Dev;
             ----DBMS_OUTPUT.PUT_LINE(sShary || '.' );
             LOOP
-            FETCH c1 BULK COLLECT INTO l_data LIMIT p_array_size;
+            FETCH c1Dev BULK COLLECT INTO l_data LIMIT p_array_size;
     
             FORALL i IN 1..l_data.COUNT
             ----DBMS_OUTPUT.PUT_LINE(l_data(10) || '.' );
             INSERT INTO DEV_ALL_FREIGHT_F VALUES l_data(i);
             --USING sCust;
     
-            EXIT WHEN c1%NOTFOUND;
+            EXIT WHEN c1Dev%NOTFOUND;
     
             END LOOP;
             ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-            CLOSE c1;
+            CLOSE c1Dev;
             v_query2 :=  SQL%ROWCOUNT;
         ELSIF sFilterBy = 'RMDBL'
         then
-         OPEN c2;
+         OPEN c2Dev;
             ----DBMS_OUTPUT.PUT_LINE(sShary || '.' );
             LOOP
-            FETCH c2 BULK COLLECT INTO l_data LIMIT p_array_size;
+            FETCH c2Dev BULK COLLECT INTO l_data LIMIT p_array_size;
     
             FORALL i IN 1..l_data.COUNT
             ----DBMS_OUTPUT.PUT_LINE(l_data(10) || '.' );
             INSERT INTO DEV_ALL_FREIGHT_F VALUES l_data(i);
             --USING sCust;
     
-            EXIT WHEN c2%NOTFOUND;
+            EXIT WHEN c2Dev%NOTFOUND;
     
             END LOOP;
             ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-            CLOSE c2;
+            CLOSE c2Dev;
             v_query2 :=  SQL%ROWCOUNT;
         ELSIF sFilterBy = 'TERR'
         then
-         OPEN c3;
+         OPEN c3Dev;
             ----DBMS_OUTPUT.PUT_LINE(sShary || '.' );
             LOOP
-            FETCH c3 BULK COLLECT INTO l_data LIMIT p_array_size;
+            FETCH c3Dev BULK COLLECT INTO l_data LIMIT p_array_size;
     
             FORALL i IN 1..l_data.COUNT
             ----DBMS_OUTPUT.PUT_LINE(l_data(10) || '.' );
             INSERT INTO DEV_ALL_FREIGHT_F VALUES l_data(i);
             --USING sCust;
     
-            EXIT WHEN c3%NOTFOUND;
+            EXIT WHEN c3Dev%NOTFOUND;
     
             END LOOP;
             ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-            CLOSE c3;
+            CLOSE c3Dev;
             v_query2 :=  SQL%ROWCOUNT;
         ELSIF sFilterBy = 'AREA'
         then
-          OPEN c4;
+          OPEN c4Dev;
             ----DBMS_OUTPUT.PUT_LINE(sShary || '.' );
             LOOP
-            FETCH c4 BULK COLLECT INTO l_data LIMIT p_array_size;
+            FETCH c4Dev BULK COLLECT INTO l_data LIMIT p_array_size;
     
             FORALL i IN 1..l_data.COUNT
             ----DBMS_OUTPUT.PUT_LINE(l_data(10) || '.' );
             INSERT INTO DEV_ALL_FREIGHT_F VALUES l_data(i);
             --USING sCust;
     
-            EXIT WHEN c4%NOTFOUND;
+            EXIT WHEN c4Dev%NOTFOUND;
     
             END LOOP;
             ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-            CLOSE c4;
+            CLOSE c4Dev;
             v_query2 :=  SQL%ROWCOUNT;
       ELSE  
         
@@ -1255,16 +1255,29 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
        -- If F_IS_TABLE_EEMPTY('TMP_FREIGHT') > 0 Then
           --sFileName := sCustomerCode || '-F8_Z_EOM_RUN_FREIGHT' || startdate || '-TO-' || enddate || '.csv';
           v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-          EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'F8_Z_EOM_RUN_FREIGHT','TMP_ALL_FREIGHT_ALL','TMP_ALL_FREIGHT_F',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+          If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+            EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'F8_Z_EOM_RUN_FREIGHT','DEV_ALL_FREIGHT_ALL','DEV_ALL_FREIGHT_F',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+          Else
+            EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'F8_Z_EOM_RUN_FREIGHT','TMP_ALL_FREIGHT_ALL','TMP_ALL_FREIGHT_F',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+          End If;
           sFileName := sCustomerCode || '-F8_Z_EOM_RUN_FREIGHT-' || startdate || '-TO-' || enddate || '-RunOn-' || sFileTime || '.csv';
-        
-          Z2_TMP_FEES_TO_CSV(sFileName,'TMP_ALL_FREIGHT_F',sOp);
+          
+          If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+            Z2_TMP_FEES_TO_CSV(sFileName,'DEV_ALL_FREIGHT_F',sOp);
+            DBMS_OUTPUT.PUT_LINE('F8_Z_EOM_RUN_FREIGHT for the date range '
+            || startdate || ' -- ' || enddate || ' - ' || v_query2
+            || ' records inserted into table DEV_ALL_FREIGHT_F in ' || round((dbms_utility.get_time-l_start)/100, 6)
+            || ' Seconds...for customer ' || sCustomerCode || ' filtered by ' || sFilterBy );
+          Else
+            Z2_TMP_FEES_TO_CSV(sFileName,'TMP_ALL_FREIGHT_F',sOp);
+            DBMS_OUTPUT.PUT_LINE('F8_Z_EOM_RUN_FREIGHT for the date range '
+            || startdate || ' -- ' || enddate || ' - ' || v_query2
+            || ' records inserted into table TMP_ALL_FREIGHT_F in ' || round((dbms_utility.get_time-l_start)/100, 6)
+            || ' Seconds...for customer ' || sCustomerCode || ' filtered by ' || sFilterBy );
+          End If;
           --DBMS_OUTPUT.PUT_LINE('Z2_TMP_FEES_TO_CSV for ' || sFileName || '.' );
         --End If;
-        DBMS_OUTPUT.PUT_LINE('F8_Z_EOM_RUN_FREIGHT for the date range '
-        || startdate || ' -- ' || enddate || ' - ' || v_query2
-        || ' records inserted into table TMP_ALL_FREIGHT_F in ' || round((dbms_utility.get_time-l_start)/100, 6)
-        || ' Seconds...for customer ' || sCustomerCode || ' filtered by ' || sFilterBy );
+        
      -- Else
         --DBMS_OUTPUT.PUT_LINE('F8_Z_EOM_RUN_FREIGHT rates are not empty - but there was no data, still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) ||
         --' Seconds...for customer ' || sCustomerCode);
@@ -1273,7 +1286,6 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
       WHEN OTHERS THEN
         DBMS_OUTPUT.PUT_LINE('F8_Z_EOM_RUN_FREIGHT failed at checkpoint ' || nCheckpoint ||
                             ' with error ' || SQLCODE || ' : ' || SQLERRM);
-  
         RAISE;
     END F8_Z_EOM_RUN_FREIGHT;
    
