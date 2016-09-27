@@ -5913,20 +5913,21 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           UNION ALL
           --Monday or the first day of the week
           Select NULL,NULL,NULL,NULL,
-          NULL,NULL,NULL,NULL,NULL,NULL,
+            NULL,NULL,NULL,NULL,NULL,NULL,
+            NULL,
+           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,0) > 0
+          Then 'Daily Van Freight'
+          ELSE NULL
+          END AS  "Description",
           Case WHEN
           F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,0) > 0 
           Then
           F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,0) 
-          END AS "Qty",
-          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,0) > 0
-          Then 'Daily Van Freight'
-          ELSE NULL
-          END AS  "Freight Charge"
-          ,NULL,NULL,NULL,
+          END AS "Qty"
+         ,0,0,
           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,0) > 0 
-          Then '30.71'
-          ELSE NULL
+          Then 30.71
+          ELSE 0
           END AS  "Freight Charge Cost"
           From DEV_ALL_FEES_F f1
           Where f1.FEETYPE = 'Freight Fee' 
@@ -5937,98 +5938,98 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           UNION ALL
           --Tuesday or the first day of the week
           Select NULL,NULL,NULL,NULL,
-          NULL,NULL,NULL,NULL,NULL,NULL,
+            NULL,NULL,NULL,NULL,NULL,NULL,
+            NULL,
+           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,1) > 0
+          Then 'Daily Van Freight'
+          ELSE NULL
+          END AS  "Description",
           Case WHEN
           F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,1) > 0 
           Then
           F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,1) 
-          END AS "Qty",
-          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,1) > 0
-          Then 'Daily Van Freight'
-          ELSE NULL
-          END AS  "Freight Charge"
-          ,NULL,NULL,NULL,
+          END AS "Qty"
+         ,0,0,
           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,1) > 0 
-          Then '30.71'
-          ELSE NULL
+          Then 30.71
+          ELSE 0
           END AS  "Freight Charge Cost"
           From DEV_ALL_FEES_F f1
           Where f1.FEETYPE = 'Freight Fee' 
            AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%Lonsdale%')
           OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%Lonsdale%'))
-          --Group by TRUNC(CURRENT_DATE, 'DAY') -6 + 1
           
           UNION ALL
           --Wednesday or the first day of the week
           Select NULL,NULL,NULL,NULL,
-          NULL,NULL,NULL,NULL,NULL,NULL,
+            NULL,NULL,NULL,NULL,NULL,NULL,
+            NULL,
+           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,2) > 0
+          Then 'Daily Van Freight'
+          ELSE NULL
+          END AS  "Description",
           Case WHEN
           F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,2) > 0 
           Then
           F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,2) 
-          END AS "Qty",
-          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,2) > 0
-          Then 'Daily Van Freight'
-          ELSE NULL
-          END AS  "Freight Charge"
-          ,NULL,NULL,NULL,
+          END AS "Qty"
+         ,0,0,
           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,2) > 0 
-          Then '30.71'
-          ELSE NULL
+          Then 30.71
+          ELSE 0
           END AS  "Freight Charge Cost"
           From DEV_ALL_FEES_F f1
           Where f1.FEETYPE = 'Freight Fee' 
            AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%Lonsdale%')
           OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%Lonsdale%'))
-          --Group by TRUNC(CURRENT_DATE, 'DAY') -6 + 2
           
           UNION ALL
           --Thursday or the first day of the week
           Select NULL,NULL,NULL,NULL,
-          NULL,NULL,NULL,NULL,NULL,NULL,
+            NULL,NULL,NULL,NULL,NULL,NULL,
+            NULL,
+           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,3) > 0
+          Then 'Daily Van Freight'
+          ELSE NULL
+          END AS  "Description",
           Case WHEN
           F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,3) > 0 
           Then
           F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,3) 
-          END AS "Qty",
-          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,3) > 0
-          Then 'Daily Van Freight'
-          ELSE NULL
-          END AS  "Freight Charge"
-          ,NULL,NULL,NULL,
+          END AS "Qty"
+         ,0,0,
           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,3) > 0 
-          Then '30.71'
-          ELSE NULL
+          Then 30.71
+          ELSE 0
           END AS  "Freight Charge Cost"
           From DEV_ALL_FEES_F f1
           Where f1.FEETYPE = 'Freight Fee' 
            AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%Lonsdale%')
           OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%Lonsdale%'))
-         -- Group by TRUNC(CURRENT_DATE, 'DAY') -6 + 3
           
           UNION ALL
           --Friday or the first day of the week
           Select NULL,NULL,NULL,NULL,
-          NULL,NULL,NULL,NULL,NULL,NULL,
+            NULL,NULL,NULL,NULL,NULL,NULL,
+            NULL,
+           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,4) > 0
+          Then 'Daily Van Freight'
+          ELSE NULL
+          END AS  "Description",
           Case WHEN
           F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,4) > 0 
           Then
           F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,4) 
-          END AS "Qty",
-          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,4) > 0
-          Then 'Daily Van Freight'
-          ELSE NULL
-          END AS  "Freight Charge"
-          ,NULL,NULL,NULL,
+          END AS "Qty"
+         ,0,0,
           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,4) > 0 
-          Then '30.71'
-          ELSE NULL
+          Then 30.71
+          ELSE 0
           END AS  "Freight Charge Cost"
           From DEV_ALL_FEES_F f1
           Where f1.FEETYPE = 'Freight Fee' 
            AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%Lonsdale%')
           OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%Lonsdale%'))
-         -- Group by TRUNC(CURRENT_DATE, 'DAY') -6 + 4;
           }'; 
         Else
           --run specific formatting query for superpartners
@@ -6050,123 +6051,123 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           
           UNION ALL
           --Monday or the first day of the week
-          Select NULL,NULL,NULL,NULL,
-          NULL,NULL,NULL,NULL,NULL,NULL,
+         Select NULL,NULL,NULL,NULL,
+            NULL,NULL,NULL,NULL,NULL,NULL,
+            NULL,
+           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,0) > 0
+          Then 'Daily Van Freight'
+          ELSE NULL
+          END AS  "Description",
           Case WHEN
           F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,0) > 0 
           Then
           F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,0) 
-          END AS "Qty",
-          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,0) > 0
-          Then 'Daily Van Freight'
-          ELSE NULL
-          END AS  "Freight Charge"
-          ,NULL,NULL,NULL,
+          END AS "Qty"
+         ,0,0,
           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,0) > 0 
-          Then '30.71'
-          ELSE NULL
+          Then 30.71
+          ELSE 0
           END AS  "Freight Charge Cost"
-          From TMP_ALL_FEES_F f1
+          From DEV_ALL_FEES_F f1
           Where f1.FEETYPE = 'Freight Fee' 
            AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%Lonsdale%')
           OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%Lonsdale%'))
-          Group by TRUNC(CURRENT_DATE, 'DAY') -6
           
           UNION ALL
           --Tuesday or the first day of the week
           Select NULL,NULL,NULL,NULL,
-          NULL,NULL,NULL,NULL,NULL,NULL,
+            NULL,NULL,NULL,NULL,NULL,NULL,
+            NULL,
+           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,1) > 0
+          Then 'Daily Van Freight'
+          ELSE NULL
+          END AS  "Description",
           Case WHEN
           F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,1) > 0 
           Then
           F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,1) 
-          END AS "Qty",
-          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,1) > 0
-          Then 'Daily Van Freight'
-          ELSE NULL
-          END AS  "Freight Charge"
-          ,NULL,NULL,NULL,
+          END AS "Qty"
+         ,0,0,
           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,1) > 0 
-          Then '30.71'
-          ELSE NULL
+          Then 30.71
+          ELSE 0
           END AS  "Freight Charge Cost"
-          From TMP_ALL_FEES_F f1
+          From DEV_ALL_FEES_F f1
           Where f1.FEETYPE = 'Freight Fee' 
            AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%Lonsdale%')
           OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%Lonsdale%'))
-          Group by TRUNC(CURRENT_DATE, 'DAY') -6 + 1
           
           UNION ALL
           --Wednesday or the first day of the week
           Select NULL,NULL,NULL,NULL,
-          NULL,NULL,NULL,NULL,NULL,NULL,
+            NULL,NULL,NULL,NULL,NULL,NULL,
+            NULL,
+           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,2) > 0
+          Then 'Daily Van Freight'
+          ELSE NULL
+          END AS  "Description",
           Case WHEN
           F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,2) > 0 
           Then
           F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,2) 
-          END AS "Qty",
-          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,2) > 0
-          Then 'Daily Van Freight'
-          ELSE NULL
-          END AS  "Freight Charge"
-          ,NULL,NULL,NULL,
+          END AS "Qty"
+         ,0,0,
           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,2) > 0 
-          Then '30.71'
-          ELSE NULL
+          Then 30.71
+          ELSE 0
           END AS  "Freight Charge Cost"
-          From TMP_ALL_FEES_F f1
+          From DEV_ALL_FEES_F f1
           Where f1.FEETYPE = 'Freight Fee' 
            AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%Lonsdale%')
           OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%Lonsdale%'))
-          Group by TRUNC(CURRENT_DATE, 'DAY') -6 + 2
           
           UNION ALL
           --Thursday or the first day of the week
-          Select NULL,NULL,NULL,NULL,
-          NULL,NULL,NULL,NULL,NULL,NULL,
+         Select NULL,NULL,NULL,NULL,
+            NULL,NULL,NULL,NULL,NULL,NULL,
+            NULL,
+           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,3) > 0
+          Then 'Daily Van Freight'
+          ELSE NULL
+          END AS  "Description",
           Case WHEN
           F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,3) > 0 
           Then
           F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,3) 
-          END AS "Qty",
-          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,3) > 0
-          Then 'Daily Van Freight'
-          ELSE NULL
-          END AS  "Freight Charge"
-          ,NULL,NULL,NULL,
+          END AS "Qty"
+         ,0,0,
           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,3) > 0 
-          Then '30.71'
-          ELSE NULL
+          Then 30.71
+          ELSE 0
           END AS  "Freight Charge Cost"
-          From TMP_ALL_FEES_F f1
+          From DEV_ALL_FEES_F f1
           Where f1.FEETYPE = 'Freight Fee' 
            AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%Lonsdale%')
           OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%Lonsdale%'))
-          Group by TRUNC(CURRENT_DATE, 'DAY') -6 + 3
           
           UNION ALL
           --Friday or the first day of the week
           Select NULL,NULL,NULL,NULL,
-          NULL,NULL,NULL,NULL,NULL,NULL,
+            NULL,NULL,NULL,NULL,NULL,NULL,
+            NULL,
+           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,4) > 0
+          Then 'Daily Van Freight'
+          ELSE NULL
+          END AS  "Description",
           Case WHEN
           F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,4) > 0 
           Then
           F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,4) 
-          END AS "Qty",
-          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,4) > 0
-          Then 'Daily Van Freight'
-          ELSE NULL
-          END AS  "Freight Charge"
-          ,NULL,NULL,NULL,
+          END AS "Qty"
+         ,0,0,
           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,4) > 0 
-          Then '30.71'
-          ELSE NULL
+          Then 30.71
+          ELSE 0
           END AS  "Freight Charge Cost"
-          From TMP_ALL_FEES_F f1
+          From DEV_ALL_FEES_F f1
           Where f1.FEETYPE = 'Freight Fee' 
            AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%Lonsdale%')
-          OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%Lonsdale%'))
-          Group by TRUNC(CURRENT_DATE, 'DAY') -6 + 4;
+          OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%Lonsdale%'));
           }'; 
         End If;
  --exclude addresses Casselden Place and/or Lonsdale Street - using SH_ADDRESS and SH_SUBURB --- run a seperate query to count despatches per day and apply a flat rate charge once only
@@ -7915,7 +7916,8 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
     /* Y Run this once for each customer including intercompany   
        This merges all the Charges from each of the temp tables   
        Temp Tables Used   
-       1. TMP_ALL_FEES   */
+       1. TMP_ALL_FEES   
+	*/
     PROCEDURE Z3_EOM_RUN_ALL (
       p_array_size_start IN PLS_INTEGER DEFAULT 100
       ,start_date IN VARCHAR2-- := To_Date('1-Jun-2015') or format date as 01-Jun-15 -- use this when you want the date entered automatically
@@ -7924,281 +7926,292 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
       ,sAnalysis_Start IN RM.RM_ANAL%TYPE
       ,sFilterBy IN VARCHAR2
       ,sOp IN VARCHAR2
-  )
-  AS
-    nCheckpoint  NUMBER;
-    sFileName VARCHAR2(560);
-    v_time_taken VARCHAR2(205);
-    l_start number default dbms_utility.get_time;
-    v_query2 VARCHAR2(32767);
-    --tst_pick_counts tst_tmp_Admin_Data_Pick_Counts;
-    sFileSuffix VARCHAR2(60):= '.csv';
-    sFileTime VARCHAR2(56)  := TO_CHAR(SYSDATE,'YYYYMMDD HH24MISS');
-    sPath VARCHAR2(60) :=  'EOM_ADMIN_ORDERS';
-    v_query           VARCHAR2(2000);
-    v_query_logfile VARCHAR2(22);
-    v_query_result2 VARCHAR2(22);
-     vRtnVal VARCHAR2(40);
-     v_tmp_date VARCHAR2(12) := TO_DATE(end_date, 'DD-MON-YY');     
-  BEGIN
-    nCheckpoint := 1;
-    If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
-      v_query  := 'TRUNCATE TABLE "PWIN175"."DEV_ALL_FEES"';
-      EXECUTE IMMEDIATE v_query;
-  Else
-     v_query  := 'TRUNCATE TABLE "PWIN175"."TMP_ALL_FEES"';
-      EXECUTE IMMEDIATE v_query;
-  End If;
-    sFileName := sCust_start || '-EOM-ADMIN-ORACLE-' || '-RunBy-' || sOp || '-RunOn-' || start_date || '-TO-' || end_date || '-RunAt-' || sFileTime || sFileSuffix;
+		)
+	AS
+		nCheckpoint  NUMBER;
+		sFileName VARCHAR2(560);
+		v_time_taken VARCHAR2(205);
+		l_start number default dbms_utility.get_time;
+		v_query2 VARCHAR2(32767);
+		--tst_pick_counts tst_tmp_Admin_Data_Pick_Counts;
+		sFileSuffix VARCHAR2(60):= '.csv';
+		sFileTime VARCHAR2(56)  := TO_CHAR(SYSDATE,'YYYYMMDD HH24MISS');
+		sPath VARCHAR2(60) :=  'EOM_ADMIN_ORDERS';
+		v_query VARCHAR2(2000);
+		v_query_logfile VARCHAR2(22);
+		v_query_result2 VARCHAR2(22);
+		vRtnVal VARCHAR2(40);
+		v_tmp_date VARCHAR2(12) := TO_DATE(end_date, 'DD-MON-YY');     
+	BEGIN
+		nCheckpoint := 1;
+		If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+			v_query  := 'TRUNCATE TABLE "PWIN175"."DEV_ALL_FEES"';
+		Else
+			v_query  := 'TRUNCATE TABLE "PWIN175"."TMP_ALL_FEES"';
+		End If;
+		EXECUTE IMMEDIATE v_query;
+		sFileName := sCust_start || '-EOM-ADMIN-ORACLE-' || '-RunBy-' || sOp || '-RunOn-' || start_date || '-TO-' || end_date || '-RunAt-' || sFileTime || sFileSuffix;
    
-    nCheckpoint := 2;
-      v_query  := 'TRUNCATE TABLE Tmp_Group_Cust';
-      EXECUTE IMMEDIATE v_query;
-      --Select (F_EOM_CHECK_LOG(v_tmp_date ,'Tmp_Group_Cust','A_EOM_GROUP_CUST')) INTO v_query_logfile From Dual;--v_query := q'{Select EOM_REPORT_PKG_TEST.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
-      --If UPPER(v_query_logfile) != UPPER(v_tmp_date) Then
-      If F_IS_TABLE_EEMPTY('Tmp_Group_Cust') <= 0 Then
-        --DBMS_OUTPUT.PUT_LINE('1st Need to run Tmp_Group_Cust for all customers as table is empty.' );
-        A_EOM_GROUP_CUST(sOp);
-      --Else
-        --DBMS_OUTPUT.PUT_LINE('1st No Need to run Tmp_Group_Cust for all customers as table is full of data - saved another 5 seconds.' );
-      End If;
+		nCheckpoint := 2;
+		If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+			v_query  := 'TRUNCATE TABLE Tmp_Group_Cust';
+		Else
+			v_query  := 'TRUNCATE TABLE Tmp_Group_Cust';
+		End If;
+		EXECUTE IMMEDIATE v_query;
+		
+		--Select (F_EOM_CHECK_LOG(v_tmp_date ,'Tmp_Group_Cust','A_EOM_GROUP_CUST')) INTO v_query_logfile From Dual;--v_query := q'{Select EOM_REPORT_PKG_TEST.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
+		--If UPPER(v_query_logfile) != UPPER(v_tmp_date) Then
+		If F_IS_TABLE_EEMPTY('Tmp_Group_Cust') <= 0 Then
+			--DBMS_OUTPUT.PUT_LINE('1st Need to run Tmp_Group_Cust for all customers as table is empty.' );
+			A_EOM_GROUP_CUST(sOp);
+			--Else
+			--DBMS_OUTPUT.PUT_LINE('1st No Need to run Tmp_Group_Cust for all customers as table is full of data - saved another 5 seconds.' );
+		End If;
     
-    nCheckpoint := 3;
-      --v_query := q'{SELECT TO_CHAR(LAST_ANALYZED, 'DD-MON-YY') FROM DBA_TABLES WHERE TABLE_NAME = 'TMP_ADMIN_DATA_PICK_LINECOUNTS'}';
-      --EXECUTE IMMEDIATE v_query INTO vRtnVal;-- USING sCustomerCode;
-      --If F_IS_TABLE_EEMPTY('TMP_ADMIN_DATA_PICK_LINECOUNTS') <= 0 Then
-      Select (F_EOM_CHECK_LOG(v_tmp_date ,'TMP_ADMIN_DATA_PICK_LINECOUNTS','B_EOM_START_RUN_ONCE_DATA',sOp)) INTO v_query_logfile From Dual;--v_query := q'{Select EOM_REPORT_PKG_TEST.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
-      If F_IS_TABLE_EEMPTY('TMP_ADMIN_DATA_PICK_LINECOUNTS') <= 0 Then
-        --DBMS_OUTPUT.PUT_LINE('2nd Need to RUN_ONCE TMP_ADMIN_DATA_PICK_LINECOUNTS as B_EOM_START_RUN_ONCE_DATA for all customers as table is empty. result was ' || UPPER(v_query_logfile) || ' and end date was ' ||  UPPER(v_tmp_date) );
-        B_EOM_START_RUN_ONCE_DATA(start_date,end_date,sAnalysis_Start,sCust_start,0,sOp);
-      ELSIf UPPER(v_query_logfile) != UPPER(v_tmp_date) Then
-        -- If vRtnVal != TO_CHAR(SYSDATE, 'DD-MON-YY') Then
-        --DBMS_OUTPUT.PUT_LINE('2nd Need to RUN_ONCE TMP_ADMIN_DATA_PICK_LINECOUNTS as B_EOM_START_RUN_ONCE_DATA for all customers as table is empty. result was ' || UPPER(v_query_logfile) || ' and end date was ' ||  UPPER(v_tmp_date) );
-        B_EOM_START_RUN_ONCE_DATA(start_date,end_date,sAnalysis_Start,sCust_start,0,sOp);
-      --Else
-        --DBMS_OUTPUT.PUT_LINE('2nd No Need to RUN_ONCE TMP_ADMIN_DATA_PICK_LINECOUNTS as B_EOM_START_RUN_ONCE_DATA for all customers as table is full of data - saved another 45 seconds. Last Date match was ' || UPPER(v_query_logfile) || ' and end date was ' ||  UPPER(v_tmp_date) );
-      End If;
+		nCheckpoint := 3;
+		--v_query := q'{SELECT TO_CHAR(LAST_ANALYZED, 'DD-MON-YY') FROM DBA_TABLES WHERE TABLE_NAME = 'TMP_ADMIN_DATA_PICK_LINECOUNTS'}';
+		--EXECUTE IMMEDIATE v_query INTO vRtnVal;-- USING sCustomerCode;
+		--If F_IS_TABLE_EEMPTY('TMP_ADMIN_DATA_PICK_LINECOUNTS') <= 0 Then
+		Select (F_EOM_CHECK_LOG(v_tmp_date ,'TMP_ADMIN_DATA_PICK_LINECOUNTS','B_EOM_START_RUN_ONCE_DATA',sOp)) INTO v_query_logfile From Dual;--v_query := q'{Select EOM_REPORT_PKG_TEST.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
+		If F_IS_TABLE_EEMPTY('TMP_ADMIN_DATA_PICK_LINECOUNTS') <= 0 Then
+			--DBMS_OUTPUT.PUT_LINE('2nd Need to RUN_ONCE TMP_ADMIN_DATA_PICK_LINECOUNTS as B_EOM_START_RUN_ONCE_DATA for all customers as table is empty. result was ' || UPPER(v_query_logfile) || ' and end date was ' ||  UPPER(v_tmp_date) );
+			B_EOM_START_RUN_ONCE_DATA(start_date,end_date,sAnalysis_Start,sCust_start,0,sOp);
+		ELSIf UPPER(v_query_logfile) != UPPER(v_tmp_date) Then
+			-- If vRtnVal != TO_CHAR(SYSDATE, 'DD-MON-YY') Then
+			--DBMS_OUTPUT.PUT_LINE('2nd Need to RUN_ONCE TMP_ADMIN_DATA_PICK_LINECOUNTS as B_EOM_START_RUN_ONCE_DATA for all customers as table is empty. result was ' || UPPER(v_query_logfile) || ' and end date was ' ||  UPPER(v_tmp_date) );
+			B_EOM_START_RUN_ONCE_DATA(start_date,end_date,sAnalysis_Start,sCust_start,0,sOp);
+			--Else
+			--DBMS_OUTPUT.PUT_LINE('2nd No Need to RUN_ONCE TMP_ADMIN_DATA_PICK_LINECOUNTS as B_EOM_START_RUN_ONCE_DATA for all customers as table is full of data - saved another 45 seconds. Last Date match was ' || UPPER(v_query_logfile) || ' and end date was ' ||  UPPER(v_tmp_date) );
+		End If;
     
-    nCheckpoint := 4;
-    --set timing on; Tmp_Locn_Cnt_By_Cust
-   -- If F_IS_TABLE_EEMPTY('Tmp_Locn_Cnt_By_Cust') <= 0 Then
-   -- Select (F_EOM_CHECK_LOG(v_tmp_date ,'Tmp_Locn_Cnt_By_Cust','C_EOM_START_ALL_TEMP_STOR_DATA')) INTO v_query_logfile From Dual;--v_query := q'{Select EOM_REPORT_PKG_TEST.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
-    --If UPPER(v_query_logfile) != UPPER(v_tmp_date) OR F_IS_TABLE_EEMPTY('Tmp_Locn_Cnt_By_Cust') <= 0 Then
-       --DBMS_OUTPUT.PUT_LINE('3rd Need to RUN_ONCE Tmp_Locn_Cnt_By_Cust as C_EOM_START_ALL_TEMP_STOR_DATA for all customers as table is empty.result was ' || UPPER(v_query_logfile) || ' and end date was ' ||  UPPER(v_tmp_date) );
-     --EOM_REPORT_PKG_TEST.C_EOM_START_CUST_TEMP_DATA(sAnalysis_Start,sCust_start);
-     C_EOM_START_ALL_TEMP_STOR_DATA(sAnalysis_Start,sCust_start,sOp);
-   -- Else
-      --DBMS_OUTPUT.PUT_LINE('3rd No Need to RUN_ONCE Tmp_Locn_Cnt_By_Cust as C_EOM_START_ALL_TEMP_STOR_DATA for all customers as table is full of data - saved another 65 seconds. Last Date match was ' || UPPER(v_query_logfile) || ' and end date was ' ||  UPPER(v_tmp_date) );
-    --End If;
+		nCheckpoint := 4;
+		--set timing on; Tmp_Locn_Cnt_By_Cust
+		-- If F_IS_TABLE_EEMPTY('Tmp_Locn_Cnt_By_Cust') <= 0 Then
+		-- Select (F_EOM_CHECK_LOG(v_tmp_date ,'Tmp_Locn_Cnt_By_Cust','C_EOM_START_ALL_TEMP_STOR_DATA')) INTO v_query_logfile From Dual;--v_query := q'{Select EOM_REPORT_PKG_TEST.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
+		--If UPPER(v_query_logfile) != UPPER(v_tmp_date) OR F_IS_TABLE_EEMPTY('Tmp_Locn_Cnt_By_Cust') <= 0 Then
+		--DBMS_OUTPUT.PUT_LINE('3rd Need to RUN_ONCE Tmp_Locn_Cnt_By_Cust as C_EOM_START_ALL_TEMP_STOR_DATA for all customers as table is empty.result was ' || UPPER(v_query_logfile) || ' and end date was ' ||  UPPER(v_tmp_date) );
+		--EOM_REPORT_PKG_TEST.C_EOM_START_CUST_TEMP_DATA(sAnalysis_Start,sCust_start);
+		C_EOM_START_ALL_TEMP_STOR_DATA(sAnalysis_Start,sCust_start,sOp);
+		-- Else
+		--DBMS_OUTPUT.PUT_LINE('3rd No Need to RUN_ONCE Tmp_Locn_Cnt_By_Cust as C_EOM_START_ALL_TEMP_STOR_DATA for all customers as table is full of data - saved another 65 seconds. Last Date match was ' || UPPER(v_query_logfile) || ' and end date was ' ||  UPPER(v_tmp_date) );
+		--End If;
     
-    nCheckpoint := 45;
-      --DBMS_OUTPUT.PUT_LINE('4th EOM Customer Rates are caluclated on the fly...' );
+		nCheckpoint := 45;
+		--DBMS_OUTPUT.PUT_LINE('4th EOM Customer Rates are caluclated on the fly...' );
     
-    nCheckpoint := 5;
-   --  SELECT F_EOM_PROCESS_RUN_CHECK(TO_DATE(end_date, 'DD-MON-YY'),'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL','') INTO v_query_logfile FROM DUAL;
-   --  SELECT F_EOM_PROCESS_RUN_CHECK(TO_DATE(end_date, 'DD-MON-YY'),'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL',sCust_start)INTO v_query_result2 FROM DUAL;
-     --If v_query_logfile = 'RUNBOTH' Then
-        F_EOM_TMP_ALL_FREIGHT_ALL(p_array_size_start,start_date,end_date,sOp);
-        F8_Z_EOM_RUN_FREIGHT(p_array_size_start,start_date,end_date,sCust_start,sFilterBy,sOp); 
-        --DBMS_OUTPUT.PUT_LINE('Running F_EOM_PROCESS_RUN_CHECK for ALL based on to date from EOM logs - v_query_logfile is ' || v_query_logfile || '- for end date being ' || TO_DATE(end_date, 'DD-MON-YY') || ' and process was F_EOM_TMP_ALL_FREIGHT_ALL' );
+		nCheckpoint := 5;
+		--  SELECT F_EOM_PROCESS_RUN_CHECK(TO_DATE(end_date, 'DD-MON-YY'),'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL','') INTO v_query_logfile FROM DUAL;
+		--  SELECT F_EOM_PROCESS_RUN_CHECK(TO_DATE(end_date, 'DD-MON-YY'),'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL',sCust_start)INTO v_query_result2 FROM DUAL;
+		--If v_query_logfile = 'RUNBOTH' Then
+		F_EOM_TMP_ALL_FREIGHT_ALL(p_array_size_start,start_date,end_date,sOp);
+		F8_Z_EOM_RUN_FREIGHT(p_array_size_start,start_date,end_date,sCust_start,sFilterBy,sOp); 
+		--DBMS_OUTPUT.PUT_LINE('Running F_EOM_PROCESS_RUN_CHECK for ALL based on to date from EOM logs - v_query_logfile is ' || v_query_logfile || '- for end date being ' || TO_DATE(end_date, 'DD-MON-YY') || ' and process was F_EOM_TMP_ALL_FREIGHT_ALL' );
    
-      --ElsIf v_query_result2  = 'RUNCUST' Then
-        --IQ_EOM_REPORTING.F_EOM_TMP_ALL_FREIGHT_ALL(p_array_size_start,start_date,end_date);
-        --IQ_EOM_REPORTING.F8_Z_EOM_RUN_FREIGHT(p_array_size_start,start_date,end_date,sCust_start,sFilterBy); 
-        --DBMS_OUTPUT.PUT_LINE('Running F_EOM_PROCESS_RUN_CHECK for CUST based on to date from EOM logs - v_query_result2 is ' || v_query_result2 || '- for end date being ' || TO_DATE(end_date, 'DD-MON-YY') || ' and process was F_EOM_TMP_ALL_FREIGHT_ALL' );
-    --ElsIf (F_EOM_PROCESS_RUN_CHECK(TO_DATE(end_date, 'DD-MON-YY'),'TMP_ALL_FREIGHT_F','F8_Z_EOM_RUN_FREIGHT',sCust_start) = 'RUNCUST') Then
-    --   IQ_EOM_REPORTING.F8_Z_EOM_RUN_FREIGHT(p_array_size_start,start_date,end_date,sCust_start,sFilterBy);
-    --   DBMS_OUTPUT.PUT_LINE('Running F_EOM_PROCESS_RUN_CHECK cust data for customer ' || sCust_start || ' for end date being ' || TO_DATE(end_date, 'DD-MON-YY') || ' and process was F_EOM_TMP_ALL_FREIGHT_ALL' );
-    --Else
-      --DBMS_OUTPUT.PUT_LINE('Running F_EOM_PROCESS_RUN_CHECK freight nothing - v_query_result2 is ' || v_query_result2 || ' and v_query_logfile is ' || v_query_logfile || '' );
-    --End If;  
+		--ElsIf v_query_result2  = 'RUNCUST' Then
+		--IQ_EOM_REPORTING.F_EOM_TMP_ALL_FREIGHT_ALL(p_array_size_start,start_date,end_date);
+		--IQ_EOM_REPORTING.F8_Z_EOM_RUN_FREIGHT(p_array_size_start,start_date,end_date,sCust_start,sFilterBy); 
+		--DBMS_OUTPUT.PUT_LINE('Running F_EOM_PROCESS_RUN_CHECK for CUST based on to date from EOM logs - v_query_result2 is ' || v_query_result2 || '- for end date being ' || TO_DATE(end_date, 'DD-MON-YY') || ' and process was F_EOM_TMP_ALL_FREIGHT_ALL' );
+		--ElsIf (F_EOM_PROCESS_RUN_CHECK(TO_DATE(end_date, 'DD-MON-YY'),'TMP_ALL_FREIGHT_F','F8_Z_EOM_RUN_FREIGHT',sCust_start) = 'RUNCUST') Then
+		--   IQ_EOM_REPORTING.F8_Z_EOM_RUN_FREIGHT(p_array_size_start,start_date,end_date,sCust_start,sFilterBy);
+		--   DBMS_OUTPUT.PUT_LINE('Running F_EOM_PROCESS_RUN_CHECK cust data for customer ' || sCust_start || ' for end date being ' || TO_DATE(end_date, 'DD-MON-YY') || ' and process was F_EOM_TMP_ALL_FREIGHT_ALL' );
+		--Else
+		--DBMS_OUTPUT.PUT_LINE('Running F_EOM_PROCESS_RUN_CHECK freight nothing - v_query_result2 is ' || v_query_result2 || ' and v_query_logfile is ' || v_query_logfile || '' );
+		--End If;  
      
-      nCheckpoint := 6;
-    -- SELECT F_EOM_PROCESS_RUN_CHECK(TO_DATE(end_date, 'DD-MON-YY'),'TMP_STOR_ALL_FEES','H4_EOM_ALL_STOR_FEES','') INTO v_query_logfile FROM DUAL;
-    -- SELECT F_EOM_PROCESS_RUN_CHECK(TO_DATE(end_date, 'DD-MON-YY'),'TMP_STOR_ALL_FEES','H4_EOM_ALL_STOR_FEES',sCust_start)INTO v_query_result2 FROM DUAL;
-     --If v_query_logfile = 'RUNBOTH' Then
-        H4_EOM_ALL_STOR_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sOp);
-        H4_EOM_ALL_STOR(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
-       -- DBMS_OUTPUT.PUT_LINE('Running F_EOM_PROCESS_RUN_CHECK for ALL based on to date from EOM logs - v_query_logfile is ' || v_query_logfile || '- for end date being ' || TO_DATE(end_date, 'DD-MON-YY') || ' and process was H4_EOM_ALL_STOR_FEES' );
-      --ElsIf v_query_result2 = 'RUNCUST' Then
-       -- IQ_EOM_REPORTING.H4_EOM_ALL_STOR(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
-       -- DBMS_OUTPUT.PUT_LINE('Running F_EOM_PROCESS_RUN_CHECK for CUST based on to date from EOM logs - v_query_result2 is ' || v_query_result2 || '-  for end date being ' || TO_DATE(end_date, 'DD-MON-YY') || ' and process was H4_EOM_ALL_STOR_FEES' );
-     -- Else
-       -- DBMS_OUTPUT.PUT_LINE('Running F_EOM_PROCESS_RUN_CHECK storage nothing' || 'v_query_result2 is ' || v_query_result2 || '-- v_query_logfile is ' || v_query_logfile || '-' );
-     -- End If;
+		nCheckpoint := 6;
+		-- SELECT F_EOM_PROCESS_RUN_CHECK(TO_DATE(end_date, 'DD-MON-YY'),'TMP_STOR_ALL_FEES','H4_EOM_ALL_STOR_FEES','') INTO v_query_logfile FROM DUAL;
+		-- SELECT F_EOM_PROCESS_RUN_CHECK(TO_DATE(end_date, 'DD-MON-YY'),'TMP_STOR_ALL_FEES','H4_EOM_ALL_STOR_FEES',sCust_start)INTO v_query_result2 FROM DUAL;
+		--If v_query_logfile = 'RUNBOTH' Then
+		H4_EOM_ALL_STOR_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sOp);
+		H4_EOM_ALL_STOR(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
+		-- DBMS_OUTPUT.PUT_LINE('Running F_EOM_PROCESS_RUN_CHECK for ALL based on to date from EOM logs - v_query_logfile is ' || v_query_logfile || '- for end date being ' || TO_DATE(end_date, 'DD-MON-YY') || ' and process was H4_EOM_ALL_STOR_FEES' );
+		--ElsIf v_query_result2 = 'RUNCUST' Then
+		-- IQ_EOM_REPORTING.H4_EOM_ALL_STOR(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
+		-- DBMS_OUTPUT.PUT_LINE('Running F_EOM_PROCESS_RUN_CHECK for CUST based on to date from EOM logs - v_query_result2 is ' || v_query_result2 || '-  for end date being ' || TO_DATE(end_date, 'DD-MON-YY') || ' and process was H4_EOM_ALL_STOR_FEES' );
+		-- Else
+		-- DBMS_OUTPUT.PUT_LINE('Running F_EOM_PROCESS_RUN_CHECK storage nothing' || 'v_query_result2 is ' || v_query_result2 || '-- v_query_logfile is ' || v_query_logfile || '-' );
+		-- End If;
         
-      nCheckpoint := 71; --E0_ALL_ORD_FEES
-      E0_ALL_ORD_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
+		nCheckpoint := 71; --E0_ALL_ORD_FEES
+		E0_ALL_ORD_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
       
-    /*IQ_EOM_REPORTING.E1_PHONE_ORD_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start);
-      nCheckpoint := 72;
-      IQ_EOM_REPORTING.E2_EMAIL_ORD_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start);
-      nCheckpoint := 73;
-      IQ_EOM_REPORTING.E3_FAX_ORD_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start);
-     */  
-      nCheckpoint := 74;
-      E4_STD_ORD_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
+		/*IQ_EOM_REPORTING.E1_PHONE_ORD_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start);
+		  nCheckpoint := 72;
+		  IQ_EOM_REPORTING.E2_EMAIL_ORD_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start);
+		  nCheckpoint := 73;
+		  IQ_EOM_REPORTING.E3_FAX_ORD_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start);
+		*/  
+		nCheckpoint := 74;
+		E4_STD_ORD_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
+
+		nCheckpoint := 75;
+		E5_DESTOY_ORD_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
+
+		nCheckpoint := 81;
+		G1_SHRINKWRAP_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
+		nCheckpoint := 82;
+		G2_STOCK_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
+		--nCheckpoint := 83;
+		--IQ_EOM_REPORTING.G3_PACKING_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
+      
+      
+		nCheckpoint := 84;
+		Select (F_EOM_CHECK_CUST_LOG(sCust_start ,'TMP_HANDLING_FEES','G4_HANDLING_FEES_F',sOp)) INTO v_query_result2 From Dual;
+		Select (F_EOM_CHECK_LOG(v_tmp_date ,'TMP_HANDLING_FEES','G4_HANDLING_FEES_F',sOp)) INTO v_query_logfile From Dual;
+		If F_IS_TABLE_EEMPTY('TMP_HANDLING_FEES') <= 0 Then
+			--DBMS_OUTPUT.PUT_LINE('7th Need to RUN_ONCE G4_HANDLING_FEES_F for all customers as table is empty. result was ' || UPPER(v_query_result2) 
+			--|| ' and this cust was ' ||  UPPER(sCust_start)
+			--|| ' and to date was ' ||  UPPER(v_query_logfile)
+			--|| ' and this date was ' ||  UPPER(v_tmp_date) 
+			-- );
+			G4_HANDLING_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
+		ELSIf UPPER(v_query_result2) != UPPER(sCust_start) 
+		AND UPPER(v_query_logfile) IS NOT NULL 
+		AND UPPER(v_query_logfile) != UPPER(v_tmp_date) Then
+			--DBMS_OUTPUT.PUT_LINE('7th Need to RUN_ONCE G4_HANDLING_FEES_F for all customers as table is not empty. result was ' || UPPER(v_query_result2) 
+			-- || ' and this cust was ' ||  UPPER(sCust_start)
+			-- || ' and to date was ' ||  UPPER(v_query_logfile)
+			-- || ' and this date was ' ||  UPPER(v_tmp_date) 
+			-- );
+			G4_HANDLING_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
+			--ELSIF  UPPER(v_query_result2) = UPPER(sCust_start) 
+			--AND UPPER(v_query_result2) IS NOT NULL 
+			--AND UPPER(v_query_logfile) = UPPER(v_tmp_date) Then
+			--DBMS_OUTPUT.PUT_LINE('7th No Need to RUN_ONCE G4_HANDLING_FEES_F for all customers as table is not empty. Last Cust match was ' ||  UPPER(v_query_result2) 
+			-- || ' and this cust was ' ||  UPPER(sCust_start)
+			-- || ' and to date was ' ||  UPPER(v_query_logfile)
+			-- || ' and this date was ' ||  UPPER(v_tmp_date) 
+			-- );
+		ELSIf UPPER(v_query_result2) IS NULL 
+		OR UPPER(v_query_logfile) IS NULL Then
+			--DBMS_OUTPUT.PUT_LINE('7th Need to RUN_ONCE G4_HANDLING_FEES_F for all customers as LOGFILE is missing. result was ' || UPPER(v_query_result2) 
+			-- || ' and this cust was ' ||  UPPER(sCust_start)
+			-- || ' and to date was ' ||  UPPER(v_query_logfile)
+			-- || ' and this date was ' ||  UPPER(v_tmp_date) 
+			-- );
+			G4_HANDLING_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
+		Else
+			G4_HANDLING_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
+			--DBMS_OUTPUT.PUT_LINE('7th No matches for running G4_HANDLING_FEES_F, ran it just in case still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) ||
+			-- ' Seconds...for customer ' || sCust_start);
+		END IF;
+      
+      
+		nCheckpoint := 85;
+		Select (F_EOM_CHECK_CUST_LOG(sCust_start ,'TMP_PICK_FEES','G5_PICK_FEES_F',sOp)) INTO v_query_result2 From Dual;--v_query := q'{Select IQ_EOM_REPORTING.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
+		Select (F_EOM_CHECK_LOG(v_tmp_date ,'TMP_PICK_FEES','G5_PICK_FEES_F',sOp)) INTO v_query_logfile From Dual;
+		If F_IS_TABLE_EEMPTY('TMP_PICK_FEES') <= 0 Then
+			--DBMS_OUTPUT.PUT_LINE('8th Need to RUN_ONCE G5_PICK_FEES_F for all customers as table is  empty. cust result was ' || UPPER(v_query_result2) 
+			-- || ' and this cust was ' ||  UPPER(sCust_start)
+			-- || ' and to date was ' ||  UPPER(v_query_logfile)
+			-- || ' and this date was ' ||  UPPER(v_tmp_date)
+			--  );
+			G5_PICK_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
+		ELSIf UPPER(v_query_result2) != UPPER(sCust_start) 
+		AND UPPER(v_query_result2) IS NOT NULL 
+		AND UPPER(v_query_logfile) != UPPER(v_tmp_date) Then
+			--DBMS_OUTPUT.PUT_LINE('8th Need to RUN_ONCE G5_PICK_FEES_F for all customers as table is not empty. cust result was ' || UPPER(v_query_result2) 
+			--|| ' and this cust was ' ||  UPPER(sCust_start)
+			-- || ' and to date was ' ||  UPPER(v_query_logfile)
+			-- || ' and this date was ' ||  UPPER(v_tmp_date)
+			-- );
+			G5_PICK_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
+			--ELSIF UPPER(v_query_result2) = UPPER(sCust_start) 
+			--AND UPPER(v_query_result2) IS NOT NULL 
+			--AND UPPER(v_query_logfile) = UPPER(v_tmp_date) Then
+			--DBMS_OUTPUT.PUT_LINE('8th No Need to RUN_ONCE G5_PICK_FEES_F for all customers as table is not empty. Last Cust match was ' ||  UPPER(v_query_result2) 
+			-- || ' and this cust was ' ||  UPPER(sCust_start)
+			-- || ' and to date was ' ||  UPPER(v_query_logfile)
+			-- || ' and this date was ' ||  UPPER(v_tmp_date)
+			-- );
+		ELSIf UPPER(v_query_result2) IS NULL 
+		OR UPPER(v_query_logfile) IS NULL Then
+			--DBMS_OUTPUT.PUT_LINE('8th Need to RUN_ONCE G5_PICK_FEES_F for all customers as LOGFILE is missing. cust result was ' || UPPER(v_query_result2) 
+			--|| ' and this cust was ' ||  UPPER(sCust_start)
+			-- || ' and to date was ' ||  UPPER(v_query_logfile)
+			--|| ' and this date was ' ||  UPPER(v_tmp_date)
+			-- );
+			G5_PICK_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
+		Else
+			G5_PICK_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
+			--DBMS_OUTPUT.PUT_LINE('8th No matches for running G5_PICK_FEES_F, ran it just in case still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) ||
+			--' Seconds...for customer ' || sCust_start);
+		END IF;
+		nCheckpoint := 9;
+		I_EOM_MISC_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
+
+		nCheckpoint := 10;
+		K1_PAL_DESP_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
+		nCheckpoint := 11;
+		K2_CTN_IN_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
+		nCheckpoint := 12;
+		K3_PAL_IN_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
+		nCheckpoint := 13;
+		K4_CTN_DESP_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
+
+
+		If ( sCust_start = 'VHAAUS' ) Then
+			nCheckpoint := 14;
+			J_EOM_CUSTOMER_FEES_VHA(p_array_size_start,start_date,end_date,sCust_start,sOp);
+		ElsIf ( sCust_start = 'BEYONDBLUE' ) Then
+			nCheckpoint := 15;
+			J_EOM_CUSTOMER_FEES_BB(p_array_size_start,start_date,end_date,sCust_start,sOp);
+		ElsIf ( sCust_start = 'WBC' ) Then
+			nCheckpoint := 15;
+			J_EOM_CUSTOMER_FEES_WBC(p_array_size_start,start_date,end_date,sCust_start,sOp);
+		ElsIf ( sCust_start = 'TABCORP' ) Then
+			nCheckpoint := 16;
+			J_EOM_CUSTOMER_FEES_TAB(p_array_size_start,start_date,end_date,sCust_start,sOp);
+			--ElsIf ( sCust_start = 'IAG' ) Then
+			--nCheckpoint := 60;
+			--IQ_EOM_REPORTING.Z_EOM_RUN_IAG(p_array_size_start,start_date,end_date,'CGU',sAnalysis_Start);
+		End If;
+
+      
+		nCheckpoint := 99;
+		If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+			v_query := 'TRUNCATE TABLE DEV_ALL_FEES';
+		Else
+			v_query := 'TRUNCATE TABLE TMP_ALL_FEES';
+		End If;
+		EXECUTE IMMEDIATE v_query;
+		COMMIT;
+		Y_EOM_TMP_MERGE_ALL_FEES2(sOp);
      
-      nCheckpoint := 75;
-      E5_DESTOY_ORD_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
+		nCheckpoint := 100;
+		If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+			v_query := 'TRUNCATE TABLE DEV_ALL_FEES_F';
+		Else
+			v_query := 'TRUNCATE TABLE TMP_ALL_FEES_F';
+		End If;
+		EXECUTE IMMEDIATE v_query;
+		COMMIT;
+		Y_EOM_TMP_MERGE_ALL_FEES_FINAL(sCust_start,sOp);
 
-      nCheckpoint := 81;
-      G1_SHRINKWRAP_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
-      nCheckpoint := 82;
-      G2_STOCK_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
-      --nCheckpoint := 83;
-      --IQ_EOM_REPORTING.G3_PACKING_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
-      
-      
-      nCheckpoint := 84;
-      Select (F_EOM_CHECK_CUST_LOG(sCust_start ,'TMP_HANDLING_FEES','G4_HANDLING_FEES_F',sOp)) INTO v_query_result2 From Dual;
-      Select (F_EOM_CHECK_LOG(v_tmp_date ,'TMP_HANDLING_FEES','G4_HANDLING_FEES_F',sOp)) INTO v_query_logfile From Dual;
-      If F_IS_TABLE_EEMPTY('TMP_HANDLING_FEES') <= 0 Then
-        --DBMS_OUTPUT.PUT_LINE('7th Need to RUN_ONCE G4_HANDLING_FEES_F for all customers as table is empty. result was ' || UPPER(v_query_result2) 
-        --|| ' and this cust was ' ||  UPPER(sCust_start)
-        --|| ' and to date was ' ||  UPPER(v_query_logfile)
-        --|| ' and this date was ' ||  UPPER(v_tmp_date) 
-       -- );
-        G4_HANDLING_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
-      ELSIf UPPER(v_query_result2) != UPPER(sCust_start) 
-      AND UPPER(v_query_logfile) IS NOT NULL 
-      AND UPPER(v_query_logfile) != UPPER(v_tmp_date) Then
-        --DBMS_OUTPUT.PUT_LINE('7th Need to RUN_ONCE G4_HANDLING_FEES_F for all customers as table is not empty. result was ' || UPPER(v_query_result2) 
-       -- || ' and this cust was ' ||  UPPER(sCust_start)
-       -- || ' and to date was ' ||  UPPER(v_query_logfile)
-       -- || ' and this date was ' ||  UPPER(v_tmp_date) 
-       -- );
-        G4_HANDLING_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
-      --ELSIF  UPPER(v_query_result2) = UPPER(sCust_start) 
-      --AND UPPER(v_query_result2) IS NOT NULL 
-      --AND UPPER(v_query_logfile) = UPPER(v_tmp_date) Then
-        --DBMS_OUTPUT.PUT_LINE('7th No Need to RUN_ONCE G4_HANDLING_FEES_F for all customers as table is not empty. Last Cust match was ' ||  UPPER(v_query_result2) 
-       -- || ' and this cust was ' ||  UPPER(sCust_start)
-       -- || ' and to date was ' ||  UPPER(v_query_logfile)
-       -- || ' and this date was ' ||  UPPER(v_tmp_date) 
-       -- );
-      ELSIf UPPER(v_query_result2) IS NULL 
-      OR UPPER(v_query_logfile) IS NULL Then
-        --DBMS_OUTPUT.PUT_LINE('7th Need to RUN_ONCE G4_HANDLING_FEES_F for all customers as LOGFILE is missing. result was ' || UPPER(v_query_result2) 
-       -- || ' and this cust was ' ||  UPPER(sCust_start)
-       -- || ' and to date was ' ||  UPPER(v_query_logfile)
-       -- || ' and this date was ' ||  UPPER(v_tmp_date) 
-       -- );
-        G4_HANDLING_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
-      Else
-        G4_HANDLING_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
-        --DBMS_OUTPUT.PUT_LINE('7th No matches for running G4_HANDLING_FEES_F, ran it just in case still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) ||
-       -- ' Seconds...for customer ' || sCust_start);
-      END IF;
-      
-      
-      nCheckpoint := 85;
-      Select (F_EOM_CHECK_CUST_LOG(sCust_start ,'TMP_PICK_FEES','G5_PICK_FEES_F',sOp)) INTO v_query_result2 From Dual;--v_query := q'{Select IQ_EOM_REPORTING.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
-      Select (F_EOM_CHECK_LOG(v_tmp_date ,'TMP_PICK_FEES','G5_PICK_FEES_F',sOp)) INTO v_query_logfile From Dual;
-      If F_IS_TABLE_EEMPTY('TMP_PICK_FEES') <= 0 Then
-        --DBMS_OUTPUT.PUT_LINE('8th Need to RUN_ONCE G5_PICK_FEES_F for all customers as table is  empty. cust result was ' || UPPER(v_query_result2) 
-       -- || ' and this cust was ' ||  UPPER(sCust_start)
-       -- || ' and to date was ' ||  UPPER(v_query_logfile)
-       -- || ' and this date was ' ||  UPPER(v_tmp_date)
-       --  );
-        G5_PICK_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
-      ELSIf UPPER(v_query_result2) != UPPER(sCust_start) 
-      AND UPPER(v_query_result2) IS NOT NULL 
-      AND UPPER(v_query_logfile) != UPPER(v_tmp_date) Then
-        --DBMS_OUTPUT.PUT_LINE('8th Need to RUN_ONCE G5_PICK_FEES_F for all customers as table is not empty. cust result was ' || UPPER(v_query_result2) 
-        --|| ' and this cust was ' ||  UPPER(sCust_start)
-       -- || ' and to date was ' ||  UPPER(v_query_logfile)
-       -- || ' and this date was ' ||  UPPER(v_tmp_date)
-        -- );
-        G5_PICK_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
-      --ELSIF UPPER(v_query_result2) = UPPER(sCust_start) 
-      --AND UPPER(v_query_result2) IS NOT NULL 
-      --AND UPPER(v_query_logfile) = UPPER(v_tmp_date) Then
-        --DBMS_OUTPUT.PUT_LINE('8th No Need to RUN_ONCE G5_PICK_FEES_F for all customers as table is not empty. Last Cust match was ' ||  UPPER(v_query_result2) 
-       -- || ' and this cust was ' ||  UPPER(sCust_start)
-       -- || ' and to date was ' ||  UPPER(v_query_logfile)
-       -- || ' and this date was ' ||  UPPER(v_tmp_date)
-       -- );
-      ELSIf UPPER(v_query_result2) IS NULL 
-      OR UPPER(v_query_logfile) IS NULL Then
-        --DBMS_OUTPUT.PUT_LINE('8th Need to RUN_ONCE G5_PICK_FEES_F for all customers as LOGFILE is missing. cust result was ' || UPPER(v_query_result2) 
-        --|| ' and this cust was ' ||  UPPER(sCust_start)
-       -- || ' and to date was ' ||  UPPER(v_query_logfile)
-        --|| ' and this date was ' ||  UPPER(v_tmp_date)
-        -- );
-        G5_PICK_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
-      Else
-        G5_PICK_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
-        --DBMS_OUTPUT.PUT_LINE('8th No matches for running G5_PICK_FEES_F, ran it just in case still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) ||
-        --' Seconds...for customer ' || sCust_start);
-      END IF;
-      nCheckpoint := 9;
-      I_EOM_MISC_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
-
-      nCheckpoint := 10;
-      K1_PAL_DESP_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
-      nCheckpoint := 11;
-      K2_CTN_IN_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
-      nCheckpoint := 12;
-      K3_PAL_IN_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
-      nCheckpoint := 13;
-      K4_CTN_DESP_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
-
-
-     If ( sCust_start = 'VHAAUS' ) Then
-        nCheckpoint := 14;
-        J_EOM_CUSTOMER_FEES_VHA(p_array_size_start,start_date,end_date,sCust_start,sOp);
-      ElsIf ( sCust_start = 'BEYONDBLUE' ) Then
-        nCheckpoint := 15;
-        J_EOM_CUSTOMER_FEES_BB(p_array_size_start,start_date,end_date,sCust_start,sOp);
-      ElsIf ( sCust_start = 'WBC' ) Then
-        nCheckpoint := 15;
-        J_EOM_CUSTOMER_FEES_WBC(p_array_size_start,start_date,end_date,sCust_start,sOp);
-      ElsIf ( sCust_start = 'TABCORP' ) Then
-        nCheckpoint := 16;
-        J_EOM_CUSTOMER_FEES_TAB(p_array_size_start,start_date,end_date,sCust_start,sOp);
-      --ElsIf ( sCust_start = 'IAG' ) Then
-        --nCheckpoint := 60;
-        --IQ_EOM_REPORTING.Z_EOM_RUN_IAG(p_array_size_start,start_date,end_date,'CGU',sAnalysis_Start);
-      End If;
-
-      
-     nCheckpoint := 99;
-     v_query := 'TRUNCATE TABLE TMP_ALL_FEES';
-     EXECUTE IMMEDIATE v_query;
-     COMMIT;
-     Y_EOM_TMP_MERGE_ALL_FEES2(sOp);
-     
-     nCheckpoint := 100;
-     v_query := 'TRUNCATE TABLE TMP_ALL_FEES_F';
-     EXECUTE IMMEDIATE v_query;
-     COMMIT;
-     Y_EOM_TMP_MERGE_ALL_FEES_FINAL(sCust_start,sOp);
-
-     nCheckpoint := 101;
-      ----DBMS_OUTPUT.PUT_LINE('START Z TMP_ALL_FEES for ' || sFileName|| ' saved in ' || sPath );
-      If ( sCust_start = 'SUPERPART' ) Then
-        nCheckpoint := 15;
-        J_EOM_CUSTOMER_FEES_SUP(p_array_size_start,start_date,end_date,sCust_start,sFileName,sOp);
-      Else
-        Z1_TMP_ALL_FEES_TO_CSV(sFileName,sOp);
-      End If;
-    v_query2 :=  SQL%ROWCOUNT;
-    -- --DBMS_OUTPUT.PUT_LINE('Z EOM Successfully Ran EOM_RUN_ALL for ' || sCust_start|| ' in ' ||(round((dbms_utility.get_time-l_start)/100, 2) ||
-    --' Seconds...' );
-      v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-      EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'Z_EOM_RUN_ALL','MERGE','NULL',v_time_taken,SYSTIMESTAMP,sCust_start);
-      --DBMS_OUTPUT.PUT_LINE('LAST EOM Successfully Ran EOM_RUN_ALL for the date range '
-     -- || start_date || ' -- ' || end_date || ' - ' || v_query2 || ' records inserted in ' ||  (round((dbms_utility.get_time-l_start)/100, 6) ||
-     -- ' Seconds... for customer '|| sCust_start ));
-      COMMIT;
+		nCheckpoint := 101;
+		----DBMS_OUTPUT.PUT_LINE('START Z TMP_ALL_FEES for ' || sFileName|| ' saved in ' || sPath );
+		If ( sCust_start = 'SUPERPART' ) Then
+			nCheckpoint := 15;
+			J_EOM_CUSTOMER_FEES_SUP(p_array_size_start,start_date,end_date,sCust_start,sFileName,sOp);
+		Else
+			Z1_TMP_ALL_FEES_TO_CSV(sFileName,sOp);
+		End If;
+		v_query2 :=  SQL%ROWCOUNT;
+		-- --DBMS_OUTPUT.PUT_LINE('Z EOM Successfully Ran EOM_RUN_ALL for ' || sCust_start|| ' in ' ||(round((dbms_utility.get_time-l_start)/100, 2) ||
+		--' Seconds...' );
+		v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
+		EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'Z_EOM_RUN_ALL','MERGE','NULL',v_time_taken,SYSTIMESTAMP,sCust_start);
+		--DBMS_OUTPUT.PUT_LINE('LAST EOM Successfully Ran EOM_RUN_ALL for the date range '
+		-- || start_date || ' -- ' || end_date || ' - ' || v_query2 || ' records inserted in ' ||  (round((dbms_utility.get_time-l_start)/100, 6) ||
+		-- ' Seconds... for customer '|| sCust_start ));
+	COMMIT;
     RETURN;
-  EXCEPTION
-    WHEN OTHERS THEN
-      DBMS_OUTPUT.PUT_LINE('EOM_RUN_ALL failed at checkpoint ' || nCheckpoint ||
-                          ' with error ' || SQLCODE || ' : ' || SQLERRM);
-      RAISE;
-  END Z3_EOM_RUN_ALL;
+	EXCEPTION
+		WHEN OTHERS THEN
+			DBMS_OUTPUT.PUT_LINE('EOM_RUN_ALL failed at checkpoint ' || nCheckpoint || ' with error ' || SQLCODE || ' : ' || SQLERRM);
+			RAISE;
+	END Z3_EOM_RUN_ALL;
 
     PROCEDURE EOM_CHECK_LOG (
        v_in_end_date  VARCHAR2
