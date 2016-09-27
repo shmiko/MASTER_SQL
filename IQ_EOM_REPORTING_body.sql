@@ -7954,7 +7954,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
    
 		nCheckpoint := 2;
 		If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
-			v_query  := 'TRUNCATE TABLE Tmp_Group_Cust';
+			v_query  := 'TRUNCATE TABLE Dev_Group_Cust';
 		Else
 			v_query  := 'TRUNCATE TABLE Tmp_Group_Cust';
 		End If;
@@ -7962,29 +7962,50 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
 		
 		--Select (F_EOM_CHECK_LOG(v_tmp_date ,'Tmp_Group_Cust','A_EOM_GROUP_CUST')) INTO v_query_logfile From Dual;--v_query := q'{Select EOM_REPORT_PKG_TEST.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
 		--If UPPER(v_query_logfile) != UPPER(v_tmp_date) Then
-		If F_IS_TABLE_EEMPTY('Tmp_Group_Cust') <= 0 Then
-			--DBMS_OUTPUT.PUT_LINE('1st Need to run Tmp_Group_Cust for all customers as table is empty.' );
-			A_EOM_GROUP_CUST(sOp);
-			--Else
-			--DBMS_OUTPUT.PUT_LINE('1st No Need to run Tmp_Group_Cust for all customers as table is full of data - saved another 5 seconds.' );
-		End If;
-    
+    If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      If F_IS_TABLE_EEMPTY('Dev_Group_Cust') <= 0 Then
+        --DBMS_OUTPUT.PUT_LINE('1st Need to run Tmp_Group_Cust for all customers as table is empty.' );
+        A_EOM_GROUP_CUST(sOp);
+        --Else
+        --DBMS_OUTPUT.PUT_LINE('1st No Need to run Tmp_Group_Cust for all customers as table is full of data - saved another 5 seconds.' );
+      End If;
+    Else
+      If F_IS_TABLE_EEMPTY('Tmp_Group_Cust') <= 0 Then
+        --DBMS_OUTPUT.PUT_LINE('1st Need to run Tmp_Group_Cust for all customers as table is empty.' );
+        A_EOM_GROUP_CUST(sOp);
+        --Else
+        --DBMS_OUTPUT.PUT_LINE('1st No Need to run Tmp_Group_Cust for all customers as table is full of data - saved another 5 seconds.' );
+      End If;
+    End If;
 		nCheckpoint := 3;
 		--v_query := q'{SELECT TO_CHAR(LAST_ANALYZED, 'DD-MON-YY') FROM DBA_TABLES WHERE TABLE_NAME = 'TMP_ADMIN_DATA_PICK_LINECOUNTS'}';
 		--EXECUTE IMMEDIATE v_query INTO vRtnVal;-- USING sCustomerCode;
 		--If F_IS_TABLE_EEMPTY('TMP_ADMIN_DATA_PICK_LINECOUNTS') <= 0 Then
-		Select (F_EOM_CHECK_LOG(v_tmp_date ,'TMP_ADMIN_DATA_PICK_LINECOUNTS','B_EOM_START_RUN_ONCE_DATA',sOp)) INTO v_query_logfile From Dual;--v_query := q'{Select EOM_REPORT_PKG_TEST.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
-		If F_IS_TABLE_EEMPTY('TMP_ADMIN_DATA_PICK_LINECOUNTS') <= 0 Then
-			--DBMS_OUTPUT.PUT_LINE('2nd Need to RUN_ONCE TMP_ADMIN_DATA_PICK_LINECOUNTS as B_EOM_START_RUN_ONCE_DATA for all customers as table is empty. result was ' || UPPER(v_query_logfile) || ' and end date was ' ||  UPPER(v_tmp_date) );
-			B_EOM_START_RUN_ONCE_DATA(start_date,end_date,sAnalysis_Start,sCust_start,0,sOp);
-		ELSIf UPPER(v_query_logfile) != UPPER(v_tmp_date) Then
-			-- If vRtnVal != TO_CHAR(SYSDATE, 'DD-MON-YY') Then
-			--DBMS_OUTPUT.PUT_LINE('2nd Need to RUN_ONCE TMP_ADMIN_DATA_PICK_LINECOUNTS as B_EOM_START_RUN_ONCE_DATA for all customers as table is empty. result was ' || UPPER(v_query_logfile) || ' and end date was ' ||  UPPER(v_tmp_date) );
-			B_EOM_START_RUN_ONCE_DATA(start_date,end_date,sAnalysis_Start,sCust_start,0,sOp);
-			--Else
-			--DBMS_OUTPUT.PUT_LINE('2nd No Need to RUN_ONCE TMP_ADMIN_DATA_PICK_LINECOUNTS as B_EOM_START_RUN_ONCE_DATA for all customers as table is full of data - saved another 45 seconds. Last Date match was ' || UPPER(v_query_logfile) || ' and end date was ' ||  UPPER(v_tmp_date) );
-		End If;
-    
+    If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      Select (F_EOM_CHECK_LOG(v_tmp_date ,'DEV_ADMIN_DATA_PICK_LINECOUNTS','B_EOM_START_RUN_ONCE_DATA',sOp)) INTO v_query_logfile From Dual;--v_query := q'{Select EOM_REPORT_PKG_TEST.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
+      If F_IS_TABLE_EEMPTY('DEV_ADMIN_DATA_PICK_LINECOUNTS') <= 0 Then
+        --DBMS_OUTPUT.PUT_LINE('2nd Need to RUN_ONCE TMP_ADMIN_DATA_PICK_LINECOUNTS as B_EOM_START_RUN_ONCE_DATA for all customers as table is empty. result was ' || UPPER(v_query_logfile) || ' and end date was ' ||  UPPER(v_tmp_date) );
+        B_EOM_START_RUN_ONCE_DATA(start_date,end_date,sAnalysis_Start,sCust_start,0,sOp);
+      ELSIf UPPER(v_query_logfile) != UPPER(v_tmp_date) Then
+        -- If vRtnVal != TO_CHAR(SYSDATE, 'DD-MON-YY') Then
+        --DBMS_OUTPUT.PUT_LINE('2nd Need to RUN_ONCE TMP_ADMIN_DATA_PICK_LINECOUNTS as B_EOM_START_RUN_ONCE_DATA for all customers as table is empty. result was ' || UPPER(v_query_logfile) || ' and end date was ' ||  UPPER(v_tmp_date) );
+        B_EOM_START_RUN_ONCE_DATA(start_date,end_date,sAnalysis_Start,sCust_start,0,sOp);
+        --Else
+        --DBMS_OUTPUT.PUT_LINE('2nd No Need to RUN_ONCE TMP_ADMIN_DATA_PICK_LINECOUNTS as B_EOM_START_RUN_ONCE_DATA for all customers as table is full of data - saved another 45 seconds. Last Date match was ' || UPPER(v_query_logfile) || ' and end date was ' ||  UPPER(v_tmp_date) );
+      End If;
+    Else
+      Select (F_EOM_CHECK_LOG(v_tmp_date ,'TMP_ADMIN_DATA_PICK_LINECOUNTS','B_EOM_START_RUN_ONCE_DATA',sOp)) INTO v_query_logfile From Dual;--v_query := q'{Select EOM_REPORT_PKG_TEST.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
+      If F_IS_TABLE_EEMPTY('TMP_ADMIN_DATA_PICK_LINECOUNTS') <= 0 Then
+        --DBMS_OUTPUT.PUT_LINE('2nd Need to RUN_ONCE TMP_ADMIN_DATA_PICK_LINECOUNTS as B_EOM_START_RUN_ONCE_DATA for all customers as table is empty. result was ' || UPPER(v_query_logfile) || ' and end date was ' ||  UPPER(v_tmp_date) );
+        B_EOM_START_RUN_ONCE_DATA(start_date,end_date,sAnalysis_Start,sCust_start,0,sOp);
+      ELSIf UPPER(v_query_logfile) != UPPER(v_tmp_date) Then
+        -- If vRtnVal != TO_CHAR(SYSDATE, 'DD-MON-YY') Then
+        --DBMS_OUTPUT.PUT_LINE('2nd Need to RUN_ONCE TMP_ADMIN_DATA_PICK_LINECOUNTS as B_EOM_START_RUN_ONCE_DATA for all customers as table is empty. result was ' || UPPER(v_query_logfile) || ' and end date was ' ||  UPPER(v_tmp_date) );
+        B_EOM_START_RUN_ONCE_DATA(start_date,end_date,sAnalysis_Start,sCust_start,0,sOp);
+        --Else
+        --DBMS_OUTPUT.PUT_LINE('2nd No Need to RUN_ONCE TMP_ADMIN_DATA_PICK_LINECOUNTS as B_EOM_START_RUN_ONCE_DATA for all customers as table is full of data - saved another 45 seconds. Last Date match was ' || UPPER(v_query_logfile) || ' and end date was ' ||  UPPER(v_tmp_date) );
+      End If;
+    End If;
 		nCheckpoint := 4;
 		--set timing on; Tmp_Locn_Cnt_By_Cust
 		-- If F_IS_TABLE_EEMPTY('Tmp_Locn_Cnt_By_Cust') <= 0 Then
@@ -7997,7 +8018,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
 		--DBMS_OUTPUT.PUT_LINE('3rd No Need to RUN_ONCE Tmp_Locn_Cnt_By_Cust as C_EOM_START_ALL_TEMP_STOR_DATA for all customers as table is full of data - saved another 65 seconds. Last Date match was ' || UPPER(v_query_logfile) || ' and end date was ' ||  UPPER(v_tmp_date) );
 		--End If;
     
-		nCheckpoint := 45;
+		--nCheckpoint := 45;
 		--DBMS_OUTPUT.PUT_LINE('4th EOM Customer Rates are caluclated on the fly...' );
     
 		nCheckpoint := 5;
@@ -8057,87 +8078,176 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
       
       
 		nCheckpoint := 84;
-		Select (F_EOM_CHECK_CUST_LOG(sCust_start ,'TMP_HANDLING_FEES','G4_HANDLING_FEES_F',sOp)) INTO v_query_result2 From Dual;
-		Select (F_EOM_CHECK_LOG(v_tmp_date ,'TMP_HANDLING_FEES','G4_HANDLING_FEES_F',sOp)) INTO v_query_logfile From Dual;
-		If F_IS_TABLE_EEMPTY('TMP_HANDLING_FEES') <= 0 Then
-			--DBMS_OUTPUT.PUT_LINE('7th Need to RUN_ONCE G4_HANDLING_FEES_F for all customers as table is empty. result was ' || UPPER(v_query_result2) 
-			--|| ' and this cust was ' ||  UPPER(sCust_start)
-			--|| ' and to date was ' ||  UPPER(v_query_logfile)
-			--|| ' and this date was ' ||  UPPER(v_tmp_date) 
-			-- );
-			G4_HANDLING_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
-		ELSIf UPPER(v_query_result2) != UPPER(sCust_start) 
-		AND UPPER(v_query_logfile) IS NOT NULL 
-		AND UPPER(v_query_logfile) != UPPER(v_tmp_date) Then
-			--DBMS_OUTPUT.PUT_LINE('7th Need to RUN_ONCE G4_HANDLING_FEES_F for all customers as table is not empty. result was ' || UPPER(v_query_result2) 
-			-- || ' and this cust was ' ||  UPPER(sCust_start)
-			-- || ' and to date was ' ||  UPPER(v_query_logfile)
-			-- || ' and this date was ' ||  UPPER(v_tmp_date) 
-			-- );
-			G4_HANDLING_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
-			--ELSIF  UPPER(v_query_result2) = UPPER(sCust_start) 
-			--AND UPPER(v_query_result2) IS NOT NULL 
-			--AND UPPER(v_query_logfile) = UPPER(v_tmp_date) Then
-			--DBMS_OUTPUT.PUT_LINE('7th No Need to RUN_ONCE G4_HANDLING_FEES_F for all customers as table is not empty. Last Cust match was ' ||  UPPER(v_query_result2) 
-			-- || ' and this cust was ' ||  UPPER(sCust_start)
-			-- || ' and to date was ' ||  UPPER(v_query_logfile)
-			-- || ' and this date was ' ||  UPPER(v_tmp_date) 
-			-- );
-		ELSIf UPPER(v_query_result2) IS NULL 
-		OR UPPER(v_query_logfile) IS NULL Then
-			--DBMS_OUTPUT.PUT_LINE('7th Need to RUN_ONCE G4_HANDLING_FEES_F for all customers as LOGFILE is missing. result was ' || UPPER(v_query_result2) 
-			-- || ' and this cust was ' ||  UPPER(sCust_start)
-			-- || ' and to date was ' ||  UPPER(v_query_logfile)
-			-- || ' and this date was ' ||  UPPER(v_tmp_date) 
-			-- );
-			G4_HANDLING_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
-		Else
-			G4_HANDLING_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
-			--DBMS_OUTPUT.PUT_LINE('7th No matches for running G4_HANDLING_FEES_F, ran it just in case still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) ||
-			-- ' Seconds...for customer ' || sCust_start);
-		END IF;
-      
+    If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      Select (F_EOM_CHECK_CUST_LOG(sCust_start ,'DEV_HANDLING_FEES','G4_HANDLING_FEES_F',sOp)) INTO v_query_result2 From Dual;
+      Select (F_EOM_CHECK_LOG(v_tmp_date ,'DEV_HANDLING_FEES','G4_HANDLING_FEES_F',sOp)) INTO v_query_logfile From Dual;
+    Else
+       Select (F_EOM_CHECK_CUST_LOG(sCust_start ,'TMP_HANDLING_FEES','G4_HANDLING_FEES_F',sOp)) INTO v_query_result2 From Dual;
+       Select (F_EOM_CHECK_LOG(v_tmp_date ,'TMP_HANDLING_FEES','G4_HANDLING_FEES_F',sOp)) INTO v_query_logfile From Dual;
+    End If;
+    If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      If F_IS_TABLE_EEMPTY('DEV_HANDLING_FEES') <= 0 Then
+        --DBMS_OUTPUT.PUT_LINE('7th Need to RUN_ONCE G4_HANDLING_FEES_F for all customers as table is empty. result was ' || UPPER(v_query_result2) 
+        --|| ' and this cust was ' ||  UPPER(sCust_start)
+        --|| ' and to date was ' ||  UPPER(v_query_logfile)
+        --|| ' and this date was ' ||  UPPER(v_tmp_date) 
+        -- );
+        G4_HANDLING_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
+      ELSIf UPPER(v_query_result2) != UPPER(sCust_start) 
+      AND UPPER(v_query_logfile) IS NOT NULL 
+      AND UPPER(v_query_logfile) != UPPER(v_tmp_date) Then
+        --DBMS_OUTPUT.PUT_LINE('7th Need to RUN_ONCE G4_HANDLING_FEES_F for all customers as table is not empty. result was ' || UPPER(v_query_result2) 
+        -- || ' and this cust was ' ||  UPPER(sCust_start)
+        -- || ' and to date was ' ||  UPPER(v_query_logfile)
+        -- || ' and this date was ' ||  UPPER(v_tmp_date) 
+        -- );
+        G4_HANDLING_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
+        --ELSIF  UPPER(v_query_result2) = UPPER(sCust_start) 
+        --AND UPPER(v_query_result2) IS NOT NULL 
+        --AND UPPER(v_query_logfile) = UPPER(v_tmp_date) Then
+        --DBMS_OUTPUT.PUT_LINE('7th No Need to RUN_ONCE G4_HANDLING_FEES_F for all customers as table is not empty. Last Cust match was ' ||  UPPER(v_query_result2) 
+        -- || ' and this cust was ' ||  UPPER(sCust_start)
+        -- || ' and to date was ' ||  UPPER(v_query_logfile)
+        -- || ' and this date was ' ||  UPPER(v_tmp_date) 
+        -- );
+      ELSIf UPPER(v_query_result2) IS NULL 
+      OR UPPER(v_query_logfile) IS NULL Then
+        --DBMS_OUTPUT.PUT_LINE('7th Need to RUN_ONCE G4_HANDLING_FEES_F for all customers as LOGFILE is missing. result was ' || UPPER(v_query_result2) 
+        -- || ' and this cust was ' ||  UPPER(sCust_start)
+        -- || ' and to date was ' ||  UPPER(v_query_logfile)
+        -- || ' and this date was ' ||  UPPER(v_tmp_date) 
+        -- );
+        G4_HANDLING_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
+      Else
+        G4_HANDLING_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
+        --DBMS_OUTPUT.PUT_LINE('7th No matches for running G4_HANDLING_FEES_F, ran it just in case still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) ||
+        -- ' Seconds...for customer ' || sCust_start);
+      END IF;
+    Else
+       If F_IS_TABLE_EEMPTY('TMP_HANDLING_FEES') <= 0 Then
+        --DBMS_OUTPUT.PUT_LINE('7th Need to RUN_ONCE G4_HANDLING_FEES_F for all customers as table is empty. result was ' || UPPER(v_query_result2) 
+        --|| ' and this cust was ' ||  UPPER(sCust_start)
+        --|| ' and to date was ' ||  UPPER(v_query_logfile)
+        --|| ' and this date was ' ||  UPPER(v_tmp_date) 
+        -- );
+        G4_HANDLING_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
+      ELSIf UPPER(v_query_result2) != UPPER(sCust_start) 
+      AND UPPER(v_query_logfile) IS NOT NULL 
+      AND UPPER(v_query_logfile) != UPPER(v_tmp_date) Then
+        --DBMS_OUTPUT.PUT_LINE('7th Need to RUN_ONCE G4_HANDLING_FEES_F for all customers as table is not empty. result was ' || UPPER(v_query_result2) 
+        -- || ' and this cust was ' ||  UPPER(sCust_start)
+        -- || ' and to date was ' ||  UPPER(v_query_logfile)
+        -- || ' and this date was ' ||  UPPER(v_tmp_date) 
+        -- );
+        G4_HANDLING_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
+        --ELSIF  UPPER(v_query_result2) = UPPER(sCust_start) 
+        --AND UPPER(v_query_result2) IS NOT NULL 
+        --AND UPPER(v_query_logfile) = UPPER(v_tmp_date) Then
+        --DBMS_OUTPUT.PUT_LINE('7th No Need to RUN_ONCE G4_HANDLING_FEES_F for all customers as table is not empty. Last Cust match was ' ||  UPPER(v_query_result2) 
+        -- || ' and this cust was ' ||  UPPER(sCust_start)
+        -- || ' and to date was ' ||  UPPER(v_query_logfile)
+        -- || ' and this date was ' ||  UPPER(v_tmp_date) 
+        -- );
+      ELSIf UPPER(v_query_result2) IS NULL 
+      OR UPPER(v_query_logfile) IS NULL Then
+        --DBMS_OUTPUT.PUT_LINE('7th Need to RUN_ONCE G4_HANDLING_FEES_F for all customers as LOGFILE is missing. result was ' || UPPER(v_query_result2) 
+        -- || ' and this cust was ' ||  UPPER(sCust_start)
+        -- || ' and to date was ' ||  UPPER(v_query_logfile)
+        -- || ' and this date was ' ||  UPPER(v_tmp_date) 
+        -- );
+        G4_HANDLING_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
+      Else
+        G4_HANDLING_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
+        --DBMS_OUTPUT.PUT_LINE('7th No matches for running G4_HANDLING_FEES_F, ran it just in case still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) ||
+        -- ' Seconds...for customer ' || sCust_start);
+      END IF;
+
+    End If;
       
 		nCheckpoint := 85;
-		Select (F_EOM_CHECK_CUST_LOG(sCust_start ,'TMP_PICK_FEES','G5_PICK_FEES_F',sOp)) INTO v_query_result2 From Dual;--v_query := q'{Select IQ_EOM_REPORTING.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
-		Select (F_EOM_CHECK_LOG(v_tmp_date ,'TMP_PICK_FEES','G5_PICK_FEES_F',sOp)) INTO v_query_logfile From Dual;
-		If F_IS_TABLE_EEMPTY('TMP_PICK_FEES') <= 0 Then
-			--DBMS_OUTPUT.PUT_LINE('8th Need to RUN_ONCE G5_PICK_FEES_F for all customers as table is  empty. cust result was ' || UPPER(v_query_result2) 
-			-- || ' and this cust was ' ||  UPPER(sCust_start)
-			-- || ' and to date was ' ||  UPPER(v_query_logfile)
-			-- || ' and this date was ' ||  UPPER(v_tmp_date)
-			--  );
-			G5_PICK_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
-		ELSIf UPPER(v_query_result2) != UPPER(sCust_start) 
-		AND UPPER(v_query_result2) IS NOT NULL 
-		AND UPPER(v_query_logfile) != UPPER(v_tmp_date) Then
-			--DBMS_OUTPUT.PUT_LINE('8th Need to RUN_ONCE G5_PICK_FEES_F for all customers as table is not empty. cust result was ' || UPPER(v_query_result2) 
-			--|| ' and this cust was ' ||  UPPER(sCust_start)
-			-- || ' and to date was ' ||  UPPER(v_query_logfile)
-			-- || ' and this date was ' ||  UPPER(v_tmp_date)
-			-- );
-			G5_PICK_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
-			--ELSIF UPPER(v_query_result2) = UPPER(sCust_start) 
-			--AND UPPER(v_query_result2) IS NOT NULL 
-			--AND UPPER(v_query_logfile) = UPPER(v_tmp_date) Then
-			--DBMS_OUTPUT.PUT_LINE('8th No Need to RUN_ONCE G5_PICK_FEES_F for all customers as table is not empty. Last Cust match was ' ||  UPPER(v_query_result2) 
-			-- || ' and this cust was ' ||  UPPER(sCust_start)
-			-- || ' and to date was ' ||  UPPER(v_query_logfile)
-			-- || ' and this date was ' ||  UPPER(v_tmp_date)
-			-- );
-		ELSIf UPPER(v_query_result2) IS NULL 
-		OR UPPER(v_query_logfile) IS NULL Then
-			--DBMS_OUTPUT.PUT_LINE('8th Need to RUN_ONCE G5_PICK_FEES_F for all customers as LOGFILE is missing. cust result was ' || UPPER(v_query_result2) 
-			--|| ' and this cust was ' ||  UPPER(sCust_start)
-			-- || ' and to date was ' ||  UPPER(v_query_logfile)
-			--|| ' and this date was ' ||  UPPER(v_tmp_date)
-			-- );
-			G5_PICK_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
-		Else
-			G5_PICK_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
-			--DBMS_OUTPUT.PUT_LINE('8th No matches for running G5_PICK_FEES_F, ran it just in case still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) ||
-			--' Seconds...for customer ' || sCust_start);
-		END IF;
+    If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      Select (F_EOM_CHECK_CUST_LOG(sCust_start ,'DEV_PICK_FEES','G5_PICK_FEES_F',sOp)) INTO v_query_result2 From Dual;--v_query := q'{Select IQ_EOM_REPORTING.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
+      Select (F_EOM_CHECK_LOG(v_tmp_date ,'DEV_PICK_FEES','G5_PICK_FEES_F',sOp)) INTO v_query_logfile From Dual;
+      If F_IS_TABLE_EEMPTY('DEV_PICK_FEES') <= 0 Then
+        --DBMS_OUTPUT.PUT_LINE('8th Need to RUN_ONCE G5_PICK_FEES_F for all customers as table is  empty. cust result was ' || UPPER(v_query_result2) 
+        -- || ' and this cust was ' ||  UPPER(sCust_start)
+        -- || ' and to date was ' ||  UPPER(v_query_logfile)
+        -- || ' and this date was ' ||  UPPER(v_tmp_date)
+        --  );
+        G5_PICK_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
+      ELSIf UPPER(v_query_result2) != UPPER(sCust_start) 
+      AND UPPER(v_query_result2) IS NOT NULL 
+      AND UPPER(v_query_logfile) != UPPER(v_tmp_date) Then
+        --DBMS_OUTPUT.PUT_LINE('8th Need to RUN_ONCE G5_PICK_FEES_F for all customers as table is not empty. cust result was ' || UPPER(v_query_result2) 
+        --|| ' and this cust was ' ||  UPPER(sCust_start)
+        -- || ' and to date was ' ||  UPPER(v_query_logfile)
+        -- || ' and this date was ' ||  UPPER(v_tmp_date)
+        -- );
+        G5_PICK_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
+        --ELSIF UPPER(v_query_result2) = UPPER(sCust_start) 
+        --AND UPPER(v_query_result2) IS NOT NULL 
+        --AND UPPER(v_query_logfile) = UPPER(v_tmp_date) Then
+        --DBMS_OUTPUT.PUT_LINE('8th No Need to RUN_ONCE G5_PICK_FEES_F for all customers as table is not empty. Last Cust match was ' ||  UPPER(v_query_result2) 
+        -- || ' and this cust was ' ||  UPPER(sCust_start)
+        -- || ' and to date was ' ||  UPPER(v_query_logfile)
+        -- || ' and this date was ' ||  UPPER(v_tmp_date)
+        -- );
+      ELSIf UPPER(v_query_result2) IS NULL 
+      OR UPPER(v_query_logfile) IS NULL Then
+        --DBMS_OUTPUT.PUT_LINE('8th Need to RUN_ONCE G5_PICK_FEES_F for all customers as LOGFILE is missing. cust result was ' || UPPER(v_query_result2) 
+        --|| ' and this cust was ' ||  UPPER(sCust_start)
+        -- || ' and to date was ' ||  UPPER(v_query_logfile)
+        --|| ' and this date was ' ||  UPPER(v_tmp_date)
+        -- );
+        G5_PICK_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
+      Else
+        G5_PICK_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
+        --DBMS_OUTPUT.PUT_LINE('8th No matches for running G5_PICK_FEES_F, ran it just in case still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) ||
+        --' Seconds...for customer ' || sCust_start);
+      END IF;
+    Else
+      Select (F_EOM_CHECK_CUST_LOG(sCust_start ,'TMP_PICK_FEES','G5_PICK_FEES_F',sOp)) INTO v_query_result2 From Dual;--v_query := q'{Select IQ_EOM_REPORTING.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
+      Select (F_EOM_CHECK_LOG(v_tmp_date ,'TMP_PICK_FEES','G5_PICK_FEES_F',sOp)) INTO v_query_logfile From Dual;
+      If F_IS_TABLE_EEMPTY('TMP_PICK_FEES') <= 0 Then
+        --DBMS_OUTPUT.PUT_LINE('8th Need to RUN_ONCE G5_PICK_FEES_F for all customers as table is  empty. cust result was ' || UPPER(v_query_result2) 
+        -- || ' and this cust was ' ||  UPPER(sCust_start)
+        -- || ' and to date was ' ||  UPPER(v_query_logfile)
+        -- || ' and this date was ' ||  UPPER(v_tmp_date)
+        --  );
+        G5_PICK_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
+      ELSIf UPPER(v_query_result2) != UPPER(sCust_start) 
+      AND UPPER(v_query_result2) IS NOT NULL 
+      AND UPPER(v_query_logfile) != UPPER(v_tmp_date) Then
+        --DBMS_OUTPUT.PUT_LINE('8th Need to RUN_ONCE G5_PICK_FEES_F for all customers as table is not empty. cust result was ' || UPPER(v_query_result2) 
+        --|| ' and this cust was ' ||  UPPER(sCust_start)
+        -- || ' and to date was ' ||  UPPER(v_query_logfile)
+        -- || ' and this date was ' ||  UPPER(v_tmp_date)
+        -- );
+        G5_PICK_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
+        --ELSIF UPPER(v_query_result2) = UPPER(sCust_start) 
+        --AND UPPER(v_query_result2) IS NOT NULL 
+        --AND UPPER(v_query_logfile) = UPPER(v_tmp_date) Then
+        --DBMS_OUTPUT.PUT_LINE('8th No Need to RUN_ONCE G5_PICK_FEES_F for all customers as table is not empty. Last Cust match was ' ||  UPPER(v_query_result2) 
+        -- || ' and this cust was ' ||  UPPER(sCust_start)
+        -- || ' and to date was ' ||  UPPER(v_query_logfile)
+        -- || ' and this date was ' ||  UPPER(v_tmp_date)
+        -- );
+      ELSIf UPPER(v_query_result2) IS NULL 
+      OR UPPER(v_query_logfile) IS NULL Then
+        --DBMS_OUTPUT.PUT_LINE('8th Need to RUN_ONCE G5_PICK_FEES_F for all customers as LOGFILE is missing. cust result was ' || UPPER(v_query_result2) 
+        --|| ' and this cust was ' ||  UPPER(sCust_start)
+        -- || ' and to date was ' ||  UPPER(v_query_logfile)
+        --|| ' and this date was ' ||  UPPER(v_tmp_date)
+        -- );
+        G5_PICK_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
+      Else
+        G5_PICK_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
+        --DBMS_OUTPUT.PUT_LINE('8th No matches for running G5_PICK_FEES_F, ran it just in case still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) ||
+        --' Seconds...for customer ' || sCust_start);
+      END IF;
+
+    End If;
+    
 		nCheckpoint := 9;
 		I_EOM_MISC_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
 
