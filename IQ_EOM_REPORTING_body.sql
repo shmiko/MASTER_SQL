@@ -8470,8 +8470,12 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
 		-- --DBMS_OUTPUT.PUT_LINE('Z EOM Successfully Ran EOM_RUN_ALL for ' || sCust_start|| ' in ' ||(round((dbms_utility.get_time-l_start)/100, 2) ||
 		--' Seconds...' );
 		v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-		EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'Z_EOM_RUN_ALL','MERGE','NULL',v_time_taken,SYSTIMESTAMP,sCust_start);
-		--DBMS_OUTPUT.PUT_LINE('LAST EOM Successfully Ran EOM_RUN_ALL for the date range '
+    If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'Z_EOM_RUN_ALL','MERGE','DEV',v_time_taken,SYSTIMESTAMP,sCust_start);
+		Else
+      EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'Z_EOM_RUN_ALL','MERGE','TMP',v_time_taken,SYSTIMESTAMP,sCust_start);
+		End If;
+    --DBMS_OUTPUT.PUT_LINE('LAST EOM Successfully Ran EOM_RUN_ALL for the date range '
 		-- || start_date || ' -- ' || end_date || ' - ' || v_query2 || ' records inserted in ' ||  (round((dbms_utility.get_time-l_start)/100, 6) ||
 		-- ' Seconds... for customer '|| sCust_start ));
 	COMMIT;
@@ -8585,8 +8589,8 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
         l_theCursor     integer default dbms_sql.open_cursor;
         l_columnValue   varchar2(4000);
         l_status        integer;
-        l_query         varchar2(1000)
-                       default 'select * from TMP_ALL_FEES_F';
+         l_query         varchar2(1000);
+       
        l_colCnt        number := 0;
        l_separator     varchar2(1);
        l_descTbl       dbms_sql.desc_tab;
@@ -8594,6 +8598,11 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
         sPath VARCHAR2(60) :=  'EOM_ADMIN_ORDERS';
         l_start number default dbms_utility.get_time;
    begin
+         If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          l_query  := 'select * from TMP_ALL_FEES_F';
+        Else
+          l_query  := 'select * from TMP_ALL_FEES_F';
+        End IF;
        l_output := utl_file.fopen( 'EOM_ADMIN_ORDERS', p_filename, 'w' );
        execute immediate 'alter session set nls_date_format=''dd-mon-yyyy hh24:mi:ss''';
 
