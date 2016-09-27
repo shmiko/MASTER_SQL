@@ -1,17 +1,10 @@
---------------------------------------------------------
---  File created - Tuesday-August-16-2016   
---------------------------------------------------------
---------------------------------------------------------
---  DDL for Package Body IQ_EOM_REPORTING
---------------------------------------------------------
-
-  CREATE OR REPLACE PACKAGE BODY "PWIN175"."IQ_EOM_REPORTING" AS
+create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
     /*   A Group all customer down 3 tiers - this makes getting all children and grandchildren simples   */
     /*   Temp Tables Used   */
     /*   1. Tmp_Group_Cust   */
     /*   Runs in about 5 seconds   */
     /*   Tested and Working 17/7/15   */
-    PROCEDURE A_EOM_GROUP_CUST AS
+    PROCEDURE A_EOM_GROUP_CUST(sOp IN VARCHAR2) AS
       nCheckpoint  NUMBER;
       l_start number default dbms_utility.get_time;
       v_query2 VARCHAR2(32767);
@@ -20,9 +13,11 @@
     BEGIN
   
       nCheckpoint := 1;
-      EXECUTE IMMEDIATE	'TRUNCATE  TABLE Tmp_Group_Cust';
-  
-  
+      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        EXECUTE IMMEDIATE	'TRUNCATE  TABLE Dev_Group_Cust';
+      Else
+        EXECUTE IMMEDIATE	'TRUNCATE  TABLE Tmp_Group_Cust';
+      End If;
       nCheckpoint := 2;
       ---Call Find_Droplist_String("FINISHING", QM_SPARE_ENUM_1);
       /*
@@ -92,7 +87,8 @@
       End
           
       */
-      EXECUTE IMMEDIATE 'INSERT into Tmp_Group_Cust(sCust,sGroupCust,nLevel,AREA,TERR,RMDBL2,ANAL,SOURCE,OW_CAT )
+      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      EXECUTE IMMEDIATE 'INSERT into DEV_GROUP_CUST(sCust,sGroupCust,nLevel,AREA,TERR,RMDBL2,ANAL,SOURCE,OW_CAT )
                           SELECT RM_CUST
                             ,(
                               CASE
@@ -109,7 +105,25 @@
                       --AND Length(RM_GROUP_CUST) <=  1
                       CONNECT BY PRIOR RM_CUST = RM_PARENT
                       START WITH Length(RM_PARENT) <= 1';
-  
+      Else
+        EXECUTE IMMEDIATE 'INSERT into Tmp_Group_Cust(sCust,sGroupCust,nLevel,AREA,TERR,RMDBL2,ANAL,SOURCE,OW_CAT )
+                          SELECT RM_CUST
+                            ,(
+                              CASE
+                                WHEN LEVEL = 1 THEN RM_CUST
+                                WHEN LEVEL = 2 THEN RM_PARENT
+                                WHEN LEVEL = 3 THEN PRIOR RM_PARENT
+                                ELSE NULL
+                              END
+                            ) AS CC
+                            ,LEVEL,RM_AREA,RM_TERR,(Select MAX(DV_VALUE) FROM TMP_DROP_LIST Where DV_INDEX = TO_NUMBER(RM_DBL_2)),RM_ANAL,RM_SOURCE,RM_GROUP_CUST
+                      FROM RM
+                      WHERE RM_TYPE = 0
+                      AND RM_ACTIVE = 1
+                      --AND Length(RM_GROUP_CUST) <=  1
+                      CONNECT BY PRIOR RM_CUST = RM_PARENT
+                      START WITH Length(RM_PARENT) <= 1';
+      End If;
   
       ----DBMS_OUTPUT.PUT_LINE('Successfully truncated, recreated AND populated Tmp_Group_Cust');
        v_query2 :=  SQL%ROWCOUNT;
@@ -117,7 +131,7 @@
       --  ' Seconds...' ));
       v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
       
-      EOM_INSERT_LOG(SYSTIMESTAMP ,NULL,NULL,'A_EOM_GROUP_CUST','RM','Tmp_Group_Cust2',v_time_taken,SYSTIMESTAMP,NULL);
+      EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,NULL,NULL,'A_EOM_GROUP_CUST','RM','Tmp_Group_Cust2',v_time_taken,SYSTIMESTAMP,NULL);
       --DBMS_OUTPUT.PUT_LINE('A_EOM_GROUP_CUST for the date range '
       --|| F_FIRST_DAY_PREV_MONTH || ' -- ' || F_LAST_DAY_PREV_MONTH || ' - ' || v_query2
       --|| ' records inserted in ' ||  (round((dbms_utility.get_time-l_start)/100, 6)
@@ -146,6 +160,7 @@
        ,sAnalysis IN RM.RM_ANAL%TYPE
        ,sCust IN VARCHAR2
        ,PreData IN RM.RM_ACTIVE%TYPE := 0
+       ,sOp IN VARCHAR2
        --,gdf_desp_freight_cur OUT sys_refcursor
        )
     AS
@@ -169,49 +184,94 @@
   
     BEGIN
   
-      /* Truncate all temp tables*/
-      nCheckpoint := 1;
-      v_query := 'TRUNCATE TABLE Tmp_Admin_Data_BreakPrices';
-      EXECUTE IMMEDIATE v_query;
-  
-      nCheckpoint := 3;
-      v_query := 'TRUNCATE TABLE Tmp_Admin_Data_Pickslips';
-      EXECUTE IMMEDIATE	v_query;
-  
-      nCheckpoint := 4;
-      v_query := 'TRUNCATE TABLE Tmp_Admin_Data_Pick_LineCounts';
-      EXECUTE IMMEDIATE v_query;
-  
-      nCheckpoint := 5;
-      --v_query := 'TRUNCATE TABLE Tmp_Batch_Price_SL_Stock';
-      --EXECUTE IMMEDIATE v_query;
+     
   
   
   
   
       /*Insert fresh temp data*/
-      nCheckpoint := 11;
-      EXECUTE IMMEDIATE 'INSERT INTO Tmp_Admin_Data_BreakPrices
-                SELECT II_STOCK,II_CUST,II_BREAK_LCL,NULL,NULL,NULL,NULL
-                FROM II INNER JOIN IM ON IM_STOCK = II_STOCK
-                AND II_BREAK_LCL > 0.000001';
-  
-      nCheckpoint := 12;
-      v_query := q'{INSERT INTO Tmp_Admin_Data_Pickslips
-                SELECT LTrim(ST_PICK),LTrim(ST_PSLIP), substr(To_Char(ST_DESP_DATE),0,10), ST_WEIGHT, ST_PACKAGES,ST_XX_NUM_PAL_SW,ST_XX_NUM_PALLETS,ST_XX_NUM_CARTONS,NULL,NULL,NULL,NULL
-                FROM ST LEFT JOIN SH ON SH_ORDER = ST_ORDER
-                WHERE ST_DESP_DATE >= :start_date AND ST_DESP_DATE <= :end_date
-                AND ST_PSLIP != 'CANCELLED'
-                AND SH_STATUS <> 3}';
-      EXECUTE IMMEDIATE v_query USING start_date,end_date;
-      nCheckpoint := 13;
-      v_query := q'{INSERT INTO Tmp_Admin_Data_Pick_LineCounts
-                SELECT MAX(SL_LINE),LTrim(SL_PICK), LTrim(SL_ORDER), LTrim(SL_PSLIP),TP.vDateDesp, TP.vPackages,TP.vWeight,TP.vST_XX_NUM_PAL_SW,TP.vST_XX_NUM_PALLETS,TP.vST_XX_NUM_CARTONS,NULL,NULL,NULL,NULL
-                FROM Tmp_Admin_Data_Pickslips TP RIGHT JOIN SL ON LTrim(SL_PICK) = TP.vPickslip
-                WHERE SL_EDIT_DATE >= :start_date AND SL_EDIT_DATE <= :end_date
-                AND SL_PSLIP != 'CANCELLED'
+      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+         /* Truncate all temp tables*/
+      
+        nCheckpoint := 1;
+        v_query := 'TRUNCATE TABLE Tmp_Admin_Data_BreakPrices';
+        EXECUTE IMMEDIATE v_query;
+    
+        nCheckpoint := 3;
+        v_query := 'TRUNCATE TABLE Tmp_Admin_Data_Pickslips';
+        EXECUTE IMMEDIATE	v_query;
+    
+        nCheckpoint := 4;
+        v_query := 'TRUNCATE TABLE Tmp_Admin_Data_Pick_LineCounts';
+        EXECUTE IMMEDIATE v_query;
+    
+        nCheckpoint := 5;
+        --v_query := 'TRUNCATE TABLE Tmp_Batch_Price_SL_Stock';
+        --EXECUTE IMMEDIATE v_query;
+        
+        nCheckpoint := 11;
+        EXECUTE IMMEDIATE 'INSERT INTO Dev_Admin_Data_BreakPrices
+                  SELECT II_STOCK,II_CUST,II_BREAK_LCL,NULL,NULL,NULL,NULL
+                  FROM II INNER JOIN IM ON IM_STOCK = II_STOCK
+                  AND II_BREAK_LCL > 0.000001';
+    
+        nCheckpoint := 12;
+        v_query := q'{INSERT INTO Dev_Admin_Data_Pickslips
+                  SELECT LTrim(ST_PICK),LTrim(ST_PSLIP), substr(To_Char(ST_DESP_DATE),0,10), ST_WEIGHT, ST_PACKAGES,ST_XX_NUM_PAL_SW,ST_XX_NUM_PALLETS,ST_XX_NUM_CARTONS,NULL,NULL,NULL,NULL
+                  FROM ST LEFT JOIN SH ON SH_ORDER = ST_ORDER
+                  WHERE ST_DESP_DATE >= :start_date AND ST_DESP_DATE <= :end_date
+                  AND ST_PSLIP != 'CANCELLED'
+                  AND SH_STATUS <> 3}';
+        EXECUTE IMMEDIATE v_query USING start_date,end_date;
+        nCheckpoint := 13;
+        v_query := q'{INSERT INTO Dev_Admin_Data_Pick_LineCounts
+                  SELECT MAX(SL_LINE),LTrim(SL_PICK), LTrim(SL_ORDER), LTrim(SL_PSLIP),TP.vDateDesp, TP.vPackages,TP.vWeight,TP.vST_XX_NUM_PAL_SW,TP.vST_XX_NUM_PALLETS,TP.vST_XX_NUM_CARTONS,NULL,NULL,NULL,NULL
+                  FROM Tmp_Admin_Data_Pickslips TP RIGHT JOIN SL ON LTrim(SL_PICK) = TP.vPickslip
+                  WHERE SL_EDIT_DATE >= :start_date AND SL_EDIT_DATE <= :end_date
+                  AND SL_PSLIP != 'CANCELLED'
+                  GROUP BY SL_PICK,SL_ORDER,SL_PSLIP,TP.vDateDesp,TP.vPackages,TP.vWeight,TP.vST_XX_NUM_PAL_SW,TP.vST_XX_NUM_PALLETS,TP.vST_XX_NUM_CARTONS}';
+          EXECUTE IMMEDIATE v_query USING start_date,end_date;
+      Else
+         /* Truncate all temp tables*/
+      
+        nCheckpoint := 1;
+        v_query := 'TRUNCATE TABLE Tmp_Admin_Data_BreakPrices';
+        EXECUTE IMMEDIATE v_query;
+    
+        nCheckpoint := 3;
+        v_query := 'TRUNCATE TABLE Tmp_Admin_Data_Pickslips';
+        EXECUTE IMMEDIATE	v_query;
+    
+        nCheckpoint := 4;
+        v_query := 'TRUNCATE TABLE Tmp_Admin_Data_Pick_LineCounts';
+        EXECUTE IMMEDIATE v_query;
+    
+        nCheckpoint := 5;
+      --v_query := 'TRUNCATE TABLE Tmp_Batch_Price_SL_Stock';
+      --EXECUTE IMMEDIATE v_query;
+        nCheckpoint := 11;
+        EXECUTE IMMEDIATE 'INSERT INTO Tmp_Admin_Data_BreakPrices
+                  SELECT II_STOCK,II_CUST,II_BREAK_LCL,NULL,NULL,NULL,NULL
+                  FROM II INNER JOIN IM ON IM_STOCK = II_STOCK
+                  AND II_BREAK_LCL > 0.000001';
+    
+        nCheckpoint := 12;
+        v_query := q'{INSERT INTO Tmp_Admin_Data_Pickslips
+                  SELECT LTrim(ST_PICK),LTrim(ST_PSLIP), substr(To_Char(ST_DESP_DATE),0,10), ST_WEIGHT, ST_PACKAGES,ST_XX_NUM_PAL_SW,ST_XX_NUM_PALLETS,ST_XX_NUM_CARTONS,NULL,NULL,NULL,NULL
+                  FROM ST LEFT JOIN SH ON SH_ORDER = ST_ORDER
+                  WHERE ST_DESP_DATE >= :start_date AND ST_DESP_DATE <= :end_date
+                  AND ST_PSLIP != 'CANCELLED'
+                  AND SH_STATUS <> 3}';
+        EXECUTE IMMEDIATE v_query USING start_date,end_date;
+        nCheckpoint := 13;
+        v_query := q'{INSERT INTO Tmp_Admin_Data_Pick_LineCounts
+                  SELECT MAX(SL_LINE),LTrim(SL_PICK), LTrim(SL_ORDER), LTrim(SL_PSLIP),TP.vDateDesp, TP.vPackages,TP.vWeight,TP.vST_XX_NUM_PAL_SW,TP.vST_XX_NUM_PALLETS,TP.vST_XX_NUM_CARTONS,NULL,NULL,NULL,NULL
+                  FROM Tmp_Admin_Data_Pickslips TP RIGHT JOIN SL ON LTrim(SL_PICK) = TP.vPickslip
+                  WHERE SL_EDIT_DATE >= :start_date AND SL_EDIT_DATE <= :end_date
+                  AND SL_PSLIP != 'CANCELLED'
                 GROUP BY SL_PICK,SL_ORDER,SL_PSLIP,TP.vDateDesp,TP.vPackages,TP.vWeight,TP.vST_XX_NUM_PAL_SW,TP.vST_XX_NUM_PALLETS,TP.vST_XX_NUM_CARTONS}';
         EXECUTE IMMEDIATE v_query USING start_date,end_date;
+      End If;
       /*nCheckpoint := 14;
       v_query := q'{INSERT INTO Tmp_Batch_Price_SL_Stock(vBatchStock,vBatchPickNum,vUnitPrice,vDExcl, vQuantity)
               SELECT nz.NI_STOCK, LTrim(RTrim(nz.NI_SL_PSLIP)), CAST((NX_SELL_VALUE/NX_QUANTITY) AS DECIMAL(22,2)) AS "UnitPrice", CAST(xz.NX_SELL_VALUE AS DECIMAL(22,2)), xz.NX_QUANTITY
@@ -225,12 +285,14 @@
               GROUP BY nz.NI_STOCK, nz.NI_SL_PSLIP, xz.NX_SELL_VALUE, xz.NX_QUANTITY}';
       EXECUTE IMMEDIATE v_query USING p_NE_NV_EXT_TYPE, p_NE_STRENGTH, p_NI_AVAIL_ACTUAL, start_date;*/
   
-     v_query2 :=  SQL%ROWCOUNT;
+      v_query2 :=  SQL%ROWCOUNT;
        ----DBMS_OUTPUT.PUT_LINE('B_EOM_START_RUN_ONCE_DATA for date range ' || start_date || ' -- ' || end_date || 'for customer '|| sCust || ' - There was ' || v_query2 || ' records inserted in ' ||  (round((dbms_utility.get_time-l_start)/100, 6) ||
        -- ' Seconds...' ));
-       v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
+      v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
       EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,start_date,end_date,'B_EOM_START_RUN_ONCE_DATA','ST/SL','TMP_ADMIN_DATA_PICK_LINECOUNTS',v_time_taken,SYSTIMESTAMP,NULL);
-  
+      --EOM_INSERT_LOG(SYSTIMESTAMP ,NULL,NULL,'A_EOM_GROUP_CUST','RM','Tmp_Group_Cust2',v_time_taken,SYSTIMESTAMP,NULL,sOp);
+      --EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'ZZ_EOM_CUST_QRY_ALL_TMP','FORMATTING','TMP_ALL_FEES',v_time_taken,SYSTIMESTAMP,NULL);
+     
       --DBMS_OUTPUT.PUT_LINE('B_EOM_START_RUN_ONCE_DATA for the date range '
       --|| start_date || ' -- ' || end_date || ' - ' || v_query2
       --|| ' records inserted in ' ||  (round((dbms_utility.get_time-l_start)/100, 6)
@@ -246,7 +308,7 @@
                             ' with error ' || SQLCODE || ' : ' || SQLERRM);
         RAISE;
     END B_EOM_START_RUN_ONCE_DATA;
-
+    
     /*   C Run this once for each customer   */
     /*   This gets all the storage data   */
     /*   Temp Tables Used   */
@@ -258,6 +320,7 @@
       (
        sAnalysis IN RM.RM_ANAL%TYPE
        ,sCust IN RM.RM_CUST%TYPE
+       ,sOp IN VARCHAR2
       )
     AS
       v_time_taken VARCHAR2(205);
@@ -277,7 +340,8 @@
   
     BEGIN
      nCheckpoint := 15;
-      v_query := q'{INSERT INTO Tmp_Locn_Cnt_By_Cust
+     If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      v_query := q'{INSERT INTO Dev_Locn_Cnt_By_Cust
               SELECT Count(DISTINCT NI_STOCK) AS CountOfStocks, IL_LOCN, r.sGroupCust,
                         CASE WHEN Upper(substr(IL_NOTE_2,0,1)) = 'Y' THEN 'E- Pallets'
                           ELSE 'F- Shelves'
@@ -289,6 +353,20 @@
               AND NI_AVAIL_ACTUAL >= 1
               AND NI_STATUS <> 3
               GROUP BY r.sGroupCust,IL_LOCN, IM_CUST,IL_NOTE_2}';
+    Else
+       v_query := q'{INSERT INTO Tmp_Locn_Cnt_By_Cust
+              SELECT Count(DISTINCT NI_STOCK) AS CountOfStocks, IL_LOCN, r.sGroupCust,
+                        CASE WHEN Upper(substr(IL_NOTE_2,0,1)) = 'Y' THEN 'E- Pallets'
+                          ELSE 'F- Shelves'
+                          END AS "Note",NULL,NULL,NULL,NULL
+              FROM IL INNER JOIN NI  ON IL_LOCN = NI_LOCN
+              INNER JOIN IM ON IM_STOCK = NI_STOCK
+              LEFT JOIN Tmp_Group_Cust r ON r.sCust = IM_CUST
+              WHERE IM_ACTIVE = 1
+              AND NI_AVAIL_ACTUAL >= 1
+              AND NI_STATUS <> 3
+              GROUP BY r.sGroupCust,IL_LOCN, IM_CUST,IL_NOTE_2}';
+    End If;
       --If F_IS_TABLE_EEMPTY('Tmp_Locn_Cnt_By_Cust') <= 0 Then
         EXECUTE IMMEDIATE v_query;-- USING p_IM_ACTIVE,p_NI_AVAIL_ACTUAL,p_NI_STATUS;
       --Else
@@ -298,15 +376,29 @@
       RETURN;
       v_query2 :=  SQL%ROWCOUNT;
       COMMIT;
-      If F_IS_TABLE_EEMPTY('Tmp_Locn_Cnt_By_Cust') <= 0 Then
+      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If F_IS_TABLE_EEMPTY('Dev_Locn_Cnt_By_Cust') <= 0 Then
+       
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-        EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'C_EOM_START_ALL_TEMP_STOR_DATA','IL/NI','Tmp_Locn_Cnt_By_Cust',v_time_taken,SYSTIMESTAMP,NULL);
+        EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'C_EOM_START_ALL_TEMP_STOR_DATA','IL/NI','Dev_Locn_Cnt_By_Cust',v_time_taken,SYSTIMESTAMP,NULL);
         --DBMS_OUTPUT.PUT_LINE('C_EOM_START_ALL_TEMP_STOR_DATA for the date range '
         --|| F_FIRST_DAY_PREV_MONTH || ' -- ' || F_LAST_DAY_PREV_MONTH || ' - ' || v_query2
-       -- || ' records inserted in ' ||  (round((dbms_utility.get_time-l_start)/100, 6)
+        -- || ' records inserted in ' ||  (round((dbms_utility.get_time-l_start)/100, 6)
         --|| ' Seconds...for customer ' || sCust));
-      --Else
+        --Else
         --DBMS_OUTPUT.PUT_LINE('C_EOM_START_ALL_TEMP_STOR_DATA rates are not empty - but there was no data, still took ' || (round((dbms_utility.get_time-l_start)/100, 6)));
+        End If;
+      Else 
+        If F_IS_TABLE_EEMPTY('Tmp_Locn_Cnt_By_Cust') <= 0 Then
+          v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
+          EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'C_EOM_START_ALL_TEMP_STOR_DATA','IL/NI','Tmp_Locn_Cnt_By_Cust',v_time_taken,SYSTIMESTAMP,NULL);
+          --DBMS_OUTPUT.PUT_LINE('C_EOM_START_ALL_TEMP_STOR_DATA for the date range '
+          --|| F_FIRST_DAY_PREV_MONTH || ' -- ' || F_LAST_DAY_PREV_MONTH || ' - ' || v_query2
+         -- || ' records inserted in ' ||  (round((dbms_utility.get_time-l_start)/100, 6)
+          --|| ' Seconds...for customer ' || sCust));
+        --Else
+          --DBMS_OUTPUT.PUT_LINE('C_EOM_START_ALL_TEMP_STOR_DATA rates are not empty - but there was no data, still took ' || (round((dbms_utility.get_time-l_start)/100, 6)));
+        End If;
       End If;
   
     EXCEPTION
@@ -324,9 +416,14 @@
         p_array_size IN PLS_INTEGER DEFAULT 100
         ,startdate IN VARCHAR2-- := To_Date('1-Jun-2015') or format date as 01-Jun-15 -- use this when you want the date entered automatically
         ,enddate IN VARCHAR2-- := To_Date('30-Jun-2015')
+        ,sOp IN VARCHAR2
       )
       IS    
-      TYPE ARRAY IS TABLE OF TMP_ALL_FREIGHT_ALL%ROWTYPE;
+      --If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      --  TYPE ARRAY IS TABLE OF DEV_ALL_FREIGHT_ALL%ROWTYPE;
+     -- Else
+        TYPE ARRAY IS TABLE OF TMP_ALL_FREIGHT_ALL%ROWTYPE;
+     -- End If;
       l_data ARRAY;
       v_out_tx          VARCHAR2(2000);
       SQLQuery   VARCHAR2(6000);
@@ -517,12 +614,15 @@
         l_start number default dbms_utility.get_time;   
      BEGIN
         v_run_datetime := '';
-        nCheckpoint := 1;
-          v_query := 'TRUNCATE TABLE TMP_ALL_FREIGHT_ALL';
-          EXECUTE IMMEDIATE v_query;
-          COMMIT;
+       -- nCheckpoint := 1;
+         
         
         nCheckpoint := 2;
+        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          v_query := 'TRUNCATE TABLE DEV_ALL_FREIGHT_ALL';
+          EXECUTE IMMEDIATE v_query;
+          COMMIT;
+          
           OPEN c;
           ----DBMS_OUTPUT.PUT_LINE(?? || '.' );
           LOOP
@@ -530,6 +630,30 @@
   
           FORALL i IN 1..l_data.COUNT
           ----DBMS_OUTPUT.PUT_LINE(l_data(10) || '.' );
+          
+          INSERT INTO DEV_ALL_FREIGHT_ALL VALUES l_data(i);
+          --USING sCust;
+          EXIT WHEN c%NOTFOUND;
+  
+          END LOOP;
+          ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+          CLOSE c;
+         --FOR i IN l_data.FIRST .. l_data.LAST LOOP
+          ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).unitprice || '.' );
+         --END LOOP;
+        Else
+          v_query := 'TRUNCATE TABLE TMP_ALL_FREIGHT_ALL';
+          EXECUTE IMMEDIATE v_query;
+          COMMIT;
+          
+          OPEN c;
+          ----DBMS_OUTPUT.PUT_LINE(?? || '.' );
+          LOOP
+          FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
+  
+          FORALL i IN 1..l_data.COUNT
+          ----DBMS_OUTPUT.PUT_LINE(l_data(10) || '.' );
+          
           INSERT INTO TMP_ALL_FREIGHT_ALL VALUES l_data(i);
           --USING sCust;
           EXIT WHEN c%NOTFOUND;
@@ -540,6 +664,7 @@
          --FOR i IN l_data.FIRST .. l_data.LAST LOOP
           ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).unitprice || '.' );
          --END LOOP;
+        End If;
         v_query2 :=  SQL%ROWCOUNT;
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
       COMMIT;
@@ -573,6 +698,7 @@
         ,enddate IN VARCHAR2-- := To_Date('30-Jun-2015')
         ,sCustomerCode IN VARCHAR2
         ,sFilterBy IN VARCHAR2
+        ,sOp IN VARCHAR2
       )
       IS
       TYPE ARRAY IS TABLE OF TMP_V_FREIGHT%ROWTYPE;
@@ -739,13 +865,39 @@
       l_start number default dbms_utility.get_time;
       BEGIN
   
-      nCheckpoint := 1;
-        v_query := 'TRUNCATE TABLE TMP_V_FREIGHT';
-        EXECUTE IMMEDIATE v_query;
-      COMMIT;
+     -- nCheckpoint := 1;
+      
       ----DBMS_OUTPUT.PUT_LINE('AA EOM Temp Freight table truncated '
       --  || start_date || ' -- ' || end_date);
       nCheckpoint := 2;
+      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        v_query := 'TRUNCATE TABLE DEV_V_FREIGHT';
+        EXECUTE IMMEDIATE v_query;
+        COMMIT;
+      
+          OPEN c;
+          ----DBMS_OUTPUT.PUT_LINE(sShary || '.' );
+          LOOP
+          FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
+  
+          FORALL i IN 1..l_data.COUNT
+          ----DBMS_OUTPUT.PUT_LINE(l_data(10) || '.' );
+          INSERT INTO DEV_V_FREIGHT VALUES l_data(i);
+          --USING sCust;
+  
+          EXIT WHEN c%NOTFOUND;
+  
+          END LOOP;
+          ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+          CLOSE c;
+         --FOR i IN l_data.FIRST .. l_data.LAST LOOP
+          ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+        --END LOOP;
+      Else
+          v_query := 'TRUNCATE TABLE TMP_V_FREIGHT';
+          EXECUTE IMMEDIATE v_query;
+          COMMIT;
+        
           OPEN c;
           ----DBMS_OUTPUT.PUT_LINE(sShary || '.' );
           LOOP
@@ -764,6 +916,7 @@
          --FOR i IN l_data.FIRST .. l_data.LAST LOOP
           ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
         --END LOOP;
+      End If;
     v_query2 :=  SQL%ROWCOUNT;
     COMMIT;
   
@@ -796,6 +949,7 @@
         ,enddate IN VARCHAR2-- := To_Date('30-Jun-2015')
         ,sCustomerCode IN VARCHAR2
         ,sFilterBy IN VARCHAR2
+        ,sOp IN VARCHAR2
       )
       IS
       TYPE ARRAY IS TABLE OF TMP_ALL_FREIGHT_F%ROWTYPE;
@@ -821,136 +975,244 @@
         /*All freight fees by Parent*/
         select  *
         FROM  TMP_ALL_FREIGHT_ALL t
-        WHERE t.parent = sCustomerCode; --AND trim(FEETYPE) != 'Freight Fee';
+        WHERE ROWID IN ( SELECT MAX(ROWID) FROM TMP_ALL_FREIGHT_ALL GROUP BY description )
+        AND t.parent = sCustomerCode; --AND trim(FEETYPE) != 'Freight Fee';
       
         CURSOR c2        
         IS       
         /*All freight fees by RM_DBL_2*/
         select  *
         FROM  TMP_ALL_FREIGHT_ALL t
-        WHERE t.NILOCN = sCustomerCode;
+        WHERE ROWID IN ( SELECT MAX(ROWID) FROM TMP_ALL_FREIGHT_ALL GROUP BY description )
+        AND t.NILOCN = sCustomerCode;
      
         CURSOR c3        
         IS       
         /*All freight fees by territory*/
-        select  *
+        select DISTINCT *
         FROM  TMP_ALL_FREIGHT_ALL t
-        WHERE t.OWNEDBY = sCustomerCode;
+        WHERE ROWID IN ( SELECT MAX(ROWID) FROM TMP_ALL_FREIGHT_ALL GROUP BY description )
+        AND t.OWNEDBY = sCustomerCode;
       
         CURSOR c4        
         IS       
         /*All freight fees by area*/
         select  *
         FROM  TMP_ALL_FREIGHT_ALL t
-        WHERE t.ILNOTE2 = sCustomerCode;
+        WHERE ROWID IN ( SELECT MAX(ROWID) FROM TMP_ALL_FREIGHT_ALL GROUP BY description )
+        AND t.ILNOTE2 = sCustomerCode;
        
       nbreakpoint   NUMBER;
       l_start number default dbms_utility.get_time;
       BEGIN
       
-      nCheckpoint := 1;
-        v_query := 'TRUNCATE TABLE TMP_ALL_FREIGHT_F';
-        EXECUTE IMMEDIATE v_query;
-      COMMIT;
+      --nCheckpoint := 1;
+      
       ----DBMS_OUTPUT.PUT_LINE('AA EOM Temp Freight table truncated '
       --  || start_date || ' -- ' || end_date);
       nCheckpoint := 2;
-      If sFilterBy = 'PARENT'
-      then
-         OPEN c1;
-          ----DBMS_OUTPUT.PUT_LINE(sShary || '.' );
-          LOOP
-          FETCH c1 BULK COLLECT INTO l_data LIMIT p_array_size;
-  
-          FORALL i IN 1..l_data.COUNT
-          ----DBMS_OUTPUT.PUT_LINE(l_data(10) || '.' );
-          INSERT INTO TMP_ALL_FREIGHT_F VALUES l_data(i);
-          --USING sCust;
-  
-          EXIT WHEN c1%NOTFOUND;
-  
-          END LOOP;
-          ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-          CLOSE c1;
-          v_query2 :=  SQL%ROWCOUNT;
-      ELSIF sFilterBy = 'RMDBL'
-      then
-       OPEN c2;
-          ----DBMS_OUTPUT.PUT_LINE(sShary || '.' );
-          LOOP
-          FETCH c2 BULK COLLECT INTO l_data LIMIT p_array_size;
-  
-          FORALL i IN 1..l_data.COUNT
-          ----DBMS_OUTPUT.PUT_LINE(l_data(10) || '.' );
-          INSERT INTO TMP_ALL_FREIGHT_F VALUES l_data(i);
-          --USING sCust;
-  
-          EXIT WHEN c2%NOTFOUND;
-  
-          END LOOP;
-          ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-          CLOSE c2;
-          v_query2 :=  SQL%ROWCOUNT;
-      ELSIF sFilterBy = 'TERR'
-      then
-       OPEN c3;
-          ----DBMS_OUTPUT.PUT_LINE(sShary || '.' );
-          LOOP
-          FETCH c3 BULK COLLECT INTO l_data LIMIT p_array_size;
-  
-          FORALL i IN 1..l_data.COUNT
-          ----DBMS_OUTPUT.PUT_LINE(l_data(10) || '.' );
-          INSERT INTO TMP_ALL_FREIGHT_F VALUES l_data(i);
-          --USING sCust;
-  
-          EXIT WHEN c3%NOTFOUND;
-  
-          END LOOP;
-          ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-          CLOSE c3;
-          v_query2 :=  SQL%ROWCOUNT;
-      ELSIF sFilterBy = 'AREA'
-      then
-        OPEN c4;
-          ----DBMS_OUTPUT.PUT_LINE(sShary || '.' );
-          LOOP
-          FETCH c4 BULK COLLECT INTO l_data LIMIT p_array_size;
-  
-          FORALL i IN 1..l_data.COUNT
-          ----DBMS_OUTPUT.PUT_LINE(l_data(10) || '.' );
-          INSERT INTO TMP_ALL_FREIGHT_F VALUES l_data(i);
-          --USING sCust;
-  
-          EXIT WHEN c4%NOTFOUND;
-  
-          END LOOP;
-          ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-          CLOSE c4;
-          v_query2 :=  SQL%ROWCOUNT;
-    ELSE  
-      
-      nCheckpoint := 2;
-          OPEN c1;
-          ----DBMS_OUTPUT.PUT_LINE(sShary || '.' );
-          LOOP
-          FETCH c1 BULK COLLECT INTO l_data LIMIT p_array_size;
-  
-          FORALL i IN 1..l_data.COUNT
-          ----DBMS_OUTPUT.PUT_LINE(l_data(10) || '.' );
-          INSERT INTO TMP_ALL_FREIGHT_F VALUES l_data(i);
-          --USING sCust;
-  
-          EXIT WHEN c1%NOTFOUND;
-  
-          END LOOP;
-          ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-          CLOSE c1;
-         --FOR i IN l_data.FIRST .. l_data.LAST LOOP
-          ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-        --END LOOP;
-        v_query2 :=  SQL%ROWCOUNT;
-     END IF; 
+      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        v_query := 'TRUNCATE TABLE DEV_ALL_FREIGHT_F';
+        EXECUTE IMMEDIATE v_query;
+        COMMIT;
+        
+        If sFilterBy = 'PARENT' 
+        then
+           OPEN c1;
+            ----DBMS_OUTPUT.PUT_LINE(sShary || '.' );
+            LOOP
+            FETCH c1 BULK COLLECT INTO l_data LIMIT p_array_size;
     
+            FORALL i IN 1..l_data.COUNT
+            ----DBMS_OUTPUT.PUT_LINE(l_data(10) || '.' );
+            INSERT INTO DEV_ALL_FREIGHT_F VALUES l_data(i);
+            --USING sCust;
+    
+            EXIT WHEN c1%NOTFOUND;
+    
+            END LOOP;
+            ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+            CLOSE c1;
+            v_query2 :=  SQL%ROWCOUNT;
+        ELSIF sFilterBy = 'RMDBL'
+        then
+         OPEN c2;
+            ----DBMS_OUTPUT.PUT_LINE(sShary || '.' );
+            LOOP
+            FETCH c2 BULK COLLECT INTO l_data LIMIT p_array_size;
+    
+            FORALL i IN 1..l_data.COUNT
+            ----DBMS_OUTPUT.PUT_LINE(l_data(10) || '.' );
+            INSERT INTO DEV_ALL_FREIGHT_F VALUES l_data(i);
+            --USING sCust;
+    
+            EXIT WHEN c2%NOTFOUND;
+    
+            END LOOP;
+            ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+            CLOSE c2;
+            v_query2 :=  SQL%ROWCOUNT;
+        ELSIF sFilterBy = 'TERR'
+        then
+         OPEN c3;
+            ----DBMS_OUTPUT.PUT_LINE(sShary || '.' );
+            LOOP
+            FETCH c3 BULK COLLECT INTO l_data LIMIT p_array_size;
+    
+            FORALL i IN 1..l_data.COUNT
+            ----DBMS_OUTPUT.PUT_LINE(l_data(10) || '.' );
+            INSERT INTO DEV_ALL_FREIGHT_F VALUES l_data(i);
+            --USING sCust;
+    
+            EXIT WHEN c3%NOTFOUND;
+    
+            END LOOP;
+            ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+            CLOSE c3;
+            v_query2 :=  SQL%ROWCOUNT;
+        ELSIF sFilterBy = 'AREA'
+        then
+          OPEN c4;
+            ----DBMS_OUTPUT.PUT_LINE(sShary || '.' );
+            LOOP
+            FETCH c4 BULK COLLECT INTO l_data LIMIT p_array_size;
+    
+            FORALL i IN 1..l_data.COUNT
+            ----DBMS_OUTPUT.PUT_LINE(l_data(10) || '.' );
+            INSERT INTO DEV_ALL_FREIGHT_F VALUES l_data(i);
+            --USING sCust;
+    
+            EXIT WHEN c4%NOTFOUND;
+    
+            END LOOP;
+            ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+            CLOSE c4;
+            v_query2 :=  SQL%ROWCOUNT;
+      ELSE  
+        
+        nCheckpoint := 2;
+         
+      
+            OPEN c1;
+            ----DBMS_OUTPUT.PUT_LINE(sShary || '.' );
+            LOOP
+            FETCH c1 BULK COLLECT INTO l_data LIMIT p_array_size;
+    
+            FORALL i IN 1..l_data.COUNT
+            ----DBMS_OUTPUT.PUT_LINE(l_data(10) || '.' );
+            INSERT INTO TMP_ALL_FREIGHT_F VALUES l_data(i);
+            --USING sCust;
+    
+            EXIT WHEN c1%NOTFOUND;
+    
+            END LOOP;
+            ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+            CLOSE c1;
+           --FOR i IN l_data.FIRST .. l_data.LAST LOOP
+            ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+          --END LOOP;
+          v_query2 :=  SQL%ROWCOUNT;
+       END IF; 
+    Else
+         v_query := 'TRUNCATE TABLE TMP_ALL_FREIGHT_F';
+          EXECUTE IMMEDIATE v_query;
+          COMMIT;
+        If sFilterBy = 'PARENT' 
+        then
+           OPEN c1;
+            ----DBMS_OUTPUT.PUT_LINE(sShary || '.' );
+            LOOP
+            FETCH c1 BULK COLLECT INTO l_data LIMIT p_array_size;
+    
+            FORALL i IN 1..l_data.COUNT
+            ----DBMS_OUTPUT.PUT_LINE(l_data(10) || '.' );
+            INSERT INTO TMP_ALL_FREIGHT_F VALUES l_data(i);
+            --USING sCust;
+    
+            EXIT WHEN c1%NOTFOUND;
+    
+            END LOOP;
+            ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+            CLOSE c1;
+            v_query2 :=  SQL%ROWCOUNT;
+        ELSIF sFilterBy = 'RMDBL'
+        then
+         OPEN c2;
+            ----DBMS_OUTPUT.PUT_LINE(sShary || '.' );
+            LOOP
+            FETCH c2 BULK COLLECT INTO l_data LIMIT p_array_size;
+    
+            FORALL i IN 1..l_data.COUNT
+            ----DBMS_OUTPUT.PUT_LINE(l_data(10) || '.' );
+            INSERT INTO TMP_ALL_FREIGHT_F VALUES l_data(i);
+            --USING sCust;
+    
+            EXIT WHEN c2%NOTFOUND;
+    
+            END LOOP;
+            ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+            CLOSE c2;
+            v_query2 :=  SQL%ROWCOUNT;
+        ELSIF sFilterBy = 'TERR'
+        then
+         OPEN c3;
+            ----DBMS_OUTPUT.PUT_LINE(sShary || '.' );
+            LOOP
+            FETCH c3 BULK COLLECT INTO l_data LIMIT p_array_size;
+    
+            FORALL i IN 1..l_data.COUNT
+            ----DBMS_OUTPUT.PUT_LINE(l_data(10) || '.' );
+            INSERT INTO TMP_ALL_FREIGHT_F VALUES l_data(i);
+            --USING sCust;
+    
+            EXIT WHEN c3%NOTFOUND;
+    
+            END LOOP;
+            ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+            CLOSE c3;
+            v_query2 :=  SQL%ROWCOUNT;
+        ELSIF sFilterBy = 'AREA'
+        then
+          OPEN c4;
+            ----DBMS_OUTPUT.PUT_LINE(sShary || '.' );
+            LOOP
+            FETCH c4 BULK COLLECT INTO l_data LIMIT p_array_size;
+    
+            FORALL i IN 1..l_data.COUNT
+            ----DBMS_OUTPUT.PUT_LINE(l_data(10) || '.' );
+            INSERT INTO TMP_ALL_FREIGHT_F VALUES l_data(i);
+            --USING sCust;
+    
+            EXIT WHEN c4%NOTFOUND;
+    
+            END LOOP;
+            ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+            CLOSE c4;
+            v_query2 :=  SQL%ROWCOUNT;
+      ELSE  
+        
+        nCheckpoint := 2;
+            OPEN c1;
+            ----DBMS_OUTPUT.PUT_LINE(sShary || '.' );
+            LOOP
+            FETCH c1 BULK COLLECT INTO l_data LIMIT p_array_size;
+    
+            FORALL i IN 1..l_data.COUNT
+            ----DBMS_OUTPUT.PUT_LINE(l_data(10) || '.' );
+            INSERT INTO TMP_ALL_FREIGHT_F VALUES l_data(i);
+            --USING sCust;
+    
+            EXIT WHEN c1%NOTFOUND;
+    
+            END LOOP;
+            ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+            CLOSE c1;
+           --FOR i IN l_data.FIRST .. l_data.LAST LOOP
+            ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+          --END LOOP;
+          v_query2 :=  SQL%ROWCOUNT;
+       END IF; 
+    End if;
     COMMIT;
   
       IF v_query2 > 0 THEN
@@ -960,7 +1222,7 @@
           EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'F8_Z_EOM_RUN_FREIGHT','TMP_ALL_FREIGHT_ALL','TMP_ALL_FREIGHT_F',v_time_taken,SYSTIMESTAMP,sCustomerCode);
           sFileName := sCustomerCode || '-F8_Z_EOM_RUN_FREIGHT-' || startdate || '-TO-' || enddate || '-RunOn-' || sFileTime || '.csv';
         
-          Z2_TMP_FEES_TO_CSV(sFileName,'TMP_ALL_FREIGHT_F');
+          Z2_TMP_FEES_TO_CSV(sFileName,'TMP_ALL_FREIGHT_F',sOp);
           --DBMS_OUTPUT.PUT_LINE('Z2_TMP_FEES_TO_CSV for ' || sFileName || '.' );
         --End If;
         DBMS_OUTPUT.PUT_LINE('F8_Z_EOM_RUN_FREIGHT for the date range '
@@ -978,7 +1240,7 @@
   
         RAISE;
     END F8_Z_EOM_RUN_FREIGHT;
-    
+   
     /*   H1_EOM_STD_STOR_FEES Run this once for each customer   */
     /*   This gets all the Std Storage Related Data   */
     /*   Temp Tables Used   */
@@ -991,6 +1253,7 @@
         ,enddate IN VARCHAR2-- := To_Date('30-Jun-2015')
         ,sCustomerCode IN VARCHAR2
         ,sAnalysis IN RM.RM_ANAL%TYPE
+        ,sOp IN VARCHAR2
       )
       IS
       TYPE ARRAY IS TABLE OF TMP_STOR_ALL_FEES%ROWTYPE;
@@ -1004,10 +1267,10 @@
       nbreakpoint   NUMBER;
       sFileName VARCHAR2(560);
       sFileTime VARCHAR2(56)  := TO_CHAR(SYSDATE,'YYYYMMDD HH24MISS');
-       CURSOR c
+      CURSOR c
       IS
     /* EOM Storage Fees */
-    select IM_CUST AS "Customer",
+      select IM_CUST AS "Customer",
       r.sGroupCust AS "Parent",
       IM_XX_COST_CENTRE01     AS "CostCentre",
       NULL               AS "Order",
@@ -1145,50 +1408,92 @@
     
     
     nCheckpoint := 11;
-    v_query := 'TRUNCATE TABLE TMP_STOR_ALL_FEES';
-    EXECUTE IMMEDIATE v_query;
+    
             
     
+    nCheckpoint := 2;      
+    If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          v_query := 'TRUNCATE TABLE DEV_STOR_ALL_FEES';
+          EXECUTE IMMEDIATE v_query;
           
-  
-          nCheckpoint := 2;
-              OPEN c;
-              ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
-              LOOP
-              FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
-  
-              FORALL i IN 1..l_data.COUNT
-              ----DBMS_OUTPUT.PUT_LINE(i || '.' );
-              INSERT INTO TMP_STOR_ALL_FEES VALUES l_data(i);
-              --USING sCust;
-  
-              EXIT WHEN c%NOTFOUND;
-  
-              END LOOP;
-             -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-              CLOSE c;
-            -- FOR i IN l_data.FIRST .. l_data.LAST LOOP
-              ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-            --END LOOP;
+          OPEN c;
+          ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
+          LOOP
+          FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
+
+          FORALL i IN 1..l_data.COUNT
+          ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+          INSERT INTO DEV_STOR_ALL_FEES VALUES l_data(i);
+          --USING sCust;
+
+          EXIT WHEN c%NOTFOUND;
+
+          END LOOP;
+         -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+          CLOSE c;
+        -- FOR i IN l_data.FIRST .. l_data.LAST LOOP
+          ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+        --END LOOP;
+    Else
+        v_query := 'TRUNCATE TABLE TMP_STOR_ALL_FEES';
+        EXECUTE IMMEDIATE v_query;
+        
+        OPEN c;
+          ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
+          LOOP
+          FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
+
+          FORALL i IN 1..l_data.COUNT
+          ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+          INSERT INTO TMP_STOR_ALL_FEES VALUES l_data(i);
+          --USING sCust;
+
+          EXIT WHEN c%NOTFOUND;
+
+          END LOOP;
+         -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+          CLOSE c;
+        -- FOR i IN l_data.FIRST .. l_data.LAST LOOP
+          ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+        --END LOOP;
+    End If;
         v_query2 :=  SQL%ROWCOUNT;
         COMMIT;
-        If F_IS_TABLE_EEMPTY('TMP_STOR_ALL_FEES') > 0 Then
-  
-          v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-          EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'H4A_EOM_ALL_STOR_FEES','IL','TMP_STOR_ALL_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
-          sFileName := sCustomerCode || '-H4A_EOM_ALL_STOR_FEES-' || startdate || '-TO-' || enddate || '-RunOn-' || sFileTime ||  '.csv';
-          --Z2_TMP_FEES_TO_CSV(sFileName,'TMP_STOR_ALL_FEES');
-          ----DBMS_OUTPUT.PUT_LINE('Z2_TMP_FEES_TO_CSV for ' || sFileName || '.' );
-          --COMMIT;
-          --DBMS_OUTPUT.PUT_LINE('H4A_EOM_ALL_STOR_FEES Fees for the date range '
-              --|| startdate || ' -- ' || enddate || ' - ' || v_query2 || ' records inserted into table TMP_ALL_STOR_FEES in ' || (round((dbms_utility.get_time-l_start)/100, 6) ||
-             -- ' Seconds...for customer ' || sCustomerCode ));
+        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          If F_IS_TABLE_EEMPTY('DEV_STOR_ALL_FEES') > 0 Then
     
-        --Else
-          --DBMS_OUTPUT.PUT_LINE('H4A_EOM_ALL_STOR_FEES Std Shelf Storage Fees rates are not empty - but there was no data, still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) ||
-          --' Seconds...for customer ' || sCustomerCode);
-        END IF;
-  
+            v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
+            EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'H4A_EOM_ALL_STOR_FEES','IL','DEV_STOR_ALL_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+            sFileName := sCustomerCode || '-H4A_EOM_ALL_STOR_FEES-' || startdate || '-TO-' || enddate || '-RunOn-' || sFileTime ||  '.csv';
+            --Z2_TMP_FEES_TO_CSV(sFileName,'TMP_STOR_ALL_FEES');
+            ----DBMS_OUTPUT.PUT_LINE('Z2_TMP_FEES_TO_CSV for ' || sFileName || '.' );
+            --COMMIT;
+            --DBMS_OUTPUT.PUT_LINE('H4A_EOM_ALL_STOR_FEES Fees for the date range '
+                --|| startdate || ' -- ' || enddate || ' - ' || v_query2 || ' records inserted into table TMP_ALL_STOR_FEES in ' || (round((dbms_utility.get_time-l_start)/100, 6) ||
+               -- ' Seconds...for customer ' || sCustomerCode ));
+      
+          --Else
+            --DBMS_OUTPUT.PUT_LINE('H4A_EOM_ALL_STOR_FEES Std Shelf Storage Fees rates are not empty - but there was no data, still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) ||
+            --' Seconds...for customer ' || sCustomerCode);
+          END IF;
+        Else
+          If F_IS_TABLE_EEMPTY('TMP_STOR_ALL_FEES') > 0 Then
+    
+            v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
+            EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'H4A_EOM_ALL_STOR_FEES','IL','TMP_STOR_ALL_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+            sFileName := sCustomerCode || '-H4A_EOM_ALL_STOR_FEES-' || startdate || '-TO-' || enddate || '-RunOn-' || sFileTime ||  '.csv';
+            --Z2_TMP_FEES_TO_CSV(sFileName,'TMP_STOR_ALL_FEES');
+            ----DBMS_OUTPUT.PUT_LINE('Z2_TMP_FEES_TO_CSV for ' || sFileName || '.' );
+            --COMMIT;
+            --DBMS_OUTPUT.PUT_LINE('H4A_EOM_ALL_STOR_FEES Fees for the date range '
+                --|| startdate || ' -- ' || enddate || ' - ' || v_query2 || ' records inserted into table TMP_ALL_STOR_FEES in ' || (round((dbms_utility.get_time-l_start)/100, 6) ||
+               -- ' Seconds...for customer ' || sCustomerCode ));
+      
+          --Else
+            --DBMS_OUTPUT.PUT_LINE('H4A_EOM_ALL_STOR_FEES Std Shelf Storage Fees rates are not empty - but there was no data, still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) ||
+            --' Seconds...for customer ' || sCustomerCode);
+          END IF;
+        End If;
           --COMMIT;
           --palett
    
@@ -1214,6 +1519,7 @@
         ,sCustomerCode IN VARCHAR2
         ,sAnalysis IN RM.RM_ANAL%TYPE
         ,sFilterBy IN VARCHAR2
+        ,sOp IN VARCHAR2
       )
       IS
       TYPE ARRAY IS TABLE OF TMP_STOR_ALL_FEES%ROWTYPE;
@@ -1227,19 +1533,40 @@
       nbreakpoint   NUMBER;
       sFileName VARCHAR2(560);
       sFileTime VARCHAR2(56)  := TO_CHAR(SYSDATE,'YYYYMMDD HH24MISS');
-       CURSOR c
-        IS
+      
         /* EOM Storage Fees */
-        select *
-        FROM TMP_STOR_ALL_FEES t
-        WHERE  t.Customer = sCustomerCode OR t.parent = sCustomerCode;
-      CURSOR c2
-        IS
-        /* EOM Storage Fees */
-        select *
-        FROM TMP_STOR_ALL_FEES t
-        WHERE  t.Customer = sCustomerCode OR t.parent = sCustomerCode
-        OR t.Customer = 'CGU' OR t.parent = 'CGU';
+        --If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          CURSOR c
+          IS
+          select *
+          FROM DEV_STOR_ALL_FEES t
+          WHERE  t.Customer = sCustomerCode OR t.parent = sCustomerCode;
+          
+          CURSOR c1
+          IS
+          /* EOM Storage Fees */
+          select *
+          FROM DEV_STOR_ALL_FEES t
+          WHERE  t.Customer = sCustomerCode OR t.parent = sCustomerCode
+          OR t.Customer = 'CGU' OR t.parent = 'CGU';
+          
+       -- Else
+          CURSOR c2
+          IS
+          select *
+          FROM TMP_STOR_ALL_FEES t
+          WHERE  t.Customer = sCustomerCode OR t.parent = sCustomerCode;
+          
+          CURSOR c3
+          IS
+          /* EOM Storage Fees */
+          select *
+          FROM TMP_STOR_ALL_FEES t
+          WHERE  t.Customer = sCustomerCode OR t.parent = sCustomerCode
+          OR t.Customer = 'CGU' OR t.parent = 'CGU';
+          
+        --End If;
+     
       
    -- QueryTable VARCHAR2(600) := q'{SELECT To_Number(regexp_substr(RM_XX_FEE11,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = :sCustomerCode}';
     --sCust_Rates RM.RM_XX_FEE11%TYPE;
@@ -1250,35 +1577,60 @@
     
     
     
-    nCheckpoint := 11;
-    v_query := 'TRUNCATE TABLE TMP_STOR_FEES';
-    EXECUTE IMMEDIATE v_query;
+    --nCheckpoint := 11;
+    
             
     
           
   
           nCheckpoint := 2;
-          If (sCustomerCode != 'IAG') Then
-              OPEN c;
-              ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
-              LOOP
-              FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
-  
-              FORALL i IN 1..l_data.COUNT
-              ----DBMS_OUTPUT.PUT_LINE(i || '.' );
-              INSERT INTO TMP_STOR_FEES VALUES l_data(i);
-              --USING sCust;
-  
-              EXIT WHEN c%NOTFOUND;
-  
-              END LOOP;
-             -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-              CLOSE c;
-            -- FOR i IN l_data.FIRST .. l_data.LAST LOOP
-              ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-            --END LOOP;
+          If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+            v_query := 'TRUNCATE TABLE DEV_STOR_FEES';
+            EXECUTE IMMEDIATE v_query;
+            If (sCustomerCode != 'IAG') Then
+                OPEN c;
+                ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
+                LOOP
+                FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
+    
+                FORALL i IN 1..l_data.COUNT
+                ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+                INSERT INTO DEV_STOR_FEES VALUES l_data(i);
+                --USING sCust;
+    
+                EXIT WHEN c%NOTFOUND;
+    
+                END LOOP;
+               -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+                CLOSE c;
+              -- FOR i IN l_data.FIRST .. l_data.LAST LOOP
+                ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+              --END LOOP;
+              Else
+                 OPEN c1;
+                ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
+                LOOP
+                FETCH c1 BULK COLLECT INTO l_data LIMIT p_array_size;
+    
+                FORALL i IN 1..l_data.COUNT
+                ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+                INSERT INTO DEV_STOR_FEES VALUES l_data(i);
+                --USING sCust;
+    
+                EXIT WHEN c1%NOTFOUND;
+    
+                END LOOP;
+               -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+                CLOSE c1;
+              -- FOR i IN l_data.FIRST .. l_data.LAST LOOP
+                ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+              --END LOOP;
+              End If;
             Else
-               OPEN c2;
+              v_query := 'TRUNCATE TABLE TMP_STOR_FEES';
+              EXECUTE IMMEDIATE v_query;
+              If (sCustomerCode != 'IAG') Then
+              OPEN c2;
               ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
               LOOP
               FETCH c2 BULK COLLECT INTO l_data LIMIT p_array_size;
@@ -1296,28 +1648,68 @@
             -- FOR i IN l_data.FIRST .. l_data.LAST LOOP
               ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
             --END LOOP;
+            Else
+               OPEN c3;
+              ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
+              LOOP
+              FETCH c3 BULK COLLECT INTO l_data LIMIT p_array_size;
+  
+              FORALL i IN 1..l_data.COUNT
+              ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+              INSERT INTO TMP_STOR_FEES VALUES l_data(i);
+              --USING sCust;
+  
+              EXIT WHEN c3%NOTFOUND;
+  
+              END LOOP;
+             -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+              CLOSE c3;
+            -- FOR i IN l_data.FIRST .. l_data.LAST LOOP
+              ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+            --END LOOP;
             End If;
+          End If;
         v_query2 :=  SQL%ROWCOUNT;
         COMMIT;
-        If F_IS_TABLE_EEMPTY('TMP_STOR_FEES') > 0 Then
-        --add another quick data check to ensure the source data is ok
-  
-          v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-          EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'H4_EOM_ALL_STOR','IL','TMP_STOR_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
-          sFileName := sCustomerCode || '-H4_EOM_ALL_STOR-' || startdate || '-TO-' || enddate || '-RunOn-' || sFileTime ||  '.csv';
-          Z2_TMP_FEES_TO_CSV(sFileName,'TMP_STOR_FEES');
-          --DBMS_OUTPUT.PUT_LINE('Z2_TMP_FEES_TO_CSV for ' || sFileName || '.' );
-          --uncomment above if you want to produce an exported file for all storage, about 5MB every time.
-          --COMMIT;
-          --DBMS_OUTPUT.PUT_LINE('H4_EOM_ALL_STOR Fees for the date range '
-              --|| startdate || ' -- ' || enddate || ' - ' || v_query2 || ' records inserted into table TMP_STOR_FEES in ' || (round((dbms_utility.get_time-l_start)/100, 6) ||
-             -- ' Seconds...for customer ' || sCustomerCode ));
+        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          If F_IS_TABLE_EEMPTY('DEV_STOR_FEES') > 0 Then
+          --add another quick data check to ensure the source data is ok
     
-        --Else
-          --DBMS_OUTPUT.PUT_LINE('H4_EOM_ALL_STOR Std Shelf Storage Fees rates are not empty - but there was no data, still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) ||
-         -- ' Seconds...for customer ' || sCustomerCode);
-        END IF;
-  
+            v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
+            EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'H4_EOM_ALL_STOR','IL','DEV_STOR_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+            sFileName := sCustomerCode || '-H4_EOM_ALL_STOR-' || startdate || '-TO-' || enddate || '-RunOn-' || sFileTime ||  '.csv';
+            Z2_TMP_FEES_TO_CSV(sFileName,'DEV_STOR_FEES',sOp);
+            --DBMS_OUTPUT.PUT_LINE('Z2_TMP_FEES_TO_CSV for ' || sFileName || '.' );
+            --uncomment above if you want to produce an exported file for all storage, about 5MB every time.
+            --COMMIT;
+            --DBMS_OUTPUT.PUT_LINE('H4_EOM_ALL_STOR Fees for the date range '
+                --|| startdate || ' -- ' || enddate || ' - ' || v_query2 || ' records inserted into table TMP_STOR_FEES in ' || (round((dbms_utility.get_time-l_start)/100, 6) ||
+               -- ' Seconds...for customer ' || sCustomerCode ));
+      
+          --Else
+            --DBMS_OUTPUT.PUT_LINE('H4_EOM_ALL_STOR Std Shelf Storage Fees rates are not empty - but there was no data, still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) ||
+           -- ' Seconds...for customer ' || sCustomerCode);
+          END IF;
+        Else
+          If F_IS_TABLE_EEMPTY('TMP_STOR_FEES') > 0 Then
+          --add another quick data check to ensure the source data is ok
+    
+            v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
+            EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'H4_EOM_ALL_STOR','IL','TMP_STOR_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+            sFileName := sCustomerCode || '-H4_EOM_ALL_STOR-' || startdate || '-TO-' || enddate || '-RunOn-' || sFileTime ||  '.csv';
+            Z2_TMP_FEES_TO_CSV(sFileName,'TMP_STOR_FEES',sOp);
+            --DBMS_OUTPUT.PUT_LINE('Z2_TMP_FEES_TO_CSV for ' || sFileName || '.' );
+            --uncomment above if you want to produce an exported file for all storage, about 5MB every time.
+            --COMMIT;
+            --DBMS_OUTPUT.PUT_LINE('H4_EOM_ALL_STOR Fees for the date range '
+                --|| startdate || ' -- ' || enddate || ' - ' || v_query2 || ' records inserted into table TMP_STOR_FEES in ' || (round((dbms_utility.get_time-l_start)/100, 6) ||
+               -- ' Seconds...for customer ' || sCustomerCode ));
+      
+          --Else
+            --DBMS_OUTPUT.PUT_LINE('H4_EOM_ALL_STOR Std Shelf Storage Fees rates are not empty - but there was no data, still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) ||
+           -- ' Seconds...for customer ' || sCustomerCode);
+          END IF;
+        End If;
           --COMMIT;
           --palett
    
@@ -1343,6 +1735,7 @@
         ,sCustomerCode IN VARCHAR2
         ,sAnalysis IN RM.RM_ANAL%TYPE
         ,sFilterBy IN VARCHAR2
+        ,sOp IN VARCHAR2
       )
       IS
       TYPE ARRAY IS TABLE OF TMP_ALL_ORD_FEES%ROWTYPE;
@@ -1491,9 +1884,8 @@
      -- --DBMS_OUTPUT.PUT_LINE('aE1_FAX_ORD_FEES rates are $' || sCust_Rates3 || '. Prism rate field is RM_XX_FEE07.');
      -- --DBMS_OUTPUT.PUT_LINE('aE1_MAN_ORD_FEES rates are $' || sCust_Rates2 || '. Prism rate field is RM_XX_FEE01.');
      -- --DBMS_OUTPUT.PUT_LINE('aE1_.._ORD_FEES rates are $' || sCust_Rates1 || '. Prism rate field is RM_XX_FEE01.');
-        nCheckpoint := 11;
-        v_query := 'TRUNCATE TABLE TMP_ALL_ORD_FEES';
-        EXECUTE IMMEDIATE v_query;
+        --nCheckpoint := 11;
+        
         
       IF sCust_Rates5  > 0
       OR sCust_Rates4  > 0
@@ -1507,6 +1899,27 @@
         --DBMS_OUTPUT.PUT_LINE('E1_MAN_ORD_FEES rates are $' || sCust_Rates2 || '. Prism rate field is RM_XX_FEE01.');
         --DBMS_OUTPUT.PUT_LINE('E1_?_ORD_FEES rates are $' || sCust_Rates1 || '. Prism rate field is RM_XX_FEE01.');
         nCheckpoint := 2;
+        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          v_query := 'TRUNCATE TABLE DEV_ALL_ORD_FEES';
+          EXECUTE IMMEDIATE v_query;
+          OPEN c;
+          ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
+          LOOP
+          FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
+  
+          FORALL i IN 1..l_data.COUNT
+          ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+          INSERT INTO DEV_ALL_ORD_FEES VALUES l_data(i);
+          --USING sCust;
+  
+          EXIT WHEN c%NOTFOUND;
+  
+          END LOOP;
+         -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+          CLOSE c;
+        Else
+          v_query := 'TRUNCATE TABLE TMP_ALL_ORD_FEES';
+          EXECUTE IMMEDIATE v_query;
           OPEN c;
           ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
           LOOP
@@ -1522,6 +1935,7 @@
           END LOOP;
          -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
           CLOSE c;
+        End If;
           --       FOR i IN l_data.FIRST .. l_data.LAST LOOP
           --        --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
           --      END LOOP;
@@ -1574,7 +1988,8 @@
       ,enddate IN VARCHAR2-- := To_Date('30-Jun-2015')
       ,sCustomerCode IN VARCHAR2
       ,sAnalysis IN RM.RM_ANAL%TYPE
-        ,sFilterBy IN VARCHAR2
+      ,sFilterBy IN VARCHAR2
+      ,sOp IN VARCHAR2
     )
     IS
     TYPE ARRAY IS TABLE OF TMP_STD_ORD_FEES%ROWTYPE;
@@ -1668,29 +2083,53 @@
     nCheckpoint := 10;
     EXECUTE IMMEDIATE QueryTable2 INTO sCust_Rates2 USING sCustomerCode;/*VerbalOrderEntryFee*/
     --DBMS_OUTPUT.PUT_LINE('E4_STD_ORD_FEES rates are $' || sCust_Rates2 || '. Prism rate field is .');
-    nCheckpoint := 11;
-    v_query := 'TRUNCATE TABLE TMP_STD_ORD_FEES';
-    EXECUTE IMMEDIATE v_query;
+   -- nCheckpoint := 11;
+    
 
     IF sCust_Rates2 IS NOT NULL THEN
       --DBMS_OUTPUT.PUT_LINE('E4_STD_ORD_FEES rates are $' || sCust_Rates2 || '. Prism rate field is .');
     
     nCheckpoint := 2;
-        OPEN c;
-        --DBMS_OUTPUT.PUT_LINE(sCust || '.' );
-        LOOP
-        FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
+        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          v_query := 'TRUNCATE TABLE DEV_STD_ORD_FEES';
+          EXECUTE IMMEDIATE v_query;
+          
+          OPEN c;
+          --DBMS_OUTPUT.PUT_LINE(sCust || '.' );
+          LOOP
+          FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
+  
+          FORALL i IN 1..l_data.COUNT
+          --DBMS_OUTPUT.PUT_LINE(i || '.' );
+          INSERT INTO DEV_STD_ORD_FEES VALUES l_data(i);
+          --USING sCust;
+  
+          EXIT WHEN c%NOTFOUND;
+  
+          END LOOP;
+         -- DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+          CLOSE c;
+        Else
+          v_query := 'TRUNCATE TABLE TMP_STD_ORD_FEES';
+          EXECUTE IMMEDIATE v_query;
+          
+          OPEN c;
+          --DBMS_OUTPUT.PUT_LINE(sCust || '.' );
+          LOOP
+          FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
+  
+          FORALL i IN 1..l_data.COUNT
+          --DBMS_OUTPUT.PUT_LINE(i || '.' );
+          INSERT INTO TMP_STD_ORD_FEES VALUES l_data(i);
+          --USING sCust;
+  
+          EXIT WHEN c%NOTFOUND;
+  
+          END LOOP;
+         -- DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+          CLOSE c;
 
-        FORALL i IN 1..l_data.COUNT
-        --DBMS_OUTPUT.PUT_LINE(i || '.' );
-        INSERT INTO TMP_STD_ORD_FEES VALUES l_data(i);
-        --USING sCust;
-
-        EXIT WHEN c%NOTFOUND;
-
-        END LOOP;
-       -- DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-        CLOSE c;
+        End If;
     v_query2 :=  SQL%ROWCOUNT;
     COMMIT;
 
@@ -1705,9 +2144,9 @@
      -- DBMS_OUTPUT.PUT_LINE('E4_STD_ORD_FEES rates are not empty - but there was no data, still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) ||
      -- ' Seconds...for customer ' || sCustomerCode);
     END IF;
-  --Else
-      --DBMS_OUTPUT.PUT_LINE('E4_STD_ORD_FEES rates are empty - skipped procedure to save time, still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) ||
-      --' Seconds...for customer ' || sCustomerCode);
+    --Else
+    --DBMS_OUTPUT.PUT_LINE('E4_STD_ORD_FEES rates are empty - skipped procedure to save time, still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) ||
+    --' Seconds...for customer ' || sCustomerCode);
   END IF;
   EXCEPTION
     WHEN OTHERS THEN
@@ -1731,6 +2170,7 @@
         ,sCustomerCode IN VARCHAR2
         ,sAnalysis IN RM.RM_ANAL%TYPE
         ,sFilterBy IN VARCHAR2
+        ,sOp IN VARCHAR2
       )
       IS
       TYPE ARRAY IS TABLE OF TMP_DESTROY_ORD_FEES%ROWTYPE;
@@ -1839,30 +2279,52 @@
       nCheckpoint := 10;
       EXECUTE IMMEDIATE QueryTable INTO sCust_Rates USING sCustomerCode;/*Destruction Fee*/
       
-      nCheckpoint := 11;
-      v_query := 'TRUNCATE TABLE TMP_DESTROY_ORD_FEES';
-      EXECUTE IMMEDIATE v_query;
+      --nCheckpoint := 11;
+      
       
       IF sCust_Rates IS NOT NULL THEN
        -- --DBMS_OUTPUT.PUT_LINE('E5_DESTROY_ORD_FEES rates are $' || sCust_Rates || '. Prism rate field is RM_XX_FEE25');
       
   
       nCheckpoint := 2;
-          OPEN c;
-          ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
-          LOOP
-          FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
-  
-          FORALL i IN 1..l_data.COUNT
-          ----DBMS_OUTPUT.PUT_LINE(i || '.' );
-          INSERT INTO TMP_DESTROY_ORD_FEES VALUES l_data(i);
-          --USING sCust;
-  
-          EXIT WHEN c%NOTFOUND;
-  
-          END LOOP;
-         -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-          CLOSE c;
+          If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+            v_query := 'TRUNCATE TABLE DEV_DESTROY_ORD_FEES';
+            EXECUTE IMMEDIATE v_query;
+            OPEN c;
+            ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
+            LOOP
+            FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
+    
+            FORALL i IN 1..l_data.COUNT
+            ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+            INSERT INTO DEV_DESTROY_ORD_FEES VALUES l_data(i);
+            --USING sCust;
+    
+            EXIT WHEN c%NOTFOUND;
+    
+            END LOOP;
+           -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+            CLOSE c;
+          Else
+            v_query := 'TRUNCATE TABLE TMP_DESTROY_ORD_FEES';
+            EXECUTE IMMEDIATE v_query;
+            OPEN c;
+            ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
+            LOOP
+            FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
+    
+            FORALL i IN 1..l_data.COUNT
+            ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+            INSERT INTO TMP_DESTROY_ORD_FEES VALUES l_data(i);
+            --USING sCust;
+    
+            EXIT WHEN c%NOTFOUND;
+    
+            END LOOP;
+           -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+            CLOSE c;
+        End If;
+
       v_query2 :=  SQL%ROWCOUNT;
       COMMIT;
       IF v_query2 > 0 THEN
@@ -1903,7 +2365,7 @@
         ,sCustomerCode IN VARCHAR2
         ,sAnalysis IN RM.RM_ANAL%TYPE
         ,sFilterBy IN VARCHAR2
-  
+        ,sOp IN VARCHAR2
         -- sCust IN RM.RM_CUST%TYPE
       )
       IS
@@ -2061,27 +2523,46 @@
           nCheckpoint := 10;
           EXECUTE IMMEDIATE QueryTable INTO sCust_Rates USING sCustomerCode;/*1 PickFee*/
           
-          nCheckpoint := 11;
-          v_query := 'TRUNCATE TABLE TMP_SHRINKWRAP_FEES';
-          EXECUTE IMMEDIATE v_query;
+          --nCheckpoint := 11;
+          
   
        IF To_Number(regexp_substr(sCust_Rates,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) != 0 Then
           --DBMS_OUTPUT.PUT_LINE('G1_SHRINKWRAP_FEES rates are $' || sCust_Rates || '. Prism rate field is RM_XX_FEE18');
           
           nCheckpoint := 2;
-          OPEN c;
-          ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
-          LOOP
-          FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
-  
-          FORALL i IN 1..l_data.COUNT
-          ----DBMS_OUTPUT.PUT_LINE(i || '.' );
-          INSERT INTO TMP_SHRINKWRAP_FEES VALUES l_data(i);
-          --USING sCust;
-          EXIT WHEN c%NOTFOUND;
-          END LOOP;
-         -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-          CLOSE c;
+           If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+            v_query := 'TRUNCATE TABLE DEV_SHRINKWRAP_FEES';
+            EXECUTE IMMEDIATE v_query;
+            OPEN c;
+            ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
+            LOOP
+            FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
+    
+            FORALL i IN 1..l_data.COUNT
+            ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+            INSERT INTO DEV_SHRINKWRAP_FEES VALUES l_data(i);
+            --USING sCust;
+            EXIT WHEN c%NOTFOUND;
+            END LOOP;
+           -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+            CLOSE c;
+          Else
+            v_query := 'TRUNCATE TABLE TMP_SHRINKWRAP_FEES';
+            EXECUTE IMMEDIATE v_query;
+             OPEN c;
+              ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
+              LOOP
+              FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
+      
+              FORALL i IN 1..l_data.COUNT
+              ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+              INSERT INTO TMP_SHRINKWRAP_FEES VALUES l_data(i);
+              --USING sCust;
+              EXIT WHEN c%NOTFOUND;
+              END LOOP;
+             -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+              CLOSE c;
+          End If;
            --FOR i IN l_data.FIRST .. l_data.LAST LOOP
           --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
           --END LOOP;
@@ -2125,6 +2606,7 @@
         ,sCustomerCode IN VARCHAR2
         ,sAnalysis IN RM.RM_ANAL%TYPE
         ,sFilterBy IN VARCHAR2
+        ,sOp IN VARCHAR2
       )
       IS
       TYPE ARRAY IS TABLE OF TMP_STOCK_FEES%ROWTYPE;
@@ -2231,24 +2713,44 @@
       l_start number default dbms_utility.get_time;
      BEGIN
   
-          nCheckpoint := 1;
-          v_query := 'TRUNCATE TABLE TMP_STOCK_FEES';
-          EXECUTE IMMEDIATE v_query;
+          --nCheckpoint := 1;
+          
   
           nCheckpoint := 2;
-          OPEN c;
-          ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
-          LOOP
-          FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
-  
-          FORALL i IN 1..l_data.COUNT
-          ----DBMS_OUTPUT.PUT_LINE(i || '.' );
-          INSERT INTO TMP_STOCK_FEES VALUES l_data(i);
-          --USING sCust;
-          EXIT WHEN c%NOTFOUND;
-          END LOOP;
-         -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-          CLOSE c;
+          If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+            v_query := 'TRUNCATE TABLE DEV_STOCK_FEES';
+            EXECUTE IMMEDIATE v_query;
+            OPEN c;
+            ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
+            LOOP
+            FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
+    
+            FORALL i IN 1..l_data.COUNT
+            ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+            INSERT INTO DEV_STOCK_FEES VALUES l_data(i);
+            --USING sCust;
+            EXIT WHEN c%NOTFOUND;
+            END LOOP;
+           -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+            CLOSE c;
+          Else
+            v_query := 'TRUNCATE TABLE TMP_STOCK_FEES';
+            EXECUTE IMMEDIATE v_query;
+            OPEN c;
+            ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
+            LOOP
+            FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
+    
+            FORALL i IN 1..l_data.COUNT
+            ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+            INSERT INTO TMP_STOCK_FEES VALUES l_data(i);
+            --USING sCust;
+            EXIT WHEN c%NOTFOUND;
+            END LOOP;
+           -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+            CLOSE c;
+
+          End If;
           -- FOR i IN l_data.FIRST .. l_data.LAST LOOP
           ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
           --END LOOP;
@@ -2287,6 +2789,7 @@
         ,sCustomerCode IN VARCHAR2
         ,sAnalysis IN RM.RM_ANAL%TYPE
         ,sFilterBy IN VARCHAR2
+        ,sOp IN VARCHAR2
       )
       IS
       TYPE ARRAY IS TABLE OF TMP_STOCK_FEES%ROWTYPE;
@@ -2393,12 +2896,30 @@
       l_start number default dbms_utility.get_time;
      BEGIN
   
-          nCheckpoint := 1;
-          v_query := 'TRUNCATE TABLE TMP_STOCK_FEES';
-          EXECUTE IMMEDIATE v_query;
+         -- nCheckpoint := 1;
+         
   
           nCheckpoint := 2;
-          OPEN c;
+          If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+             v_query := 'TRUNCATE TABLE DEV_STOCK_FEES';
+            EXECUTE IMMEDIATE v_query;
+            OPEN c;
+            ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
+            LOOP
+            FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
+    
+            FORALL i IN 1..l_data.COUNT
+            ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+            INSERT INTO DEV_STOCK_FEES VALUES l_data(i);
+            --USING sCust;
+            EXIT WHEN c%NOTFOUND;
+            END LOOP;
+           -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+            CLOSE c;
+          Else
+             v_query := 'TRUNCATE TABLE TMP_STOCK_FEES';
+            EXECUTE IMMEDIATE v_query;
+            OPEN c;
           ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
           LOOP
           FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
@@ -2411,6 +2932,7 @@
           END LOOP;
          -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
           CLOSE c;
+          End If;
           -- FOR i IN l_data.FIRST .. l_data.LAST LOOP
           ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
           --END LOOP;
@@ -2452,7 +2974,7 @@
         ,sCustomerCode IN VARCHAR2
         ,sAnalysis IN RM.RM_ANAL%TYPE
         ,sFilterBy IN VARCHAR2
-  
+        ,sOp IN VARCHAR2
         -- sCust IN RM.RM_CUST%TYPE
       )
       IS
@@ -2557,7 +3079,7 @@
         EXECUTE IMMEDIATE QueryTable INTO sCust_Rates USING sCustomerCode;/*1 PackingInner*/
         EXECUTE IMMEDIATE QueryTable2 INTO sCust_Rates2 USING sCustomerCode;/*1 PackingOuter*/
         
-        nCheckpoint := 11;
+       -- nCheckpoint := 11;
         v_query := 'TRUNCATE TABLE TMP_PACKING_FEES';
         EXECUTE IMMEDIATE v_query;
   
@@ -2567,19 +3089,40 @@
           ----DBMS_OUTPUT.PUT_LINE('G3_PACKING_FEES Inner rates are $' || sCust_Rates || '. G3_PACKING_FEES Outer rates are $' || sCust_Rates2 || '. Prism rate fields are RM_XX_FEE08 * RM_XX_FEE09.');      
           
           nCheckpoint := 2;
-          OPEN c;
-          ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
-          LOOP
-          FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
-  
-          FORALL i IN 1..l_data.COUNT
-          ----DBMS_OUTPUT.PUT_LINE(i || '.' );
-          INSERT INTO TMP_PACKING_FEES VALUES l_data(i);
-          --USING sCust;
-          EXIT WHEN c%NOTFOUND;
-          END LOOP;
-         -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-          CLOSE c;
+          If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+            v_query := 'TRUNCATE TABLE DEV_PACKING_FEES';
+            EXECUTE IMMEDIATE v_query;
+            OPEN c;
+            ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
+            LOOP
+            FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
+    
+            FORALL i IN 1..l_data.COUNT
+            ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+            INSERT INTO DEV_PACKING_FEES VALUES l_data(i);
+            --USING sCust;
+            EXIT WHEN c%NOTFOUND;
+            END LOOP;
+           -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+            CLOSE c;
+          Else
+            v_query := 'TRUNCATE TABLE TMP_PACKING_FEES';
+            EXECUTE IMMEDIATE v_query;
+            OPEN c;
+            ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
+            LOOP
+            FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
+    
+            FORALL i IN 1..l_data.COUNT
+            ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+            INSERT INTO TMP_PACKING_FEES VALUES l_data(i);
+            --USING sCust;
+            EXIT WHEN c%NOTFOUND;
+            END LOOP;
+           -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+            CLOSE c;
+        End If;
+
           -- FOR i IN l_data.FIRST .. l_data.LAST LOOP
           ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
           --END LOOP;
@@ -2624,6 +3167,7 @@
         ,sCustomerCode IN VARCHAR2
         ,sAnalysis IN RM.RM_ANAL%TYPE
         ,sFilterBy IN VARCHAR2
+        ,sOp IN VARCHAR2
       )
       IS
       TYPE ARRAY IS TABLE OF TMP_HANDLING_FEES%ROWTYPE;
@@ -2754,7 +3298,7 @@
         nCheckpoint := 10;
         EXECUTE IMMEDIATE QueryTable INTO sCust_Rates USING sCustomerCode;
         
-        nCheckpoint := 11;
+        --nCheckpoint := 11;
         v_query := 'TRUNCATE TABLE TMP_HANDLING_FEES';
         EXECUTE IMMEDIATE v_query;
           
@@ -2762,19 +3306,40 @@
           ----DBMS_OUTPUT.PUT_LINE('G4_HANDLING_FEES rates are $' || sCust_Rates || '. Prism rate field is RM_XX_FEE06.');
           
           nCheckpoint := 2;
-          OPEN c;
-          ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
-          LOOP
-          FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
-  
-          FORALL i IN 1..l_data.COUNT
-          ----DBMS_OUTPUT.PUT_LINE(i || '.' );
-          INSERT INTO TMP_HANDLING_FEES VALUES l_data(i);
-          --USING sCust;
-          EXIT WHEN c%NOTFOUND;
-          END LOOP;
-         -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-          CLOSE c;
+          If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+             v_query := 'TRUNCATE TABLE DEV_HANDLING_FEES';
+            EXECUTE IMMEDIATE v_query;
+            OPEN c;
+            ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
+            LOOP
+            FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
+    
+            FORALL i IN 1..l_data.COUNT
+            ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+            INSERT INTO DEV_HANDLING_FEES VALUES l_data(i);
+            --USING sCust;
+            EXIT WHEN c%NOTFOUND;
+            END LOOP;
+           -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+            CLOSE c;
+          Else
+             v_query := 'TRUNCATE TABLE TMP_HANDLING_FEES';
+            EXECUTE IMMEDIATE v_query;
+            OPEN c;
+            ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
+            LOOP
+            FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
+    
+            FORALL i IN 1..l_data.COUNT
+            ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+            INSERT INTO TMP_HANDLING_FEES VALUES l_data(i);
+            --USING sCust;
+            EXIT WHEN c%NOTFOUND;
+            END LOOP;
+           -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+            CLOSE c;
+
+          End If;
           -- FOR i IN l_data.FIRST .. l_data.LAST LOOP
           ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
           --END LOOP;
@@ -2819,6 +3384,7 @@
         ,sCustomerCode IN VARCHAR2
         ,sAnalysis IN RM.RM_ANAL%TYPE
         ,sFilterBy IN VARCHAR2
+        ,sOp IN VARCHAR2
       )
       IS
       TYPE ARRAY IS TABLE OF TMP_PICK_FEES%ROWTYPE;
@@ -2942,27 +3508,46 @@
         nCheckpoint := 10;
         EXECUTE IMMEDIATE QueryTable INTO sCust_Rates USING sCustomerCode;
         
-        nCheckpoint := 11;
-        v_query := 'TRUNCATE TABLE TMP_PICK_FEES';
-        EXECUTE IMMEDIATE v_query;
+        --nCheckpoint := 11;
+        
           
         IF To_Number(regexp_substr(sCust_Rates,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) != 0 Then
           ----DBMS_OUTPUT.PUT_LINE('G4_HANDLING_FEES rates are $' || sCust_Rates || '. Prism rate field is RM_XX_FEE06.');
           
           nCheckpoint := 2;
-          OPEN c;
-          ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
-          LOOP
-          FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
-  
-          FORALL i IN 1..l_data.COUNT
-          ----DBMS_OUTPUT.PUT_LINE(i || '.' );
-          INSERT INTO TMP_PICK_FEES VALUES l_data(i);
-          --USING sCust;
-          EXIT WHEN c%NOTFOUND;
-          END LOOP;
-         -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-          CLOSE c;
+          If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+            v_query := 'TRUNCATE TABLE DEV_PICK_FEES';
+            EXECUTE IMMEDIATE v_query;
+            OPEN c;
+            ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
+            LOOP
+            FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
+    
+            FORALL i IN 1..l_data.COUNT
+            ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+            INSERT INTO DEV_PICK_FEES VALUES l_data(i);
+            --USING sCust;
+            EXIT WHEN c%NOTFOUND;
+            END LOOP;
+           -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+            CLOSE c;
+          Else
+            v_query := 'TRUNCATE TABLE TMP_PICK_FEES';
+            EXECUTE IMMEDIATE v_query;
+            OPEN c;
+            ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
+            LOOP
+            FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
+    
+            FORALL i IN 1..l_data.COUNT
+            ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+            INSERT INTO TMP_PICK_FEES VALUES l_data(i);
+            --USING sCust;
+            EXIT WHEN c%NOTFOUND;
+            END LOOP;
+           -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+            CLOSE c;
+          End If;
           -- FOR i IN l_data.FIRST .. l_data.LAST LOOP
           ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
           --END LOOP;
@@ -3008,7 +3593,7 @@
         ,sCustomerCode IN VARCHAR2
         ,sAnalysis IN RM.RM_ANAL%TYPE
         ,sFilterBy IN VARCHAR2
-  
+        ,sOp IN VARCHAR2
         -- sCust IN RM.RM_CUST%TYPE
       )
       IS
@@ -3178,9 +3763,8 @@
       nCheckpoint := 10;
       EXECUTE IMMEDIATE QueryTable INTO sCust_Rates USING sCustomerCode;/*1 PickFee*/
       
-      nCheckpoint := 11;
-      v_query := 'TRUNCATE TABLE TMP_PICK_FEES';
-      EXECUTE IMMEDIATE v_query;
+     -- nCheckpoint := 11;
+      
           
       IF To_Number(regexp_substr(sCust_Rates,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) != 0 Then
          -- l_start number default dbms_utility.get_time;
@@ -3189,19 +3773,39 @@
           
   
           nCheckpoint := 2;
-          OPEN c;
-          ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
-          LOOP
-          FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
-  
-          FORALL i IN 1..l_data.COUNT
-          ----DBMS_OUTPUT.PUT_LINE(i || '.' );
-          INSERT INTO TMP_PICK_FEES VALUES l_data(i);
-          --USING sCust;
-          EXIT WHEN c%NOTFOUND;
-          END LOOP;
-         -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-          CLOSE c;
+           If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+            v_query := 'TRUNCATE TABLE DEV_PICK_FEES';
+            EXECUTE IMMEDIATE v_query;
+              OPEN c;
+              ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
+              LOOP
+              FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
+      
+              FORALL i IN 1..l_data.COUNT
+              ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+              INSERT INTO DEV_PICK_FEES VALUES l_data(i);
+              --USING sCust;
+              EXIT WHEN c%NOTFOUND;
+              END LOOP;
+             -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+              CLOSE c;
+            Else
+              v_query := 'TRUNCATE TABLE TMP_PICK_FEES';
+              EXECUTE IMMEDIATE v_query;
+              OPEN c;
+              ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
+              LOOP
+              FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
+      
+              FORALL i IN 1..l_data.COUNT
+              ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+              INSERT INTO TMP_PICK_FEES VALUES l_data(i);
+              --USING sCust;
+              EXIT WHEN c%NOTFOUND;
+              END LOOP;
+             -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+              CLOSE c;
+          End If;
           -- FOR i IN l_data.FIRST .. l_data.LAST LOOP
           ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
           --END LOOP;
@@ -3245,7 +3849,7 @@
       ,enddate IN VARCHAR2-- := To_Date('30-Jun-2015')
       ,sCustomerCode IN VARCHAR2
       ,sAnalysis IN RM.RM_ANAL%TYPE
-
+      ,sOp IN VARCHAR2
       -- sCust IN RM.RM_CUST%TYPE
     )
     IS
@@ -3373,9 +3977,8 @@
     nCheckpoint := 10;
     EXECUTE IMMEDIATE QueryTable INTO sCust_Rates USING sCustomerCode;/*1 PickFee*/
     
-    nCheckpoint := 11;
-    v_query := 'TRUNCATE TABLE TMP_PICK_FEES';
-    EXECUTE IMMEDIATE v_query;
+    --nCheckpoint := 11;
+    
         
     IF To_Number(regexp_substr(sCust_Rates,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) != 0 Then
        -- l_start number default dbms_utility.get_time;
@@ -3384,19 +3987,39 @@
         
 
         nCheckpoint := 2;
-        OPEN c;
-        ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
-        LOOP
-        FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
-
-        FORALL i IN 1..l_data.COUNT
-        ----DBMS_OUTPUT.PUT_LINE(i || '.' );
-        INSERT INTO TMP_PICK_FEES VALUES l_data(i);
-        --USING sCust;
-        EXIT WHEN c%NOTFOUND;
-        END LOOP;
-       -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-        CLOSE c;
+        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          v_query := 'TRUNCATE TABLE DEV_PICK_FEES';
+          EXECUTE IMMEDIATE v_query;
+          OPEN c;
+          ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
+          LOOP
+          FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
+  
+          FORALL i IN 1..l_data.COUNT
+          ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+          INSERT INTO DEV_PICK_FEES VALUES l_data(i);
+          --USING sCust;
+          EXIT WHEN c%NOTFOUND;
+          END LOOP;
+         -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+          CLOSE c;
+        Else
+          v_query := 'TRUNCATE TABLE TMP_PICK_FEES';
+          EXECUTE IMMEDIATE v_query;
+          OPEN c;
+          ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
+          LOOP
+          FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
+  
+          FORALL i IN 1..l_data.COUNT
+          ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+          INSERT INTO TMP_PICK_FEES VALUES l_data(i);
+          --USING sCust;
+          EXIT WHEN c%NOTFOUND;
+          END LOOP;
+         -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+          CLOSE c;
+        End If;
         -- FOR i IN l_data.FIRST .. l_data.LAST LOOP
         ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
         --END LOOP;
@@ -3440,6 +4063,7 @@
         ,sCustomerCode IN VARCHAR2
         ,sAnalysis IN RM.RM_ANAL%TYPE
         ,sFilterBy IN VARCHAR2
+        ,sOp IN VARCHAR2
       )
       IS
       TYPE ARRAY IS TABLE OF TMP_MISC_FEES%ROWTYPE;
@@ -3642,11 +4266,31 @@
       BEGIN
   
   
-      nCheckpoint := 1;
-        v_query := 'TRUNCATE TABLE TMP_MISC_FEES';
-        EXECUTE IMMEDIATE v_query;
+      --nCheckpoint := 1;
+       
   
       nCheckpoint := 2;
+        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+           v_query := 'TRUNCATE TABLE DEV_MISC_FEES';
+          EXECUTE IMMEDIATE v_query;
+          OPEN c;
+          ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
+          LOOP
+          FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
+  
+          FORALL i IN 1..l_data.COUNT
+          ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+          INSERT INTO DEV_MISC_FEES VALUES l_data(i);
+          --USING sCustomerCode;
+  
+          EXIT WHEN c%NOTFOUND;
+  
+          END LOOP;
+         -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+          CLOSE c;
+        Else
+           v_query := 'TRUNCATE TABLE TMP_MISC_FEES';
+          EXECUTE IMMEDIATE v_query;
           OPEN c;
           ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
           LOOP
@@ -3662,6 +4306,7 @@
           END LOOP;
          -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
           CLOSE c;
+        End If;
         -- FOR i IN l_data.FIRST .. l_data.LAST LOOP
           ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
         --END LOOP;
@@ -3699,6 +4344,7 @@
         ,startdate IN VARCHAR2-- := To_Date('1-Jun-2015') or format date as 01-Jun-15 -- use this when you want the date entered automatically
         ,enddate IN VARCHAR2-- := To_Date('30-Jun-2015')
         ,sCustomerCode IN VARCHAR2
+        ,sOp IN VARCHAR2
       )
       IS
       TYPE ARRAY IS TABLE OF TMP_CUSTOMER_FEES%ROWTYPE;
@@ -4158,11 +4804,31 @@
   
       BEGIN
   
-      nCheckpoint := 1;
-        v_query := 'TRUNCATE TABLE TMP_CUSTOMER_FEES';
-        EXECUTE IMMEDIATE v_query;
+      --nCheckpoint := 1;
+        
   
       nCheckpoint := 2;
+      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          v_query := 'TRUNCATE TABLE DEV_CUSTOMER_FEES';
+          EXECUTE IMMEDIATE v_query;
+          OPEN c;
+          ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
+          LOOP
+          FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
+  
+          FORALL i IN 1..l_data.COUNT
+          ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+          INSERT INTO DEV_CUSTOMER_FEES VALUES l_data(i);
+          --USING sCust;
+  
+          EXIT WHEN c%NOTFOUND;
+  
+          END LOOP;
+         -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+          CLOSE c;
+        Else
+          v_query := 'TRUNCATE TABLE TMP_CUSTOMER_FEES';
+          EXECUTE IMMEDIATE v_query;
           OPEN c;
           ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
           LOOP
@@ -4178,6 +4844,7 @@
           END LOOP;
          -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
           CLOSE c;
+        End If;
        --  FOR i IN l_data.FIRST .. l_data.LAST LOOP
          -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
        -- END LOOP;
@@ -4210,6 +4877,7 @@
         ,startdate IN VARCHAR2-- := To_Date('1-Jun-2015') or format date as 01-Jun-15 -- use this when you want the date entered automatically
         ,enddate IN VARCHAR2-- := To_Date('30-Jun-2015')
         ,sCustomerCode IN VARCHAR2
+        ,sOp IN VARCHAR2
       )
       IS
       TYPE ARRAY IS TABLE OF TMP_CUSTOMER_FEES%ROWTYPE;
@@ -4427,11 +5095,31 @@
   
       BEGIN
   
-      nCheckpoint := 1;
-        v_query := 'TRUNCATE TABLE TMP_CUSTOMER_FEES';
-        EXECUTE IMMEDIATE v_query;
+      --nCheckpoint := 1;
+        
   
       nCheckpoint := 2;
+      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          v_query := 'TRUNCATE TABLE DEV_CUSTOMER_FEES';
+          EXECUTE IMMEDIATE v_query;
+          OPEN c;
+          ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
+          LOOP
+          FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
+  
+          FORALL i IN 1..l_data.COUNT
+          ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+          INSERT INTO DEV_CUSTOMER_FEES VALUES l_data(i);
+          --USING sCust;
+  
+          EXIT WHEN c%NOTFOUND;
+  
+          END LOOP;
+         -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+          CLOSE c;
+        Else
+          v_query := 'TRUNCATE TABLE TMP_CUSTOMER_FEES';
+          EXECUTE IMMEDIATE v_query;
           OPEN c;
           ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
           LOOP
@@ -4447,6 +5135,7 @@
           END LOOP;
          -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
           CLOSE c;
+        End If;
        --  FOR i IN l_data.FIRST .. l_data.LAST LOOP
          -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
        -- END LOOP;
@@ -4484,6 +5173,7 @@
         ,startdate IN VARCHAR2-- := To_Date('1-Jun-2015') or format date as 01-Jun-15 -- use this when you want the date entered automatically
         ,enddate IN VARCHAR2-- := To_Date('30-Jun-2015')
         ,sCustomerCode IN VARCHAR2
+        ,sOp IN VARCHAR2
       )
       IS
       TYPE ARRAY IS TABLE OF TMP_CUSTOMER_FEES%ROWTYPE;
@@ -4673,14 +5363,38 @@
     AND       NE_DATE >= startdate AND NE_DATE <= enddate ;
   
       BEGIN
-       nCheckpoint := 11;
-        v_query := 'TRUNCATE TABLE TMP_PAL_IN_FEES';
-        EXECUTE IMMEDIATE v_query;
-      nCheckpoint := 1;
-        v_query := 'TRUNCATE TABLE TMP_CUSTOMER_FEES';
-        EXECUTE IMMEDIATE v_query;
+      
   
       nCheckpoint := 2;
+       If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+           nCheckpoint := 11;
+            v_query := 'TRUNCATE TABLE DEV_PAL_IN_FEES';
+            EXECUTE IMMEDIATE v_query;
+          nCheckpoint := 1;
+            v_query := 'TRUNCATE TABLE DEV_CUSTOMER_FEES';
+        EXECUTE IMMEDIATE v_query;
+          OPEN c;
+          ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
+          LOOP
+          FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
+  
+          FORALL i IN 1..l_data.COUNT
+          ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+          INSERT INTO DEV_CUSTOMER_FEES VALUES l_data(i);
+          --USING sCust;
+  
+          EXIT WHEN c%NOTFOUND;
+  
+          END LOOP;
+         -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+          CLOSE c;
+        Else
+           nCheckpoint := 11;
+          v_query := 'TRUNCATE TABLE TMP_PAL_IN_FEES';
+          EXECUTE IMMEDIATE v_query;
+        nCheckpoint := 1;
+          v_query := 'TRUNCATE TABLE TMP_CUSTOMER_FEES';
+          EXECUTE IMMEDIATE v_query;
           OPEN c;
           ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
           LOOP
@@ -4696,6 +5410,7 @@
           END LOOP;
          -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
           CLOSE c;
+        End If;
        --  FOR i IN l_data.FIRST .. l_data.LAST LOOP
          -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
        -- END LOOP;
@@ -4736,6 +5451,7 @@
         ,startdate IN VARCHAR2
         ,enddate IN VARCHAR2
         ,sCustomerCode IN VARCHAR2
+        ,sOp IN VARCHAR2
       )
       IS
       TYPE ARRAY IS TABLE OF TMP_CUSTOMER_FEES%ROWTYPE;
@@ -4811,23 +5527,48 @@
 	AND       d.SD_LINE = 1
   AND       s.SH_CUST = sCustomerCodeWBC; 
       BEGIN
-       nCheckpoint := 1;
-        v_query := 'TRUNCATE TABLE TMP_CUSTOMER_FEES';
-        EXECUTE IMMEDIATE v_query;
+       --nCheckpoint := 1;
+       
        nCheckpoint := 2;
          EXECUTE IMMEDIATE QueryTable INTO sCust_Rates USING sCustomerCodeWBC;--Merch Ord Fee
        nCheckpoint := 3;
+         If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+           v_query := 'TRUNCATE TABLE DEV_CUSTOMER_FEES';
+          EXECUTE IMMEDIATE v_query;
           OPEN c;
+          ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
           LOOP
           FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
   
           FORALL i IN 1..l_data.COUNT
-          INSERT INTO TMP_CUSTOMER_FEES VALUES l_data(i);
-         
+          ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+          INSERT INTO DEV_CUSTOMER_FEES VALUES l_data(i);
+          --USING sCust;
+  
           EXIT WHEN c%NOTFOUND;
   
           END LOOP;
+         -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
           CLOSE c;
+        Else
+           v_query := 'TRUNCATE TABLE TMP_CUSTOMER_FEES';
+          EXECUTE IMMEDIATE v_query;
+          OPEN c;
+          ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
+          LOOP
+          FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
+  
+          FORALL i IN 1..l_data.COUNT
+          ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+          INSERT INTO TMP_CUSTOMER_FEES VALUES l_data(i);
+          --USING sCust;
+  
+          EXIT WHEN c%NOTFOUND;
+  
+          END LOOP;
+         -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+          CLOSE c;
+        End If;
         v_query2 :=  SQL%ROWCOUNT;
     COMMIT;  
     IF v_query2 > 0 THEN
@@ -4842,7 +5583,7 @@
     END J_EOM_CUSTOMER_FEES_WBC;  
     
     
-    /*   J Run this once for BeyondBlue   */
+    /*   J Run this once for VHA   */
     /*   This gets all the Customer Specific Charges   */
     /*   Temp Tables Used   */
     /*   1. TMP_CUSTOMER_FEES   */
@@ -4853,6 +5594,7 @@
         ,startdate IN VARCHAR2-- := To_Date('1-Jun-2015') or format date as 01-Jun-15 -- use this when you want the date entered automatically
         ,enddate IN VARCHAR2-- := To_Date('30-Jun-2015')
         ,sCustomerCode IN VARCHAR2
+        ,sOp IN VARCHAR2
       )
       IS
       TYPE ARRAY IS TABLE OF TMP_CUSTOMER_FEES%ROWTYPE;
@@ -4995,11 +5737,31 @@
   
       BEGIN
   
-      nCheckpoint := 1;
-        v_query := 'TRUNCATE TABLE TMP_CUSTOMER_FEES';
-        EXECUTE IMMEDIATE v_query;
+      --nCheckpoint := 1;
+        
   
       nCheckpoint := 2;
+          If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+            v_query := 'TRUNCATE TABLE DEV_CUSTOMER_FEES';
+          EXECUTE IMMEDIATE v_query;
+          OPEN c;
+          ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
+          LOOP
+          FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
+  
+          FORALL i IN 1..l_data.COUNT
+          ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+          INSERT INTO DEV_CUSTOMER_FEES VALUES l_data(i);
+          --USING sCust;
+  
+          EXIT WHEN c%NOTFOUND;
+  
+          END LOOP;
+         -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+          CLOSE c;
+        Else
+          v_query := 'TRUNCATE TABLE TMP_CUSTOMER_FEES';
+          EXECUTE IMMEDIATE v_query;
           OPEN c;
           ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
           LOOP
@@ -5015,11 +5777,29 @@
           END LOOP;
          -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
           CLOSE c;
+        End If;
        --  FOR i IN l_data.FIRST .. l_data.LAST LOOP
          -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
        -- END LOOP;
        
        nCheckpoint := 3;
+       If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          OPEN o;
+          ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
+          LOOP
+          FETCH o BULK COLLECT INTO l_data LIMIT p_array_size;
+  
+          FORALL i IN 1..l_data.COUNT
+          ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+          INSERT INTO DEV_CUSTOMER_FEES VALUES l_data(i);
+          --USING sCust;
+  
+          EXIT WHEN o%NOTFOUND;
+  
+          END LOOP;
+         -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+          CLOSE o;
+        Else
           OPEN o;
           ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
           LOOP
@@ -5035,6 +5815,7 @@
           END LOOP;
          -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
           CLOSE o;
+        End If;
        --  FOR i IN l_data.FIRST .. l_data.LAST LOOP
          -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
        -- END LOOP;
@@ -5061,7 +5842,391 @@
         RAISE;
   
     END J_EOM_CUSTOMER_FEES_VHA;
-           
+    
+    
+    /*   J Run this once for Superpartners   */
+    /*   This gets all the Customer Specific Charges   */
+    /*   Temp Tables Used   */
+    /*   1. TMP_CUSTOMER_FEES   */
+    /*   Prism Rate Field Used   */
+    /*   A. RM_XX_FEE32_1   
+        Need to build into freight consolodation for daily flat rate deliveries
+        as well to build into carton fees
+    */
+    PROCEDURE J_EOM_CUSTOMER_FEES_SUP (
+        p_array_size IN PLS_INTEGER DEFAULT 100
+        ,startdate IN VARCHAR2-- := To_Date('1-Jun-2015') or format date as 01-Jun-15 -- use this when you want the date entered automatically
+        ,enddate IN VARCHAR2-- := To_Date('30-Jun-2015')
+        ,sCustomerCode IN VARCHAR2
+        ,p_filename in varchar2
+        ,sOp IN VARCHAR2
+      )
+      IS
+      TYPE ARRAY IS TABLE OF TMP_CUSTOMER_FEES%ROWTYPE;
+      l_data ARRAY;
+      v_out_tx          VARCHAR2(2000);
+      l_query         VARCHAR2(25000);
+      v_query           VARCHAR2(2000);
+      v_query2          VARCHAR2(32767);
+      nCheckpoint       NUMBER;
+      sCourierm         VARCHAR2(20) := 'COURIERM';
+      sCouriers         VARCHAR2(20) := 'COURIERS';
+      sCourier         VARCHAR2(20) := 'COURIER%';
+      sServ8             VARCHAR2(20) := 'SERV8';
+      sServ3             VARCHAR2(20) := 'SERV%';
+      l_output        utl_file.file_type;
+      l_theCursor     integer default dbms_sql.open_cursor;
+      l_columnValue   varchar2(4000);
+      l_status        integer;
+      l_colCnt        number := 0;
+      l_separator     varchar2(1);
+      l_descTbl       dbms_sql.desc_tab;
+      v_time_taken VARCHAR2(205);
+      sPath VARCHAR2(60) :=  'EOM_ADMIN_ORDERS';
+      l_start number default dbms_utility.get_time;
+     
+      BEGIN
+  
+--      nCheckpoint := 1;
+--        v_query := 'TRUNCATE TABLE TMP_CUSTOMER_FEES';
+--        EXECUTE IMMEDIATE v_query;
+  
+      nCheckpoint := 2;
+      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          --run specific formatting query for superpartners
+          l_query := q'{Select  f1.DESPDATE,f1.ORDERNUM,f1.DESPNOTE,f1.CUSTOMER,
+            f1.ATTENTIONTO,f1.ADDRESS,f1.ADDRESS2,f1.SUBURB,f1.STATE,f1.POSTCODE,
+            f1.ITEM,f1.DESCRIPTION,f1.QTY
+                 ,CASE   WHEN f1.FEETYPE like 'Stock' AND LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE THEN (Select f2.SELLEXCL From TMP_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND f2.FEETYPE = 'Pick Fee' ) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
+                        ELSE 0
+                        END AS "Line Charge"
+                ,CASE   WHEN f1.FEETYPE like 'Stock' AND LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE THEN (Select f2.SELLEXCL From TMP_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND f2.FEETYPE = 'Handeling Fee is ' ) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
+                        ELSE 0
+                        END AS "Order Despatch Charge"
+                ,CASE   WHEN f1.FEETYPE like 'Stock' AND (LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE)  AND (InStr(UPPER(ADDRESS),'CASSELDEN') < 1 AND InStr(UPPER(ADDRESS2),'2 LONSDALE') < 1 )
+                        THEN (Select f2.SELLEXCL From TMP_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND (f2.FEETYPE like 'Freight Fee' OR f2.FEETYPE like 'Manual Freight Fee') AND ROWNUM = 1) --AND ((UPPER(ADDRESS) NOT LIKE '%CASSELDEN%' Or UPPER(ADDRESS) NOT LIKE '2 LONSDALE%') OR (UPPER(ADDRESS2) NOT LIKE '%CASSELDEN%' Or UPPER(ADDRESS2) NOT LIKE '2 LONSDALE%')) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
+                        ELSE 0
+                        END AS "Freight Charge"
+          From DEV_ALL_FEES_F f1
+          Where f1.FEETYPE = 'Stock' 
+          
+          UNION ALL
+          --Monday or the first day of the week
+          Select NULL,NULL,NULL,NULL,
+          NULL,NULL,NULL,NULL,NULL,NULL,
+          Case WHEN
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,0) > 0 
+          Then
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,0) 
+          END AS "Qty",
+          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,0) > 0
+          Then 'Daily Van Freight'
+          ELSE NULL
+          END AS  "Freight Charge"
+          ,NULL,NULL,NULL,
+          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,0) > 0 
+          Then '30.71'
+          ELSE NULL
+          END AS  "Freight Charge Cost"
+          From DEV_ALL_FEES_F f1
+          Where f1.FEETYPE = 'Freight Fee' 
+           AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%Lonsdale%')
+          OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%Lonsdale%'))
+          --Group by TRUNC(CURRENT_DATE, 'DAY') -6
+          
+          UNION ALL
+          --Tuesday or the first day of the week
+          Select NULL,NULL,NULL,NULL,
+          NULL,NULL,NULL,NULL,NULL,NULL,
+          Case WHEN
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,1) > 0 
+          Then
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,1) 
+          END AS "Qty",
+          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,1) > 0
+          Then 'Daily Van Freight'
+          ELSE NULL
+          END AS  "Freight Charge"
+          ,NULL,NULL,NULL,
+          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,1) > 0 
+          Then '30.71'
+          ELSE NULL
+          END AS  "Freight Charge Cost"
+          From DEV_ALL_FEES_F f1
+          Where f1.FEETYPE = 'Freight Fee' 
+           AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%Lonsdale%')
+          OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%Lonsdale%'))
+          --Group by TRUNC(CURRENT_DATE, 'DAY') -6 + 1
+          
+          UNION ALL
+          --Wednesday or the first day of the week
+          Select NULL,NULL,NULL,NULL,
+          NULL,NULL,NULL,NULL,NULL,NULL,
+          Case WHEN
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,2) > 0 
+          Then
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,2) 
+          END AS "Qty",
+          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,2) > 0
+          Then 'Daily Van Freight'
+          ELSE NULL
+          END AS  "Freight Charge"
+          ,NULL,NULL,NULL,
+          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,2) > 0 
+          Then '30.71'
+          ELSE NULL
+          END AS  "Freight Charge Cost"
+          From DEV_ALL_FEES_F f1
+          Where f1.FEETYPE = 'Freight Fee' 
+           AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%Lonsdale%')
+          OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%Lonsdale%'))
+          --Group by TRUNC(CURRENT_DATE, 'DAY') -6 + 2
+          
+          UNION ALL
+          --Thursday or the first day of the week
+          Select NULL,NULL,NULL,NULL,
+          NULL,NULL,NULL,NULL,NULL,NULL,
+          Case WHEN
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,3) > 0 
+          Then
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,3) 
+          END AS "Qty",
+          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,3) > 0
+          Then 'Daily Van Freight'
+          ELSE NULL
+          END AS  "Freight Charge"
+          ,NULL,NULL,NULL,
+          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,3) > 0 
+          Then '30.71'
+          ELSE NULL
+          END AS  "Freight Charge Cost"
+          From DEV_ALL_FEES_F f1
+          Where f1.FEETYPE = 'Freight Fee' 
+           AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%Lonsdale%')
+          OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%Lonsdale%'))
+         -- Group by TRUNC(CURRENT_DATE, 'DAY') -6 + 3
+          
+          UNION ALL
+          --Friday or the first day of the week
+          Select NULL,NULL,NULL,NULL,
+          NULL,NULL,NULL,NULL,NULL,NULL,
+          Case WHEN
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,4) > 0 
+          Then
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,4) 
+          END AS "Qty",
+          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,4) > 0
+          Then 'Daily Van Freight'
+          ELSE NULL
+          END AS  "Freight Charge"
+          ,NULL,NULL,NULL,
+          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,4) > 0 
+          Then '30.71'
+          ELSE NULL
+          END AS  "Freight Charge Cost"
+          From DEV_ALL_FEES_F f1
+          Where f1.FEETYPE = 'Freight Fee' 
+           AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%Lonsdale%')
+          OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%Lonsdale%'))
+         -- Group by TRUNC(CURRENT_DATE, 'DAY') -6 + 4;
+          }'; 
+        Else
+          --run specific formatting query for superpartners
+          l_query := q'{Select  f1.DESPDATE,f1.ORDERNUM,f1.DESPNOTE,f1.CUSTOMER,
+            f1.ATTENTIONTO,f1.ADDRESS,f1.ADDRESS2,f1.SUBURB,f1.STATE,f1.POSTCODE,
+            f1.ITEM,f1.DESCRIPTION,f1.QTY
+                 ,CASE   WHEN f1.FEETYPE like 'Stock' AND LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE THEN (Select f2.SELLEXCL From TMP_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND f2.FEETYPE = 'Pick Fee' ) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
+                        ELSE 0
+                        END AS "Line Charge"
+                ,CASE   WHEN f1.FEETYPE like 'Stock' AND LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE THEN (Select f2.SELLEXCL From TMP_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND f2.FEETYPE = 'Handeling Fee is ' ) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
+                        ELSE 0
+                        END AS "Order Despatch Charge"
+                ,CASE   WHEN f1.FEETYPE like 'Stock' AND (LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE)  AND (InStr(UPPER(ADDRESS),'CASSELDEN') < 1 AND InStr(UPPER(ADDRESS2),'2 LONSDALE') < 1 )
+                        THEN (Select f2.SELLEXCL From TMP_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND (f2.FEETYPE like 'Freight Fee' OR f2.FEETYPE like 'Manual Freight Fee') AND ROWNUM = 1) --AND ((UPPER(ADDRESS) NOT LIKE '%CASSELDEN%' Or UPPER(ADDRESS) NOT LIKE '2 LONSDALE%') OR (UPPER(ADDRESS2) NOT LIKE '%CASSELDEN%' Or UPPER(ADDRESS2) NOT LIKE '2 LONSDALE%')) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
+                        ELSE 0
+                        END AS "Freight Charge"
+          From TMP_ALL_FEES_F f1
+          Where f1.FEETYPE = 'Stock' 
+          
+          UNION ALL
+          --Monday or the first day of the week
+          Select NULL,NULL,NULL,NULL,
+          NULL,NULL,NULL,NULL,NULL,NULL,
+          Case WHEN
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,0) > 0 
+          Then
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,0) 
+          END AS "Qty",
+          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,0) > 0
+          Then 'Daily Van Freight'
+          ELSE NULL
+          END AS  "Freight Charge"
+          ,NULL,NULL,NULL,
+          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,0) > 0 
+          Then '30.71'
+          ELSE NULL
+          END AS  "Freight Charge Cost"
+          From TMP_ALL_FEES_F f1
+          Where f1.FEETYPE = 'Freight Fee' 
+           AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%Lonsdale%')
+          OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%Lonsdale%'))
+          Group by TRUNC(CURRENT_DATE, 'DAY') -6
+          
+          UNION ALL
+          --Tuesday or the first day of the week
+          Select NULL,NULL,NULL,NULL,
+          NULL,NULL,NULL,NULL,NULL,NULL,
+          Case WHEN
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,1) > 0 
+          Then
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,1) 
+          END AS "Qty",
+          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,1) > 0
+          Then 'Daily Van Freight'
+          ELSE NULL
+          END AS  "Freight Charge"
+          ,NULL,NULL,NULL,
+          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,1) > 0 
+          Then '30.71'
+          ELSE NULL
+          END AS  "Freight Charge Cost"
+          From TMP_ALL_FEES_F f1
+          Where f1.FEETYPE = 'Freight Fee' 
+           AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%Lonsdale%')
+          OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%Lonsdale%'))
+          Group by TRUNC(CURRENT_DATE, 'DAY') -6 + 1
+          
+          UNION ALL
+          --Wednesday or the first day of the week
+          Select NULL,NULL,NULL,NULL,
+          NULL,NULL,NULL,NULL,NULL,NULL,
+          Case WHEN
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,2) > 0 
+          Then
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,2) 
+          END AS "Qty",
+          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,2) > 0
+          Then 'Daily Van Freight'
+          ELSE NULL
+          END AS  "Freight Charge"
+          ,NULL,NULL,NULL,
+          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,2) > 0 
+          Then '30.71'
+          ELSE NULL
+          END AS  "Freight Charge Cost"
+          From TMP_ALL_FEES_F f1
+          Where f1.FEETYPE = 'Freight Fee' 
+           AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%Lonsdale%')
+          OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%Lonsdale%'))
+          Group by TRUNC(CURRENT_DATE, 'DAY') -6 + 2
+          
+          UNION ALL
+          --Thursday or the first day of the week
+          Select NULL,NULL,NULL,NULL,
+          NULL,NULL,NULL,NULL,NULL,NULL,
+          Case WHEN
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,3) > 0 
+          Then
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,3) 
+          END AS "Qty",
+          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,3) > 0
+          Then 'Daily Van Freight'
+          ELSE NULL
+          END AS  "Freight Charge"
+          ,NULL,NULL,NULL,
+          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,3) > 0 
+          Then '30.71'
+          ELSE NULL
+          END AS  "Freight Charge Cost"
+          From TMP_ALL_FEES_F f1
+          Where f1.FEETYPE = 'Freight Fee' 
+           AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%Lonsdale%')
+          OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%Lonsdale%'))
+          Group by TRUNC(CURRENT_DATE, 'DAY') -6 + 3
+          
+          UNION ALL
+          --Friday or the first day of the week
+          Select NULL,NULL,NULL,NULL,
+          NULL,NULL,NULL,NULL,NULL,NULL,
+          Case WHEN
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,4) > 0 
+          Then
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,4) 
+          END AS "Qty",
+          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,4) > 0
+          Then 'Daily Van Freight'
+          ELSE NULL
+          END AS  "Freight Charge"
+          ,NULL,NULL,NULL,
+          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,4) > 0 
+          Then '30.71'
+          ELSE NULL
+          END AS  "Freight Charge Cost"
+          From TMP_ALL_FEES_F f1
+          Where f1.FEETYPE = 'Freight Fee' 
+           AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%Lonsdale%')
+          OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%Lonsdale%'))
+          Group by TRUNC(CURRENT_DATE, 'DAY') -6 + 4;
+          }'; 
+        End If;
+ --exclude addresses Casselden Place and/or Lonsdale Street - using SH_ADDRESS and SH_SUBURB --- run a seperate query to count despatches per day and apply a flat rate charge once only
+--Also need to build query to work out cartons based on the following rates $2.43 per carton & 38.80 per pallet thereafetr 14.55 per pallet
+--calc is 64 cartons per pallet eg 707 / 64 = 11.05 pallets
+--          billed at 1 x pallet @ 38.80
+--          10 x pallets @ 14.55
+--   			  3 x Cartons @ 2.43         
+       l_output := utl_file.fopen( 'EOM_ADMIN_ORDERS', p_filename, 'w' );
+       execute immediate 'alter session set nls_date_format=''dd-mon-yyyy hh24:mi:ss''';
+
+       dbms_sql.parse(  l_theCursor,  l_query, dbms_sql.native );
+       dbms_sql.describe_columns( l_theCursor, l_colCnt, l_descTbl );
+
+       for i in 1 .. l_colCnt loop
+           utl_file.put( l_output, l_separator || '"' || l_descTbl(i).col_name || '"');
+           dbms_sql.define_column( l_theCursor, i, l_columnValue, 4000 );
+           l_separator := ',';
+       end loop;
+       utl_file.new_line( l_output );
+
+       l_status := dbms_sql.execute(l_theCursor);
+
+       while ( dbms_sql.fetch_rows(l_theCursor) > 0 ) loop
+           l_separator := '';
+           for i in 1 .. l_colCnt loop
+               dbms_sql.column_value( l_theCursor, i, l_columnValue );
+               utl_file.put( l_output, l_separator || l_columnValue );
+               l_separator := ',';
+           end loop;
+           utl_file.new_line( l_output );
+       end loop;
+       dbms_sql.close_cursor(l_theCursor);
+       utl_file.fclose( l_output );
+
+       execute immediate 'alter session set nls_date_format=''dd-MON-yy'' ';
+       
+      v_query2 :=  SQL%ROWCOUNT;
+    COMMIT;
+  
+    IF v_query2 > 0 THEN
+        v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
+        EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'J_EOM_CUSTOMER_FEES_SUP','RM','TMP_CUSTOMER_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+        --DBMS_OUTPUT.PUT_LINE('J_EOM_CUSTOMER_FEES_VHA for the date range '
+       -- || startdate || ' -- ' || enddate || ' - ' || v_query2
+       -- || ' records inserted into table TMP_CUSTOMER_FEES in ' || round((dbms_utility.get_time-l_start)/100, 6)
+       -- || ' Seconds...for customer ' || sCustomerCode );
+      --Else
+        --DBMS_OUTPUT.PUT_LINE('J_EOM_CUSTOMER_FEES_VHA rates are not empty - but there was no data, still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) ||
+       -- ' Seconds...for customer ' || sCustomerCode);
+      END IF;
+    EXCEPTION
+      WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('J_EOM_CUSTOMER_FEES_SUP failed at checkpoint ' || nCheckpoint ||
+                            ' with error ' || SQLCODE || ' : ' || SQLERRM);
+  
+        RAISE;
+  
+    END J_EOM_CUSTOMER_FEES_SUP;
+                  
     /*   K1_PAL_DESP_FEES Run this once for each customer   */
     /*   This gets all the Pallet Desp Charges   */
     /*   Temp Tables Used   */
@@ -5075,6 +6240,7 @@
         ,sCustomerCode IN VARCHAR2,
         sAnalysis IN RM.RM_ANAL%TYPE
         ,sFilterBy IN VARCHAR2
+        ,sOp IN VARCHAR2
       )
       IS
       TYPE ARRAY IS TABLE OF TMP_PAL_DESP_FEES%ROWTYPE;
@@ -5178,16 +6344,36 @@
       nCheckpoint := 10;
       EXECUTE IMMEDIATE QueryTable INTO sCust_Rates USING sCustomerCode;
       
-      nCheckpoint := 11;
-       v_query := 'TRUNCATE TABLE TMP_PAL_DESP_FEES';
-        EXECUTE IMMEDIATE v_query;
+      --nCheckpoint := 11;
+       
         
       IF To_Number(regexp_substr(sCust_Rates,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) != 0 Then
       
         ----DBMS_OUTPUT.PUT_LINE('K1_PAL_DESP_FEES rates are $' || sCust_Rates || '. Prism rate field is RM_XX_FEE17');
        
       nCheckpoint := 2;
+      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          v_query := 'TRUNCATE TABLE DEV_PAL_DESP_FEES';
+        EXECUTE IMMEDIATE v_query;
           OPEN c;
+          ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
+          LOOP
+          FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
+  
+          FORALL i IN 1..l_data.COUNT
+          ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+          INSERT INTO DEV_PAL_DESP_FEES VALUES l_data(i);
+          --USING sCust;
+  
+          EXIT WHEN c%NOTFOUND;
+  
+          END LOOP;
+         -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+          CLOSE c;
+        Else
+          v_query := 'TRUNCATE TABLE TMP_PAL_DESP_FEES';
+          EXECUTE IMMEDIATE v_query;
+           OPEN c;
           ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
           LOOP
           FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
@@ -5202,6 +6388,7 @@
           END LOOP;
          -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
           CLOSE c;
+        End If;
         -- FOR i IN l_data.FIRST .. l_data.LAST LOOP
         --  --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
         --END LOOP;
@@ -5244,6 +6431,7 @@
         ,sCustomerCode IN VARCHAR2,
         sAnalysis IN RM.RM_ANAL%TYPE
         ,sFilterBy IN VARCHAR2
+        ,sOp IN VARCHAR2
         -- sCust IN RM.RM_CUST%TYPE
       )
       IS
@@ -5343,16 +6531,36 @@
       nCheckpoint := 10;
       EXECUTE IMMEDIATE QueryTable INTO sCust_Rates USING sCustomerCode;
       
-       nCheckpoint := 11;
-        v_query := 'TRUNCATE TABLE TMP_CTN_IN_FEES';
-        EXECUTE IMMEDIATE v_query;
+       --nCheckpoint := 11;
+       
         
       IF To_Number(regexp_substr(sCust_Rates,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) != 0 Then
        
       ----DBMS_OUTPUT.PUT_LINE('K2_CTN_IN_FEES rates are $' || sCust_Rates || '. Prism rate field is RM_XX_FEE13');
         
       nCheckpoint := 2;
+      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+           v_query := 'TRUNCATE TABLE DEV_CTN_IN_FEES';
+          EXECUTE IMMEDIATE v_query;
           OPEN c;
+          ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
+          LOOP
+          FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
+  
+          FORALL i IN 1..l_data.COUNT
+          ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+          INSERT INTO DEV_CTN_IN_FEES VALUES l_data(i);
+          --USING sCust;
+  
+          EXIT WHEN c%NOTFOUND;
+  
+          END LOOP;
+         -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+          CLOSE c;
+      Else
+           v_query := 'TRUNCATE TABLE TMP_CTN_IN_FEES';
+        EXECUTE IMMEDIATE v_query;
+           OPEN c;
           ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
           LOOP
           FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
@@ -5367,6 +6575,7 @@
           END LOOP;
          -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
           CLOSE c;
+      End If;
         -- FOR i IN l_data.FIRST .. l_data.LAST LOOP
         --  --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
         --END LOOP;
@@ -5407,6 +6616,7 @@
         ,sCustomerCode IN VARCHAR2,
         sAnalysis IN RM.RM_ANAL%TYPE
         ,sFilterBy IN VARCHAR2
+        ,sOp IN VARCHAR2
       )
       IS
       TYPE ARRAY IS TABLE OF TMP_PAL_IN_FEES%ROWTYPE;
@@ -5498,9 +6708,8 @@
       nCheckpoint := 10;
       EXECUTE IMMEDIATE QueryTable INTO sCust_Rates USING sCustomerCode;
       
-      nCheckpoint := 11;
-        v_query := 'TRUNCATE TABLE TMP_PAL_IN_FEES';
-        EXECUTE IMMEDIATE v_query;
+      --nCheckpoint := 11;
+       
         
       IF To_Number(regexp_substr(sCust_Rates,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) != 0 
         AND sCustomerCode != 'BEYONDBLUE' OR sCustomerCode != 'TABCORP' Then
@@ -5508,7 +6717,28 @@
        -- --DBMS_OUTPUT.PUT_LINE('K3_PAL_IN_FEES rates are $' || sCust_Rates || '. Prism rate field is RM_XX_FEE14.');
         
       nCheckpoint := 2;
+       If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+           v_query := 'TRUNCATE TABLE DEV_PAL_IN_FEES';
+        EXECUTE IMMEDIATE v_query;
           OPEN c;
+          ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
+          LOOP
+          FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
+  
+          FORALL i IN 1..l_data.COUNT
+          ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+          INSERT INTO DEV_PAL_IN_FEES VALUES l_data(i);
+          --USING sCust;
+  
+          EXIT WHEN c%NOTFOUND;
+  
+          END LOOP;
+         -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+          CLOSE c;
+        Else
+           v_query := 'TRUNCATE TABLE TMP_PAL_IN_FEES';
+        EXECUTE IMMEDIATE v_query;
+             OPEN c;
           ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
           LOOP
           FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
@@ -5523,6 +6753,7 @@
           END LOOP;
          -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
           CLOSE c;
+      End If;
         -- FOR i IN l_data.FIRST .. l_data.LAST LOOP
         --  --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
         --END LOOP;
@@ -5564,6 +6795,7 @@
         ,sCustomerCode IN VARCHAR2,
         sAnalysis IN RM.RM_ANAL%TYPE
         ,sFilterBy IN VARCHAR2
+        ,sOp IN VARCHAR2
       )
       IS
       TYPE ARRAY IS TABLE OF TMP_PAL_IN_FEES%ROWTYPE;
@@ -5655,9 +6887,8 @@
       nCheckpoint := 10;
       EXECUTE IMMEDIATE QueryTable INTO sCust_Rates;-- USING RM_CUST;
       
-      nCheckpoint := 11;
-        v_query := 'TRUNCATE TABLE TMP_PAL_IN_FEES';
-        EXECUTE IMMEDIATE v_query;
+      --nCheckpoint := 11;
+        
         
       IF To_Number(regexp_substr(sCust_Rates,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) != 0 
         AND sCustomerCode != 'BEYONDBLUE' OR sCustomerCode != 'TABCORP' Then
@@ -5665,7 +6896,28 @@
        -- --DBMS_OUTPUT.PUT_LINE('K3_PAL_IN_FEES rates are $' || sCust_Rates || '. Prism rate field is RM_XX_FEE14.');
         
       nCheckpoint := 2;
+      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          v_query := 'TRUNCATE TABLE DEV_PAL_IN_FEES';
+        EXECUTE IMMEDIATE v_query;
           OPEN c;
+          ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
+          LOOP
+          FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
+  
+          FORALL i IN 1..l_data.COUNT
+          ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+          INSERT INTO DEV_PAL_IN_FEES VALUES l_data(i);
+          --USING sCust;
+  
+          EXIT WHEN c%NOTFOUND;
+  
+          END LOOP;
+         -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+          CLOSE c;
+      Else
+        v_query := 'TRUNCATE TABLE TMP_PAL_IN_FEES';
+        EXECUTE IMMEDIATE v_query;
+         OPEN c;
           ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
           LOOP
           FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
@@ -5680,6 +6932,7 @@
           END LOOP;
          -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
           CLOSE c;
+      End If;
         -- FOR i IN l_data.FIRST .. l_data.LAST LOOP
         --  --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
         --END LOOP;
@@ -5722,6 +6975,7 @@
         ,sCustomerCode IN VARCHAR2,
         sAnalysis IN RM.RM_ANAL%TYPE
         ,sFilterBy IN VARCHAR2
+        ,sOp IN VARCHAR2
       )
       IS
       TYPE ARRAY IS TABLE OF TMP_CTN_DESP_FEES%ROWTYPE;
@@ -5827,9 +7081,8 @@
       nCheckpoint := 10;
       EXECUTE IMMEDIATE QueryTable INTO sCust_Rates USING sCustomerCode;
       
-      nCheckpoint := 11;
-        v_query := 'TRUNCATE TABLE TMP_CTN_DESP_FEES';
-        EXECUTE IMMEDIATE v_query;
+      --nCheckpoint := 11;
+        
         
       IF To_Number(regexp_substr(sCust_Rates,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) != 0 THEN
      -- --DBMS_OUTPUT.PUT_LINE('K4_CTN_DESP_FEES Rates are ' || sCust_Rates || '. Prism rate field is RM_XX_FEE15');
@@ -5838,7 +7091,28 @@
         
   
       nCheckpoint := 2;
+      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          v_query := 'TRUNCATE TABLE DEV_CTN_DESP_FEES';
+        EXECUTE IMMEDIATE v_query;
           OPEN c;
+          ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
+          LOOP
+          FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
+  
+          FORALL i IN 1..l_data.COUNT
+          ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+          INSERT INTO DEV_CTN_DESP_FEES VALUES l_data(i);
+          --USING sCust;
+  
+          EXIT WHEN c%NOTFOUND;
+  
+          END LOOP;
+         -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+          CLOSE c;
+      Else
+          v_query := 'TRUNCATE TABLE TMP_CTN_DESP_FEES';
+        EXECUTE IMMEDIATE v_query;
+           OPEN c;
           ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
           LOOP
           FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
@@ -5853,6 +7127,7 @@
           END LOOP;
          -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
           CLOSE c;
+      End If;
         -- FOR i IN l_data.FIRST .. l_data.LAST LOOP
          -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
         --END LOOP;
@@ -5886,7 +7161,7 @@
           gds_analysis IN  RM.RM_ANAL%TYPE,
           gds_start_date_in IN VARCHAR2,
           gds_end_date_in IN VARCHAR2
-          
+          ,sOp IN VARCHAR2
     )
     AS
       TYPE ARRAY IS TABLE OF TMP_DESP_REPT%ROWTYPE;
@@ -5998,12 +7273,30 @@
                         --    ' and with new end date for this report is ' || TO_DATE(gds_new_end_date_in, 'yyyy-mm-dd') || ' : and the next report will start from ' || TO_DATE(gds_next_start_date_in, 'yyyy-mm-dd') || '  and end at the original end date being ' || TO_DATE(gds_next_end_date_in, 'yyyy-mm-dd'));
       nbreakpoint := 12; 
       EXECUTE IMMEDIATE 'BEGIN eom_report_pkg.GROUP_CUST_START; END;';
-      nCheckpoint := 11;
-          v_query := 'TRUNCATE TABLE TMP_DESP_REPT';
-          EXECUTE IMMEDIATE v_query;
+     -- nCheckpoint := 11;
+         
   
      nCheckpoint := 2;
-     OPEN c;
+     If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+         v_query := 'TRUNCATE TABLE DEV_DESP_REPT';
+          EXECUTE IMMEDIATE v_query;
+        OPEN c;
+          ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
+          LOOP
+          FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
+  
+          FORALL i IN 1..l_data.COUNT
+          ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+          INSERT INTO DEV_DESP_REPT VALUES l_data(i);
+          --USING sCust;
+          EXIT WHEN c%NOTFOUND;
+          END LOOP;
+         -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+          CLOSE c;
+      Else
+           v_query := 'TRUNCATE TABLE TMP_DESP_REPT';
+          EXECUTE IMMEDIATE v_query;
+           OPEN c;
           ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
           LOOP
           FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
@@ -6016,6 +7309,7 @@
           END LOOP;
          -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
           CLOSE c;
+      End If;
           -- FOR i IN l_data.FIRST .. l_data.LAST LOOP
           ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
           --END LOOP;
@@ -6024,8 +7318,8 @@
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
           EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,gds_start_date_in,gds_end_date_in,'L_DESPATCH_REPORT','TMP_DESP_REPT','ST',v_time_taken,SYSTIMESTAMP,'LINK');
           sFileName := 'LINK-L_DESPATCH_REPORT-' || gds_start_date_in || '-TO-' || gds_end_date_in || '-RunOn-' || sFileTime || '_A.csv';
-          IQ_EOM_REPORTING.L_DESPATCH_REPORTB(p_array_size,gds_analysis,gds_next_start_date_in,gds_next_end_date_in);
-          Z2_TMP_FEES_TO_CSV(sFileName,'TMP_DESP_REPT');
+          IQ_EOM_REPORTING.L_DESPATCH_REPORTB(p_array_size,gds_analysis,gds_next_start_date_in,gds_next_end_date_in,sOp);
+          Z2_TMP_FEES_TO_CSV(sFileName,'TMP_DESP_REPT',sOp);
           --DBMS_OUTPUT.PUT_LINE('TMP_DESP_REPT_TO_CSV for ' || sFileName || '.' );
      EXCEPTION
         WHEN OTHERS THEN
@@ -6039,6 +7333,7 @@
           gds_analysis IN  RM.RM_ANAL%TYPE,
           gds_start_date_in IN VARCHAR2,
           gds_end_date_in IN VARCHAR2
+          ,sOp IN VARCHAR2
     )
     AS
       TYPE ARRAY IS TABLE OF TMP_DESP_REPT2%ROWTYPE;
@@ -6134,12 +7429,30 @@
      BEGIN
       nbreakpoint := 1;
       EXECUTE IMMEDIATE 'BEGIN eom_report_pkg.GROUP_CUST_START; END;';
-     nCheckpoint := 11;
-          v_query := 'TRUNCATE TABLE TMP_DESP_REPT2';
-          EXECUTE IMMEDIATE v_query;
+     --nCheckpoint := 11;
+         
   
      nCheckpoint := 2;
-     OPEN c;
+      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+           v_query := 'TRUNCATE TABLE DEV_DESP_REPT2';
+          EXECUTE IMMEDIATE v_query;
+          OPEN c;
+          ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
+          LOOP
+          FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
+  
+          FORALL i IN 1..l_data.COUNT
+          ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+          INSERT INTO DEV_DESP_REPT2 VALUES l_data(i);
+          --USING sCust;
+          EXIT WHEN c%NOTFOUND;
+          END LOOP;
+         -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+          CLOSE c;
+      Else
+           v_query := 'TRUNCATE TABLE TMP_DESP_REPT2';
+          EXECUTE IMMEDIATE v_query;
+           OPEN c;
           ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
           LOOP
           FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
@@ -6152,6 +7465,7 @@
           END LOOP;
          -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
           CLOSE c;
+      End If;
           -- FOR i IN l_data.FIRST .. l_data.LAST LOOP
           ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
           --END LOOP;
@@ -6161,7 +7475,7 @@
           EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,gds_start_date_in,gds_end_date_in,'L_DESPATCH_REPORTB','TMP_DESP_REPT2','ST',v_time_taken,SYSTIMESTAMP,'LINK');
           sFileName := 'LINK-L_DESPATCH_REPORTB-' || gds_start_date_in || '-TO-' || gds_end_date_in || '-RunOn-' || sFileTime || '_B.csv';
         
-          Z2_TMP_FEES_TO_CSV(sFileName,'TMP_DESP_REPT2');
+          Z2_TMP_FEES_TO_CSV(sFileName,'TMP_DESP_REPT2',sOp);
           --DBMS_OUTPUT.PUT_LINE('TMP_DESP_REPT_TO_CSV B for ' || sFileName || '.' );
      EXCEPTION
         WHEN OTHERS THEN
@@ -6177,6 +7491,7 @@
        1. TMP_ALL_FEES   */
     PROCEDURE Y_EOM_TMP_MERGE_ALL_FEES (
      p_array_size IN PLS_INTEGER DEFAULT 100
+     ,sOp IN VARCHAR2
      )
       IS
       TYPE ARRAY IS TABLE OF TMP_ALL_FEES_F%ROWTYPE;
@@ -6273,6 +7588,81 @@
             --Select * From TMP_SEC_STOR_FEES
   
                 ;
+       CURSOR c2
+      --(
+        --start_date IN ST.ST_DESP_DATE%TYPE
+      -- ,end_date IN ST.ST_DESP_DATE%TYPE
+      --sCust IN RM.RM_CUST%TYPE
+       --)
+       IS
+            --Insert Into TMP_ALL_FEES
+            --Select * From TMP_FREIGHT
+            --UNION ALL
+            Select * From DEV_V_FREIGHT
+            UNION ALL
+            --Select * From TMP_M_XX_FREIGHT
+            --UNION ALL          
+           -- Select * From TMP_ALL_FREIGHT_F WHERE FEETYPE != 'UnPricedManualFreight'-- AND Trim(FEETYPE)  != 'Freight Fee'
+           -- UNION ALL
+           -- Select * From TMP_ALL_FREIGHT_F
+            --WHERE Trim(FEETYPE) = 'Freight Fee' AND rowid in
+            --(select max(rowid) from TMP_ALL_FREIGHT_F WHERE Trim(FEETYPE)  = 'Freight Fee' group by DESPNOTE)
+            --UNION ALL
+            Select  *
+                From DEV_ALL_FREIGHT_F 
+                WHERE FEETYPE = 'Freight Fee' AND rowid in
+                (select max(rowid) from TMP_ALL_FREIGHT_F WHERE FEETYPE = 'Freight Fee' group by DESPNOTE)   --1114
+             UNION ALL
+            Select  *
+                From DEV_ALL_FREIGHT_F 
+                WHERE FEETYPE != 'Freight Fee' AND FEETYPE != 'UnPricedManualFreight' AND FEETYPE != 'Manual Freight' AND rowid in
+                (select max(rowid) from TMP_ALL_FREIGHT_F WHERE FEETYPE != 'Freight Fee' group by DESPNOTE) 
+            
+            UNION ALL
+            Select * From DEV_HANDLING_FEES
+            UNION ALL
+            Select * From DEV_PICK_FEES
+            UNION ALL
+            Select * From DEV_SHRINKWRAP_FEES
+            UNION ALL
+            Select * From DEV_STOCK_FEES
+            UNION ALL
+            Select * From DEV_PACKING_FEES
+            UNION ALL
+            Select * From DEV_MISC_FEES
+            UNION ALL --TMP_ALL_ORD_FEES
+            Select * From DEV_ALL_ORD_FEES
+            
+            UNION ALL
+            Select * From DEV_STD_ORD_FEES
+           /* UNION ALL
+            Select * From TMP_FAX_ORD_FEES
+            UNION ALL
+            Select * From TMP_MAN_ORD_FEES
+            UNION ALL
+            Select * From TMP_EMAIL_ORD_FEES
+            UNION ALL,          
+            */
+            UNION ALL         
+            Select * From DEV_DESTROY_ORD_FEES         
+            UNION ALL          
+            Select * From DEV_PAL_DESP_FEES
+            UNION ALL
+            Select * From DEV_PAL_IN_FEES
+            UNION ALL
+            Select * From DEV_CTN_IN_FEES
+            UNION ALL
+            Select * From DEV_CTN_DESP_FEES
+            UNION ALL
+            Select * From DEV_CUSTOMER_FEES
+            UNION ALL
+            Select * From DEV_STOR_FEES WHERE FEETYPE != 'UNKNOWN'
+            --UNION ALL
+            --Select * From TMP_SLOW_STOR_FEES
+            --UNION ALL
+            --Select * From TMP_SEC_STOR_FEES
+  
+                ;
   
   
   
@@ -6280,7 +7670,24 @@
   
       
       nCheckpoint := 2;
-          OPEN c;
+       If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          OPEN c2;
+          ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
+          LOOP
+          FETCH c2 BULK COLLECT INTO l_data LIMIT p_array_size;
+  
+          FORALL i IN 1..l_data.COUNT
+          ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+          INSERT INTO DEV_ALL_FEES_F VALUES l_data(i);
+          --USING sCust;
+  
+          EXIT WHEN c2%NOTFOUND;
+  
+          END LOOP;
+         -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+          CLOSE c2;
+      Else
+           OPEN c;
           ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
           LOOP
           FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
@@ -6295,6 +7702,7 @@
           END LOOP;
          -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
           CLOSE c;
+      End If;
        --  FOR i IN l_data.FIRST .. l_data.LAST LOOP
        --   --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
         --END LOOP;
@@ -6302,7 +7710,7 @@
     COMMIT;
     --RETURN;
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-        EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'Y_EOM_TMP_MERGE_ALL_FEES','TMP','TMP_ALL_FEES_F',v_time_taken,SYSTIMESTAMP,NULL);
+       EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'Y_EOM_TMP_MERGE_ALL_FEES','TMP','TMP_ALL_FEES_F',v_time_taken,SYSTIMESTAMP,NULL);
         
     --DBMS_OUTPUT.PUT_LINE('Y_EOM_TMP_MERGE_ALL_FEES and dump data in ' ||  (round((dbms_utility.get_time-l_start)/100, 6) ||
      --   ' Seconds...' ));
@@ -6320,7 +7728,7 @@
        This merges all the Charges from each of the temp tables   
        Temp Tables Used   
        1. TMP_ALL_FEES   */
-    PROCEDURE Y_EOM_TMP_MERGE_ALL_FEES2 
+    PROCEDURE Y_EOM_TMP_MERGE_ALL_FEES2(sOp IN VARCHAR2) 
       IS
       TYPE ARRAY IS TABLE OF TMP_ALL_FEES%ROWTYPE;
       l_data ARRAY;
@@ -6383,11 +7791,55 @@
             UNION ALL
             Select * From TMP_STOR_FEES WHERE FEETYPE != 'UNKNOWN'}';
 
-  
+    v_query2 := q'{INSERT INTO DEV_ALL_FEES
+      Select  *
+                From DEV_ALL_FREIGHT_F 
+                WHERE FEETYPE = 'Freight Fee' AND rowid in
+                (select max(rowid) from TMP_ALL_FREIGHT_F WHERE FEETYPE = 'Freight Fee' group by DESPNOTE,COUNTOFSTOCKS)   --1114
+             UNION ALL
+            Select  *
+                From DEV_ALL_FREIGHT_F 
+                WHERE FEETYPE != 'Freight Fee' AND FEETYPE != 'UnPricedManualFreight' AND rowid in
+                (select max(rowid) from TMP_ALL_FREIGHT_F WHERE FEETYPE != 'Freight Fee' group by DESPNOTE,COUNTOFSTOCKS) 
+            UNION ALL
+            Select  * From DEV_V_FREIGHT
+            UNION ALL
+            Select * From DEV_HANDLING_FEES
+            UNION ALL
+            Select * From DEV_PICK_FEES
+            UNION ALL
+            Select * From DEV_SHRINKWRAP_FEES
+            UNION ALL
+            Select * From DEV_STOCK_FEES
+            UNION ALL
+            Select * From DEV_PACKING_FEES
+            UNION ALL
+            Select * From DEV_MISC_FEES
+            UNION ALL 
+            Select * From DEV_ALL_ORD_FEES
+            UNION ALL
+            Select * From DEV_STD_ORD_FEES
+            UNION ALL         
+            Select * From DEV_DESTROY_ORD_FEES         
+            UNION ALL          
+            Select * From DEV_PAL_DESP_FEES
+            UNION ALL
+            Select * From DEV_PAL_IN_FEES
+            UNION ALL
+            Select * From DEV_CTN_IN_FEES
+            UNION ALL
+            Select * From DEV_CTN_DESP_FEES
+            UNION ALL
+            Select * From DEV_CUSTOMER_FEES
+            UNION ALL
+            Select * From DEV_STOR_FEES WHERE FEETYPE != 'UNKNOWN'}';
     
   nCheckpoint := 2;
-      EXECUTE IMMEDIATE v_query;
-  
+      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        EXECUTE IMMEDIATE v_query2;
+      Else
+        EXECUTE IMMEDIATE v_query;
+      End If;
       
      
   
@@ -6412,7 +7864,7 @@
        This merges all the Charges from each of the temp tables   
        Temp Tables Used   
        1. TMP_ALL_FEES   */
-    PROCEDURE Y_EOM_TMP_MERGE_ALL_FEES_FINAL(sCustomerCode IN VARCHAR2) 
+    PROCEDURE Y_EOM_TMP_MERGE_ALL_FEES_FINAL(sCustomerCode IN VARCHAR2,sOp IN VARCHAR2) 
       IS
       TYPE ARRAY IS TABLE OF TMP_ALL_FEES_F%ROWTYPE;
       l_data ARRAY;
@@ -6432,9 +7884,15 @@
       ----DBMS_OUTPUT.PUT_LINE(start_date || ' - ' || end_date || '.' || sCust );
        l_start number default dbms_utility.get_time;
   BEGIN
-   v_query := q'{INSERT INTO TMP_ALL_FEES_F
+  If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+   v_query := q'{INSERT INTO DEV_ALL_FEES_F
+                Select  * FROM DEV_ALL_FEES
+                WHERE PARENT = :sCust_start OR CUSTOMER = :sCust}';  
+  Else
+     v_query := q'{INSERT INTO TMP_ALL_FEES_F
                 Select  * FROM TMP_ALL_FEES
-                WHERE PARENT = :sCust_start OR CUSTOMER = :sCust}';   
+                WHERE PARENT = :sCust_start OR CUSTOMER = :sCust}';  
+  End If;
   nCheckpoint := 2;
       EXECUTE IMMEDIATE v_query USING sCustomerCode,sCustomerCode;
 
@@ -6484,9 +7942,13 @@
      v_tmp_date VARCHAR2(12) := TO_DATE(end_date, 'DD-MON-YY');     
   BEGIN
     nCheckpoint := 1;
-      v_query  := 'TRUNCATE TABLE "PWIN175"."TMP_ALL_FEES"';
+    If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      v_query  := 'TRUNCATE TABLE "PWIN175"."DEV_ALL_FEES"';
       EXECUTE IMMEDIATE v_query;
-      
+  Else
+     v_query  := 'TRUNCATE TABLE "PWIN175"."TMP_ALL_FEES"';
+      EXECUTE IMMEDIATE v_query;
+  End If;
     sFileName := sCust_start || '-EOM-ADMIN-ORACLE-' || '-RunBy-' || sOp || '-RunOn-' || start_date || '-TO-' || end_date || '-RunAt-' || sFileTime || sFileSuffix;
    
     nCheckpoint := 2;
@@ -6496,7 +7958,7 @@
       --If UPPER(v_query_logfile) != UPPER(v_tmp_date) Then
       If F_IS_TABLE_EEMPTY('Tmp_Group_Cust') <= 0 Then
         --DBMS_OUTPUT.PUT_LINE('1st Need to run Tmp_Group_Cust for all customers as table is empty.' );
-        A_EOM_GROUP_CUST();
+        A_EOM_GROUP_CUST(sOp);
       --Else
         --DBMS_OUTPUT.PUT_LINE('1st No Need to run Tmp_Group_Cust for all customers as table is full of data - saved another 5 seconds.' );
       End If;
@@ -6505,14 +7967,14 @@
       --v_query := q'{SELECT TO_CHAR(LAST_ANALYZED, 'DD-MON-YY') FROM DBA_TABLES WHERE TABLE_NAME = 'TMP_ADMIN_DATA_PICK_LINECOUNTS'}';
       --EXECUTE IMMEDIATE v_query INTO vRtnVal;-- USING sCustomerCode;
       --If F_IS_TABLE_EEMPTY('TMP_ADMIN_DATA_PICK_LINECOUNTS') <= 0 Then
-      Select (F_EOM_CHECK_LOG(v_tmp_date ,'TMP_ADMIN_DATA_PICK_LINECOUNTS','B_EOM_START_RUN_ONCE_DATA')) INTO v_query_logfile From Dual;--v_query := q'{Select EOM_REPORT_PKG_TEST.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
+      Select (F_EOM_CHECK_LOG(v_tmp_date ,'TMP_ADMIN_DATA_PICK_LINECOUNTS','B_EOM_START_RUN_ONCE_DATA',sOp)) INTO v_query_logfile From Dual;--v_query := q'{Select EOM_REPORT_PKG_TEST.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
       If F_IS_TABLE_EEMPTY('TMP_ADMIN_DATA_PICK_LINECOUNTS') <= 0 Then
         --DBMS_OUTPUT.PUT_LINE('2nd Need to RUN_ONCE TMP_ADMIN_DATA_PICK_LINECOUNTS as B_EOM_START_RUN_ONCE_DATA for all customers as table is empty. result was ' || UPPER(v_query_logfile) || ' and end date was ' ||  UPPER(v_tmp_date) );
-        B_EOM_START_RUN_ONCE_DATA(start_date,end_date,sAnalysis_Start,sCust_start,0);
+        B_EOM_START_RUN_ONCE_DATA(start_date,end_date,sAnalysis_Start,sCust_start,0,sOp);
       ELSIf UPPER(v_query_logfile) != UPPER(v_tmp_date) Then
         -- If vRtnVal != TO_CHAR(SYSDATE, 'DD-MON-YY') Then
         --DBMS_OUTPUT.PUT_LINE('2nd Need to RUN_ONCE TMP_ADMIN_DATA_PICK_LINECOUNTS as B_EOM_START_RUN_ONCE_DATA for all customers as table is empty. result was ' || UPPER(v_query_logfile) || ' and end date was ' ||  UPPER(v_tmp_date) );
-        B_EOM_START_RUN_ONCE_DATA(start_date,end_date,sAnalysis_Start,sCust_start,0);
+        B_EOM_START_RUN_ONCE_DATA(start_date,end_date,sAnalysis_Start,sCust_start,0,sOp);
       --Else
         --DBMS_OUTPUT.PUT_LINE('2nd No Need to RUN_ONCE TMP_ADMIN_DATA_PICK_LINECOUNTS as B_EOM_START_RUN_ONCE_DATA for all customers as table is full of data - saved another 45 seconds. Last Date match was ' || UPPER(v_query_logfile) || ' and end date was ' ||  UPPER(v_tmp_date) );
       End If;
@@ -6524,7 +7986,7 @@
     --If UPPER(v_query_logfile) != UPPER(v_tmp_date) OR F_IS_TABLE_EEMPTY('Tmp_Locn_Cnt_By_Cust') <= 0 Then
        --DBMS_OUTPUT.PUT_LINE('3rd Need to RUN_ONCE Tmp_Locn_Cnt_By_Cust as C_EOM_START_ALL_TEMP_STOR_DATA for all customers as table is empty.result was ' || UPPER(v_query_logfile) || ' and end date was ' ||  UPPER(v_tmp_date) );
      --EOM_REPORT_PKG_TEST.C_EOM_START_CUST_TEMP_DATA(sAnalysis_Start,sCust_start);
-     C_EOM_START_ALL_TEMP_STOR_DATA(sAnalysis_Start,sCust_start);
+     C_EOM_START_ALL_TEMP_STOR_DATA(sAnalysis_Start,sCust_start,sOp);
    -- Else
       --DBMS_OUTPUT.PUT_LINE('3rd No Need to RUN_ONCE Tmp_Locn_Cnt_By_Cust as C_EOM_START_ALL_TEMP_STOR_DATA for all customers as table is full of data - saved another 65 seconds. Last Date match was ' || UPPER(v_query_logfile) || ' and end date was ' ||  UPPER(v_tmp_date) );
     --End If;
@@ -6536,8 +7998,8 @@
    --  SELECT F_EOM_PROCESS_RUN_CHECK(TO_DATE(end_date, 'DD-MON-YY'),'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL','') INTO v_query_logfile FROM DUAL;
    --  SELECT F_EOM_PROCESS_RUN_CHECK(TO_DATE(end_date, 'DD-MON-YY'),'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL',sCust_start)INTO v_query_result2 FROM DUAL;
      --If v_query_logfile = 'RUNBOTH' Then
-        IQ_EOM_REPORTING.F_EOM_TMP_ALL_FREIGHT_ALL(p_array_size_start,start_date,end_date);
-        IQ_EOM_REPORTING.F8_Z_EOM_RUN_FREIGHT(p_array_size_start,start_date,end_date,sCust_start,sFilterBy); 
+        F_EOM_TMP_ALL_FREIGHT_ALL(p_array_size_start,start_date,end_date,sOp);
+        F8_Z_EOM_RUN_FREIGHT(p_array_size_start,start_date,end_date,sCust_start,sFilterBy,sOp); 
         --DBMS_OUTPUT.PUT_LINE('Running F_EOM_PROCESS_RUN_CHECK for ALL based on to date from EOM logs - v_query_logfile is ' || v_query_logfile || '- for end date being ' || TO_DATE(end_date, 'DD-MON-YY') || ' and process was F_EOM_TMP_ALL_FREIGHT_ALL' );
    
       --ElsIf v_query_result2  = 'RUNCUST' Then
@@ -6555,8 +8017,8 @@
     -- SELECT F_EOM_PROCESS_RUN_CHECK(TO_DATE(end_date, 'DD-MON-YY'),'TMP_STOR_ALL_FEES','H4_EOM_ALL_STOR_FEES','') INTO v_query_logfile FROM DUAL;
     -- SELECT F_EOM_PROCESS_RUN_CHECK(TO_DATE(end_date, 'DD-MON-YY'),'TMP_STOR_ALL_FEES','H4_EOM_ALL_STOR_FEES',sCust_start)INTO v_query_result2 FROM DUAL;
      --If v_query_logfile = 'RUNBOTH' Then
-        IQ_EOM_REPORTING.H4_EOM_ALL_STOR_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start);
-        IQ_EOM_REPORTING.H4_EOM_ALL_STOR(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
+        H4_EOM_ALL_STOR_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sOp);
+        H4_EOM_ALL_STOR(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
        -- DBMS_OUTPUT.PUT_LINE('Running F_EOM_PROCESS_RUN_CHECK for ALL based on to date from EOM logs - v_query_logfile is ' || v_query_logfile || '- for end date being ' || TO_DATE(end_date, 'DD-MON-YY') || ' and process was H4_EOM_ALL_STOR_FEES' );
       --ElsIf v_query_result2 = 'RUNCUST' Then
        -- IQ_EOM_REPORTING.H4_EOM_ALL_STOR(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
@@ -6566,7 +8028,7 @@
      -- End If;
         
       nCheckpoint := 71; --E0_ALL_ORD_FEES
-      IQ_EOM_REPORTING.E0_ALL_ORD_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
+      E0_ALL_ORD_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
       
     /*IQ_EOM_REPORTING.E1_PHONE_ORD_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start);
       nCheckpoint := 72;
@@ -6575,29 +8037,29 @@
       IQ_EOM_REPORTING.E3_FAX_ORD_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start);
      */  
       nCheckpoint := 74;
-      IQ_EOM_REPORTING.E4_STD_ORD_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
+      E4_STD_ORD_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
      
       nCheckpoint := 75;
-      IQ_EOM_REPORTING.E5_DESTOY_ORD_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
+      E5_DESTOY_ORD_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
 
       nCheckpoint := 81;
-      G1_SHRINKWRAP_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
+      G1_SHRINKWRAP_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
       nCheckpoint := 82;
-      IQ_EOM_REPORTING.G2_STOCK_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
+      G2_STOCK_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
       --nCheckpoint := 83;
       --IQ_EOM_REPORTING.G3_PACKING_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
       
       
       nCheckpoint := 84;
-      Select (F_EOM_CHECK_CUST_LOG(sCust_start ,'TMP_HANDLING_FEES','G4_HANDLING_FEES_F')) INTO v_query_result2 From Dual;
-      Select (F_EOM_CHECK_LOG(v_tmp_date ,'TMP_HANDLING_FEES','G4_HANDLING_FEES_F')) INTO v_query_logfile From Dual;
+      Select (F_EOM_CHECK_CUST_LOG(sCust_start ,'TMP_HANDLING_FEES','G4_HANDLING_FEES_F',sOp)) INTO v_query_result2 From Dual;
+      Select (F_EOM_CHECK_LOG(v_tmp_date ,'TMP_HANDLING_FEES','G4_HANDLING_FEES_F',sOp)) INTO v_query_logfile From Dual;
       If F_IS_TABLE_EEMPTY('TMP_HANDLING_FEES') <= 0 Then
         --DBMS_OUTPUT.PUT_LINE('7th Need to RUN_ONCE G4_HANDLING_FEES_F for all customers as table is empty. result was ' || UPPER(v_query_result2) 
         --|| ' and this cust was ' ||  UPPER(sCust_start)
         --|| ' and to date was ' ||  UPPER(v_query_logfile)
         --|| ' and this date was ' ||  UPPER(v_tmp_date) 
        -- );
-        IQ_EOM_REPORTING.G4_HANDLING_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
+        G4_HANDLING_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
       ELSIf UPPER(v_query_result2) != UPPER(sCust_start) 
       AND UPPER(v_query_logfile) IS NOT NULL 
       AND UPPER(v_query_logfile) != UPPER(v_tmp_date) Then
@@ -6606,7 +8068,7 @@
        -- || ' and to date was ' ||  UPPER(v_query_logfile)
        -- || ' and this date was ' ||  UPPER(v_tmp_date) 
        -- );
-        IQ_EOM_REPORTING.G4_HANDLING_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
+        G4_HANDLING_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
       --ELSIF  UPPER(v_query_result2) = UPPER(sCust_start) 
       --AND UPPER(v_query_result2) IS NOT NULL 
       --AND UPPER(v_query_logfile) = UPPER(v_tmp_date) Then
@@ -6622,24 +8084,24 @@
        -- || ' and to date was ' ||  UPPER(v_query_logfile)
        -- || ' and this date was ' ||  UPPER(v_tmp_date) 
        -- );
-        IQ_EOM_REPORTING.G4_HANDLING_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
+        G4_HANDLING_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
       Else
-        IQ_EOM_REPORTING.G4_HANDLING_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
+        G4_HANDLING_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
         --DBMS_OUTPUT.PUT_LINE('7th No matches for running G4_HANDLING_FEES_F, ran it just in case still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) ||
        -- ' Seconds...for customer ' || sCust_start);
       END IF;
       
       
       nCheckpoint := 85;
-      Select (F_EOM_CHECK_CUST_LOG(sCust_start ,'TMP_PICK_FEES','G5_PICK_FEES_F')) INTO v_query_result2 From Dual;--v_query := q'{Select IQ_EOM_REPORTING.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
-      Select (F_EOM_CHECK_LOG(v_tmp_date ,'TMP_PICK_FEES','G5_PICK_FEES_F')) INTO v_query_logfile From Dual;
+      Select (F_EOM_CHECK_CUST_LOG(sCust_start ,'TMP_PICK_FEES','G5_PICK_FEES_F',sOp)) INTO v_query_result2 From Dual;--v_query := q'{Select IQ_EOM_REPORTING.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
+      Select (F_EOM_CHECK_LOG(v_tmp_date ,'TMP_PICK_FEES','G5_PICK_FEES_F',sOp)) INTO v_query_logfile From Dual;
       If F_IS_TABLE_EEMPTY('TMP_PICK_FEES') <= 0 Then
         --DBMS_OUTPUT.PUT_LINE('8th Need to RUN_ONCE G5_PICK_FEES_F for all customers as table is  empty. cust result was ' || UPPER(v_query_result2) 
        -- || ' and this cust was ' ||  UPPER(sCust_start)
        -- || ' and to date was ' ||  UPPER(v_query_logfile)
        -- || ' and this date was ' ||  UPPER(v_tmp_date)
        --  );
-        IQ_EOM_REPORTING.G5_PICK_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
+        G5_PICK_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
       ELSIf UPPER(v_query_result2) != UPPER(sCust_start) 
       AND UPPER(v_query_result2) IS NOT NULL 
       AND UPPER(v_query_logfile) != UPPER(v_tmp_date) Then
@@ -6648,7 +8110,7 @@
        -- || ' and to date was ' ||  UPPER(v_query_logfile)
        -- || ' and this date was ' ||  UPPER(v_tmp_date)
         -- );
-        IQ_EOM_REPORTING.G5_PICK_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
+        G5_PICK_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
       --ELSIF UPPER(v_query_result2) = UPPER(sCust_start) 
       --AND UPPER(v_query_result2) IS NOT NULL 
       --AND UPPER(v_query_logfile) = UPPER(v_tmp_date) Then
@@ -6664,37 +8126,37 @@
        -- || ' and to date was ' ||  UPPER(v_query_logfile)
         --|| ' and this date was ' ||  UPPER(v_tmp_date)
         -- );
-        IQ_EOM_REPORTING.G5_PICK_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
+        G5_PICK_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
       Else
-        IQ_EOM_REPORTING.G5_PICK_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
+        G5_PICK_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
         --DBMS_OUTPUT.PUT_LINE('8th No matches for running G5_PICK_FEES_F, ran it just in case still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) ||
         --' Seconds...for customer ' || sCust_start);
       END IF;
       nCheckpoint := 9;
-      IQ_EOM_REPORTING.I_EOM_MISC_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
+      I_EOM_MISC_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
 
       nCheckpoint := 10;
-      IQ_EOM_REPORTING.K1_PAL_DESP_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
+      K1_PAL_DESP_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
       nCheckpoint := 11;
-      IQ_EOM_REPORTING.K2_CTN_IN_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
+      K2_CTN_IN_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
       nCheckpoint := 12;
-      IQ_EOM_REPORTING.K3_PAL_IN_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
+      K3_PAL_IN_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
       nCheckpoint := 13;
-      IQ_EOM_REPORTING.K4_CTN_DESP_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
+      K4_CTN_DESP_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
 
 
      If ( sCust_start = 'VHAAUS' ) Then
         nCheckpoint := 14;
-        IQ_EOM_REPORTING.J_EOM_CUSTOMER_FEES_VHA(p_array_size_start,start_date,end_date,sCust_start);
+        J_EOM_CUSTOMER_FEES_VHA(p_array_size_start,start_date,end_date,sCust_start,sOp);
       ElsIf ( sCust_start = 'BEYONDBLUE' ) Then
         nCheckpoint := 15;
-        IQ_EOM_REPORTING.J_EOM_CUSTOMER_FEES_BB(p_array_size_start,start_date,end_date,sCust_start);
+        J_EOM_CUSTOMER_FEES_BB(p_array_size_start,start_date,end_date,sCust_start,sOp);
       ElsIf ( sCust_start = 'WBC' ) Then
         nCheckpoint := 15;
-        IQ_EOM_REPORTING.J_EOM_CUSTOMER_FEES_WBC(p_array_size_start,start_date,end_date,sCust_start);
+        J_EOM_CUSTOMER_FEES_WBC(p_array_size_start,start_date,end_date,sCust_start,sOp);
       ElsIf ( sCust_start = 'TABCORP' ) Then
         nCheckpoint := 16;
-        IQ_EOM_REPORTING.J_EOM_CUSTOMER_FEES_TAB(p_array_size_start,start_date,end_date,sCust_start);
+        J_EOM_CUSTOMER_FEES_TAB(p_array_size_start,start_date,end_date,sCust_start,sOp);
       --ElsIf ( sCust_start = 'IAG' ) Then
         --nCheckpoint := 60;
         --IQ_EOM_REPORTING.Z_EOM_RUN_IAG(p_array_size_start,start_date,end_date,'CGU',sAnalysis_Start);
@@ -6705,23 +8167,27 @@
      v_query := 'TRUNCATE TABLE TMP_ALL_FEES';
      EXECUTE IMMEDIATE v_query;
      COMMIT;
-     Y_EOM_TMP_MERGE_ALL_FEES2();
+     Y_EOM_TMP_MERGE_ALL_FEES2(sOp);
      
-      nCheckpoint := 100;
+     nCheckpoint := 100;
      v_query := 'TRUNCATE TABLE TMP_ALL_FEES_F';
      EXECUTE IMMEDIATE v_query;
      COMMIT;
-     Y_EOM_TMP_MERGE_ALL_FEES_FINAL(sCust_start);
+     Y_EOM_TMP_MERGE_ALL_FEES_FINAL(sCust_start,sOp);
 
      nCheckpoint := 101;
       ----DBMS_OUTPUT.PUT_LINE('START Z TMP_ALL_FEES for ' || sFileName|| ' saved in ' || sPath );
-      Z1_TMP_ALL_FEES_TO_CSV(sFileName);
-
+      If ( sCust_start = 'SUPERPART' ) Then
+        nCheckpoint := 15;
+        J_EOM_CUSTOMER_FEES_SUP(p_array_size_start,start_date,end_date,sCust_start,sFileName,sOp);
+      Else
+        Z1_TMP_ALL_FEES_TO_CSV(sFileName,sOp);
+      End If;
     v_query2 :=  SQL%ROWCOUNT;
     -- --DBMS_OUTPUT.PUT_LINE('Z EOM Successfully Ran EOM_RUN_ALL for ' || sCust_start|| ' in ' ||(round((dbms_utility.get_time-l_start)/100, 2) ||
     --' Seconds...' );
       v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-      IQ_EOM_REPORTING.EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'Z_EOM_RUN_ALL','MERGE','NULL',v_time_taken,SYSTIMESTAMP,sCust_start);
+      EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'Z_EOM_RUN_ALL','MERGE','NULL',v_time_taken,SYSTIMESTAMP,sCust_start);
       --DBMS_OUTPUT.PUT_LINE('LAST EOM Successfully Ran EOM_RUN_ALL for the date range '
      -- || start_date || ' -- ' || end_date || ' - ' || v_query2 || ' records inserted in ' ||  (round((dbms_utility.get_time-l_start)/100, 6) ||
      -- ' Seconds... for customer '|| sCust_start ));
@@ -6738,6 +8204,7 @@
        v_in_end_date  VARCHAR2
        ,v_in_tbl  VARCHAR2
        ,v_in_process VARCHAR2
+       ,sOp IN VARCHAR2
       -- ,gds_src_get_desp_stocks OUT sys_refcursor
       ) AS
        v_query VARCHAR2(500);
@@ -6759,7 +8226,7 @@
       RAISE;
     END EOM_CHECK_LOG;
     
-    PROCEDURE EOM_INSERT_LOG (
+     PROCEDURE EOM_INSERT_LOG (
       v_in_DATETIME    IN  DATE          
       ,v_in_FROM_DATE   IN  DATE          
       ,v_in_TO_DATE           IN  DATE          
@@ -6773,7 +8240,7 @@
     BEGIN
      INSERT INTO TMP_EOM_LOGS
      VALUES (v_in_DATETIME,v_in_FROM_DATE,v_in_TO_DATE,v_in_ORIGIN_PROCESS,v_in_ORIGIN_TBL,v_in_DEST_TBL,v_in_TIME_TAKEN,v_in_CUST,v_in_LAST_TOUCH );
-   /* --DBMS_OUTPUT.PUT_LINE('EOM_INSERT_LOG for the date ' || v_in_DATETIME 
+   /* DBMS_OUTPUT.PUT_LINE('EOM_INSERT_LOG for the date ' || v_in_DATETIME 
         || ' the FROM_DAATE field was set to ' || v_in_FROM_DATE
         || ' the TO_DAATE field was set to ' || v_in_TO_DATE
         || ' the Calling Process field was set to ' || v_in_ORIGIN_PROCESS
@@ -6794,6 +8261,7 @@
        v_in_end_date  VARCHAR2
        ,v_in_tbl  VARCHAR2
        ,v_in_process VARCHAR2
+       ,sOp IN VARCHAR2
        )
     RETURN VARCHAR2
     AS
@@ -6813,6 +8281,7 @@
        v_in_cust  VARCHAR2
        ,v_in_tbl  VARCHAR2
        ,v_in_process VARCHAR2
+       ,sOp IN VARCHAR2
        )
     RETURN VARCHAR2
     AS
@@ -6828,7 +8297,7 @@
           RETURN v_rtn_rslt;
     END F_EOM_CHECK_CUST_LOG;
     
-    PROCEDURE Z1_TMP_ALL_FEES_TO_CSV( p_filename in varchar2 )
+    PROCEDURE Z1_TMP_ALL_FEES_TO_CSV( p_filename in varchar2,sOp IN VARCHAR2 )
     is
         l_output        utl_file.file_type;
         l_theCursor     integer default dbms_sql.open_cursor;
@@ -6881,7 +8350,7 @@
       raise;
    end Z1_TMP_ALL_FEES_TO_CSV;
     
-    PROCEDURE Z2_TMP_FEES_TO_CSV( p_filename in varchar2, p_in_table in varchar2 )
+    PROCEDURE Z2_TMP_FEES_TO_CSV( p_filename in varchar2, p_in_table in varchar2,sOp IN VARCHAR2 )
     is
         l_output        utl_file.file_type;
         l_theCursor     integer default dbms_sql.open_cursor;
@@ -6937,6 +8406,7 @@
      PROCEDURE get_stockonhand_curp (
           gsc_cust_in IN Tmp_Group_Cust.sGroupCust%TYPE,
           gsc_src_get_soh_trans OUT sys_refcursor
+          ,sOp IN VARCHAR2
         )
     AS
       nbreakpoint   NUMBER;
@@ -6982,7 +8452,7 @@
      
      
       FUNCTION total_dmd_by_stock2
-        ( gsc_stock_in IN NA.NA_STOCK%TYPE)
+        ( gsc_stock_in IN NA.NA_STOCK%TYPE,sOp IN VARCHAR2)
       RETURN NUMBER
       IS
        CURSOR dmd_cur    IS
@@ -7017,6 +8487,7 @@
      PROCEDURE get_finance_transactions_curp (
 			gds_cust_in IN IM.IM_CUST%TYPE,
 			gds_src_get_finance_trans OUT sys_refcursor
+      ,sOp IN VARCHAR2
 )
 AS
   nbreakpoint   NUMBER;
@@ -7124,4 +8595,3 @@ BEGIN
 
 
 END IQ_EOM_REPORTING;
-
