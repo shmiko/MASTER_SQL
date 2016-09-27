@@ -1991,7 +1991,11 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           COMMIT;
       IF v_query2 > 0 THEN
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-        EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'E0_ALL_ORD_FEES','SH','TMP_ALL_ORD_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'E0_ALL_ORD_FEES','SH','DEV_ALL_ORD_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+        Else
+          EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'E0_ALL_ORD_FEES','SH','TMP_ALL_ORD_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+        End If;
         --DBMS_OUTPUT.PUT_LINE('E0_ALL_ORD_FEES for the date range '
        -- || startdate || ' -- ' || enddate || ' - ' || v_query2
        -- || ' records inserted into table TMP_ALL_ORD_FEES in ' || round((dbms_utility.get_time-l_start)/100, 6)
@@ -2183,7 +2187,11 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
 
     IF v_query2 > 0 THEN
       v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-      EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'E4_VERBAL_ORD_FEES','SH','TMP_VERBAL_ORD_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'E4_VERBAL_ORD_FEES','SH','DEV_VERBAL_ORD_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+      Else
+        EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'E4_VERBAL_ORD_FEES','SH','TMP_VERBAL_ORD_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+      End If;
       --DBMS_OUTPUT.PUT_LINE('E4_STD_ORD_FEES for the date range '
       --|| startdate || ' -- ' || enddate || ' - ' || v_query2
      -- || ' records inserted into table TMP_VERBAL_ORD_FEES in ' || round((dbms_utility.get_time-l_start)/100, 6)
@@ -2377,7 +2385,11 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
       COMMIT;
       IF v_query2 > 0 THEN
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-        EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'E5_DESTOY_ORD_FEES','SH','TMP_DESTROY_ORD_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'E5_DESTOY_ORD_FEES','SH','DEV_DESTROY_ORD_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+        Else
+          EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'E5_DESTOY_ORD_FEES','SH','TMP_DESTROY_ORD_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+        End if;
         --DBMS_OUTPUT.PUT_LINE('E5_DESTOY_ORD_FEES for the date range '
        -- || startdate || ' -- ' || enddate || ' - ' || v_query2
        -- || ' records inserted into table TMP_DESTROY_ORD_FEES in ' || round((dbms_utility.get_time-l_start)/100, 6)
@@ -2620,7 +2632,11 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
   
        IF v_query2 > 0 THEN
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-        EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'G1_SHRINKWRAP_FEES','ST','TMP_SHRINKWRAP_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'G1_SHRINKWRAP_FEES','ST','DEV_SHRINKWRAP_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+        Else
+          EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'G1_SHRINKWRAP_FEES','ST','TMP_SHRINKWRAP_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+        End If;
         --DBMS_OUTPUT.PUT_LINE('G1_SHRINKWRAP_FEES for the date range '
        -- || startdate || ' -- ' || enddate || ' - ' || v_query2
        -- || ' records inserted into table TMP_SHRINKWRAP_FEES in ' || round((dbms_utility.get_time-l_start)/100, 6)
@@ -2807,7 +2823,11 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
   
        IF v_query2 > 0 THEN
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-        EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'G2_STOCK_FEES','SD','TMP_STOCK_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'G2_STOCK_FEES','SD','DEV_STOCK_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+        Else
+          EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'G2_STOCK_FEES','SD','TMP_STOCK_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+        End If;
         --DBMS_OUTPUT.PUT_LINE('G2_STOCK_FEES for the date range '
         --|| startdate || ' -- ' || enddate || ' - ' || v_query2
        -- || ' records inserted into table TMP_STOCK_FEES in ' || round((dbms_utility.get_time-l_start)/100, 6)
