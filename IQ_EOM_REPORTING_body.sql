@@ -3636,7 +3636,11 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
   
          IF v_query2 > 0 THEN
             v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-            EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'G4_HANDLING_FEES_F2','SL','TMP_PICK_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+            If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+              EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'G4_HANDLING_FEES_F2','SL','DEV_PICK_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+            Else
+              EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'G4_HANDLING_FEES_F2','SL','TMP_PICK_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+            End IF;
             --DBMS_OUTPUT.PUT_LINE('G4_HANDLING_FEES_F2 for the date range '
            -- || startdate || ' -- ' || enddate || ' - ' || v_query2
            -- || ' records inserted into table TMP_PICK_FEES in ' || round((dbms_utility.get_time-l_start)/100, 6)
@@ -3894,7 +3898,11 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
   
       IF v_query2 > 0 THEN
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-        EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'G5_PICK_FEES_F','ST','TMP_PICK_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'G5_PICK_FEES_F','ST','DEV_PICK_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+        Else
+          EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'G5_PICK_FEES_F','ST','TMP_PICK_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+        End If;
         --DBMS_OUTPUT.PUT_LINE('G5_PICK_FEES_F for the date range '
        -- || startdate || ' -- ' || enddate || ' - ' || v_query2
        -- || ' records inserted into table TMP_PICK_FEES in ' || round((dbms_utility.get_time-l_start)/100, 6)
