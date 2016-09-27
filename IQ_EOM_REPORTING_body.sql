@@ -7457,16 +7457,13 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           v_query2 :=  SQL%ROWCOUNT;
       COMMIT; 
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
+        sFileName := 'LINK-L_DESPATCH_REPORT-' || gds_start_date_in || '-TO-' || gds_end_date_in || '-RunOn-' || sFileTime || '_A.csv';
+          
           If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
             EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,gds_start_date_in,gds_end_date_in,'L_DESPATCH_REPORT','DEV_DESP_REPT','ST',v_time_taken,SYSTIMESTAMP,'LINK');
-          Else
-            EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,gds_start_date_in,gds_end_date_in,'L_DESPATCH_REPORT','TMP_DESP_REPT','ST',v_time_taken,SYSTIMESTAMP,'LINK');
-          End If
-          sFileName := 'LINK-L_DESPATCH_REPORT-' || gds_start_date_in || '-TO-' || gds_end_date_in || '-RunOn-' || sFileTime || '_A.csv';
-          IQ_EOM_REPORTING.L_DESPATCH_REPORTB(p_array_size,gds_analysis,gds_next_start_date_in,gds_next_end_date_in,sOp);
-          If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
             Z2_TMP_FEES_TO_CSV(sFileName,'DEV_DESP_REPT',sOp);
           Else
+            EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,gds_start_date_in,gds_end_date_in,'L_DESPATCH_REPORT','TMP_DESP_REPT','ST',v_time_taken,SYSTIMESTAMP,'LINK');
             Z2_TMP_FEES_TO_CSV(sFileName,'TMP_DESP_REPT',sOp);
           End If;
           --DBMS_OUTPUT.PUT_LINE('TMP_DESP_REPT_TO_CSV for ' || sFileName || '.' );
@@ -7765,12 +7762,12 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
             Select  *
                 From DEV_ALL_FREIGHT_F 
                 WHERE FEETYPE = 'Freight Fee' AND rowid in
-                (select max(rowid) from TMP_ALL_FREIGHT_F WHERE FEETYPE = 'Freight Fee' group by DESPNOTE)   --1114
+                (select max(rowid) from DEV_ALL_FREIGHT_F WHERE FEETYPE = 'Freight Fee' group by DESPNOTE)   --1114
              UNION ALL
             Select  *
                 From DEV_ALL_FREIGHT_F 
                 WHERE FEETYPE != 'Freight Fee' AND FEETYPE != 'UnPricedManualFreight' AND FEETYPE != 'Manual Freight' AND rowid in
-                (select max(rowid) from TMP_ALL_FREIGHT_F WHERE FEETYPE != 'Freight Fee' group by DESPNOTE) 
+                (select max(rowid) from DEV_ALL_FREIGHT_F WHERE FEETYPE != 'Freight Fee' group by DESPNOTE) 
             
             UNION ALL
             Select * From DEV_HANDLING_FEES
@@ -7864,8 +7861,11 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
     COMMIT;
     --RETURN;
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-       EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'Y_EOM_TMP_MERGE_ALL_FEES','TMP','TMP_ALL_FEES_F',v_time_taken,SYSTIMESTAMP,NULL);
-        
+        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'Y_EOM_TMP_MERGE_ALL_FEES','DEV','DEV_ALL_FEES_F',v_time_taken,SYSTIMESTAMP,NULL);
+        Else
+          EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'Y_EOM_TMP_MERGE_ALL_FEES','TMP','TMP_ALL_FEES_F',v_time_taken,SYSTIMESTAMP,NULL);
+        End If;
     --DBMS_OUTPUT.PUT_LINE('Y_EOM_TMP_MERGE_ALL_FEES and dump data in ' ||  (round((dbms_utility.get_time-l_start)/100, 6) ||
      --   ' Seconds...' ));
   
@@ -7949,12 +7949,12 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
       Select  *
                 From DEV_ALL_FREIGHT_F 
                 WHERE FEETYPE = 'Freight Fee' AND rowid in
-                (select max(rowid) from TMP_ALL_FREIGHT_F WHERE FEETYPE = 'Freight Fee' group by DESPNOTE,COUNTOFSTOCKS)   --1114
+                (select max(rowid) from DEV_ALL_FREIGHT_F WHERE FEETYPE = 'Freight Fee' group by DESPNOTE,COUNTOFSTOCKS)   --1114
              UNION ALL
             Select  *
                 From DEV_ALL_FREIGHT_F 
                 WHERE FEETYPE != 'Freight Fee' AND FEETYPE != 'UnPricedManualFreight' AND rowid in
-                (select max(rowid) from TMP_ALL_FREIGHT_F WHERE FEETYPE != 'Freight Fee' group by DESPNOTE,COUNTOFSTOCKS) 
+                (select max(rowid) from DEV_ALL_FREIGHT_F WHERE FEETYPE != 'Freight Fee' group by DESPNOTE,COUNTOFSTOCKS) 
             UNION ALL
             Select  * From DEV_V_FREIGHT
             UNION ALL
@@ -8000,8 +8000,11 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
     COMMIT;
     --RETURN;
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-        EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'Y_EOM_TMP_MERGE_ALL_FEES2','TMP','TMP_ALL_FEES',v_time_taken,SYSTIMESTAMP,NULL);
-        
+        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'Y_EOM_TMP_MERGE_ALL_FEES2','DEV','DEV_ALL_FEES',v_time_taken,SYSTIMESTAMP,NULL);
+        Else
+          EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'Y_EOM_TMP_MERGE_ALL_FEES2','TMP','TMP_ALL_FEES',v_time_taken,SYSTIMESTAMP,NULL);
+        End If;
     --DBMS_OUTPUT.PUT_LINE('Y_EOM_TMP_MERGE_ALL_FEES2 and dump data in ' ||  (round((dbms_utility.get_time-l_start)/100, 6) ||
       --  ' Seconds...' ));
   
@@ -8053,8 +8056,11 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
     COMMIT;
     --RETURN;
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-        EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'Y_EOM_TMP_MERGE_ALL_FEES_FINAL','TMP_ALL_FEES','TMP_ALL_FEES_F',v_time_taken,SYSTIMESTAMP,NULL);
-        
+        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'Y_EOM_TMP_MERGE_ALL_FEES_FINAL','DEV_ALL_FEES','DEV_ALL_FEES_F',v_time_taken,SYSTIMESTAMP,NULL);
+        Else
+          EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'Y_EOM_TMP_MERGE_ALL_FEES_FINAL','TMP_ALL_FEES','TMP_ALL_FEES_F',v_time_taken,SYSTIMESTAMP,NULL);
+        End IF;
     --DBMS_OUTPUT.PUT_LINE('Y_EOM_TMP_MERGE_ALL_FEES_FINAL and dump data in ' ||  (round((dbms_utility.get_time-l_start)/100, 6) ||
       --  ' Seconds...' )); 
       COMMIT;
