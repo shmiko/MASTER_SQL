@@ -671,7 +671,11 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
       IF v_query2 > 0 THEN
           nCheckpoint := 100;
           v_query := '';
-        EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','TMP_FREIGHT','TMP_ALL_FREIGHT_ALL',v_time_taken,SYSTIMESTAMP,NULL);--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
+        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then  
+          EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','DEV_FREIGHT','DEV_ALL_FREIGHT_ALL',v_time_taken,SYSTIMESTAMP,NULL);--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
+        Else
+          EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','TMP_FREIGHT','TMP_ALL_FREIGHT_ALL',v_time_taken,SYSTIMESTAMP,NULL);--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
+        End If;
         --EXECUTE IMMEDIATE v_query USING startdate,enddate,v_time_taken;
         --DBMS_OUTPUT.PUT_LINE('F_EOM_TMP_ALL_FREIGHT_ALL for the date range '
         --|| startdate || ' -- ' || enddate || ' - ' || v_query2
@@ -995,6 +999,38 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
         AND t.OWNEDBY = sCustomerCode;
       
         CURSOR c4        
+        IS       
+        /*All freight fees by area*/
+        select  *
+        FROM  TMP_ALL_FREIGHT_ALL t
+        WHERE ROWID IN ( SELECT MAX(ROWID) FROM TMP_ALL_FREIGHT_ALL GROUP BY description )
+        AND t.ILNOTE2 = sCustomerCode;
+        
+        CURSOR c1Dev   
+        IS 
+        /*All freight fees by Parent*/
+        select  *
+        FROM  TMP_ALL_FREIGHT_ALL t
+        WHERE ROWID IN ( SELECT MAX(ROWID) FROM TMP_ALL_FREIGHT_ALL GROUP BY description )
+        AND t.parent = sCustomerCode; --AND trim(FEETYPE) != 'Freight Fee';
+      
+        CURSOR c2Dev        
+        IS       
+        /*All freight fees by RM_DBL_2*/
+        select  *
+        FROM  TMP_ALL_FREIGHT_ALL t
+        WHERE ROWID IN ( SELECT MAX(ROWID) FROM TMP_ALL_FREIGHT_ALL GROUP BY description )
+        AND t.NILOCN = sCustomerCode;
+     
+        CURSOR c3Dev        
+        IS       
+        /*All freight fees by territory*/
+        select DISTINCT *
+        FROM  TMP_ALL_FREIGHT_ALL t
+        WHERE ROWID IN ( SELECT MAX(ROWID) FROM TMP_ALL_FREIGHT_ALL GROUP BY description )
+        AND t.OWNEDBY = sCustomerCode;
+      
+        CURSOR c4Dev        
         IS       
         /*All freight fees by area*/
         select  *
