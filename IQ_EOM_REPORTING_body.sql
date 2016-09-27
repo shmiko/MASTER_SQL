@@ -7457,10 +7457,18 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           v_query2 :=  SQL%ROWCOUNT;
       COMMIT; 
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-          EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,gds_start_date_in,gds_end_date_in,'L_DESPATCH_REPORT','TMP_DESP_REPT','ST',v_time_taken,SYSTIMESTAMP,'LINK');
+          If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+            EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,gds_start_date_in,gds_end_date_in,'L_DESPATCH_REPORT','DEV_DESP_REPT','ST',v_time_taken,SYSTIMESTAMP,'LINK');
+          Else
+            EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,gds_start_date_in,gds_end_date_in,'L_DESPATCH_REPORT','TMP_DESP_REPT','ST',v_time_taken,SYSTIMESTAMP,'LINK');
+          End If
           sFileName := 'LINK-L_DESPATCH_REPORT-' || gds_start_date_in || '-TO-' || gds_end_date_in || '-RunOn-' || sFileTime || '_A.csv';
           IQ_EOM_REPORTING.L_DESPATCH_REPORTB(p_array_size,gds_analysis,gds_next_start_date_in,gds_next_end_date_in,sOp);
-          Z2_TMP_FEES_TO_CSV(sFileName,'TMP_DESP_REPT',sOp);
+          If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+            Z2_TMP_FEES_TO_CSV(sFileName,'DEV_DESP_REPT',sOp);
+          Else
+            Z2_TMP_FEES_TO_CSV(sFileName,'TMP_DESP_REPT',sOp);
+          End If;
           --DBMS_OUTPUT.PUT_LINE('TMP_DESP_REPT_TO_CSV for ' || sFileName || '.' );
      EXCEPTION
         WHEN OTHERS THEN
@@ -7613,10 +7621,15 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           v_query2 :=  SQL%ROWCOUNT;
       COMMIT; 
       v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-          EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,gds_start_date_in,gds_end_date_in,'L_DESPATCH_REPORTB','TMP_DESP_REPT2','ST',v_time_taken,SYSTIMESTAMP,'LINK');
-          sFileName := 'LINK-L_DESPATCH_REPORTB-' || gds_start_date_in || '-TO-' || gds_end_date_in || '-RunOn-' || sFileTime || '_B.csv';
-        
-          Z2_TMP_FEES_TO_CSV(sFileName,'TMP_DESP_REPT2',sOp);
+          If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+            EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,gds_start_date_in,gds_end_date_in,'L_DESPATCH_REPORTB','DEV_DESP_REPT2','ST',v_time_taken,SYSTIMESTAMP,'LINK');
+            sFileName := 'LINK-L_DESPATCH_REPORTB-' || gds_start_date_in || '-TO-' || gds_end_date_in || '-RunOn-' || sFileTime || '_B.csv';
+            Z2_TMP_FEES_TO_CSV(sFileName,'DEV_DESP_REPT2',sOp);
+          Else
+            EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,gds_start_date_in,gds_end_date_in,'L_DESPATCH_REPORTB','TMP_DESP_REPT2','ST',v_time_taken,SYSTIMESTAMP,'LINK');
+            sFileName := 'LINK-L_DESPATCH_REPORTB-' || gds_start_date_in || '-TO-' || gds_end_date_in || '-RunOn-' || sFileTime || '_B.csv';
+            Z2_TMP_FEES_TO_CSV(sFileName,'TMP_DESP_REPT2',sOp);
+          End If;
           --DBMS_OUTPUT.PUT_LINE('TMP_DESP_REPT_TO_CSV B for ' || sFileName || '.' );
      EXCEPTION
         WHEN OTHERS THEN
