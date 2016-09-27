@@ -8849,7 +8849,6 @@ BEGIN
       --LOOP
       --FETCH EOM_CUSTS BULK COLLECT INTO l_data LIMIT p_array_size;
       ----DBMS_OUTPUT.PUT_LINE(RM_CUST || '.' );
-      
       --FORALL i IN 1..l_data.COUNT
       ----DBMS_OUTPUT.PUT_LINE(i || '.' );
       --INSERT INTO TMP_ALL_FEES_F VALUES l_data(i);
