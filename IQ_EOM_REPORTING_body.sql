@@ -3009,7 +3009,11 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
   
        IF v_query2 > 0 THEN
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-        EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'G2_STOCK_FEES','SD','TMP_STOCK_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'G2_STOCK_FEES','SD','DEV_STOCK_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+        Else
+          EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'G2_STOCK_FEES','SD','TMP_STOCK_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+        End If;
         --DBMS_OUTPUT.PUT_LINE('G2_STOCK_FEES for the date range '
         --|| startdate || ' -- ' || enddate || ' - ' || v_query2
        -- || ' records inserted into table TMP_STOCK_FEES in ' || round((dbms_utility.get_time-l_start)/100, 6)
