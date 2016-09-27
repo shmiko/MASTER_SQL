@@ -4948,7 +4948,11 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
     COMMIT;
     --RETURN;
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-        EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'J_EOM_CUSTOMER_FEES','RM','TMP_CUSTOMER_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'J_EOM_CUSTOMER_FEES','RM','DEV_CUSTOMER_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+        Else
+          EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'J_EOM_CUSTOMER_FEES','RM','TMP_CUSTOMER_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+        End IF;
         --DBMS_OUTPUT.PUT_LINE('J_EOM_CUSTOMER_FEES for the date range '
        -- || startdate || ' -- ' || enddate || ' - ' || v_query2 || ' records inserted in ' ||  (round((dbms_utility.get_time-l_start)/100, 6)) ||
        -- ' Seconds...for customer ' || sCustomerCode);
@@ -5240,7 +5244,11 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
   
      IF v_query2 > 0 THEN
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-        EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'J_EOM_CUSTOMER_FEES_TAB','RM','TMP_CUSTOMER_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'J_EOM_CUSTOMER_FEES_TAB','RM','DEV_CUSTOMER_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+        Else
+          EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'J_EOM_CUSTOMER_FEES_TAB','RM','TMP_CUSTOMER_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+        End If;
         --DBMS_OUTPUT.PUT_LINE('J_EOM_CUSTOMER_FEES_TAB for the date range '
        -- || startdate || ' -- ' || enddate || ' - ' || v_query2
        -- || ' records inserted into table TMP_CUSTOMER_FEES in ' || round((dbms_utility.get_time-l_start)/100, 6)
@@ -5518,7 +5526,11 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
         --' Seconds...for customer ' || sCustomerCode);
     IF v_query2 > 0 THEN
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-        EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'J_EOM_CUSTOMER_FEES_BB','RM','TMP_CUSTOMER_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'J_EOM_CUSTOMER_FEES_BB','RM','DEV_CUSTOMER_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+        Else
+          EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'J_EOM_CUSTOMER_FEES_BB','RM','TMP_CUSTOMER_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+        End If;
         --DBMS_OUTPUT.PUT_LINE('J_EOM_CUSTOMER_FEES_BB for the date range '
         --|| startdate || ' -- ' || enddate || ' - ' || v_query2
         --|| ' records inserted into table TMP_CUSTOMER_FEES in ' || round((dbms_utility.get_time-l_start)/100, 6)
@@ -5669,7 +5681,11 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
     COMMIT;  
     IF v_query2 > 0 THEN
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-        EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'J_EOM_CUSTOMER_FEES_WBC','RM','TMP_CUSTOMER_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'J_EOM_CUSTOMER_FEES_WBC','RM','DEV_CUSTOMER_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+        Else
+          EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'J_EOM_CUSTOMER_FEES_WBC','RM','TMP_CUSTOMER_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+        End If;
     END IF;
     EXCEPTION
       WHEN OTHERS THEN
@@ -5921,7 +5937,11 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
   
     IF v_query2 > 0 THEN
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-        EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'J_EOM_CUSTOMER_FEES_VHA','RM','TMP_CUSTOMER_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'J_EOM_CUSTOMER_FEES_VHA','RM','DEV_CUSTOMER_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+        Else
+          EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'J_EOM_CUSTOMER_FEES_VHA','RM','TMP_CUSTOMER_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+        End If;
         --DBMS_OUTPUT.PUT_LINE('J_EOM_CUSTOMER_FEES_VHA for the date range '
        -- || startdate || ' -- ' || enddate || ' - ' || v_query2
        -- || ' records inserted into table TMP_CUSTOMER_FEES in ' || round((dbms_utility.get_time-l_start)/100, 6)
@@ -6306,7 +6326,11 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
   
     IF v_query2 > 0 THEN
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-        EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'J_EOM_CUSTOMER_FEES_SUP','RM','TMP_CUSTOMER_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'J_EOM_CUSTOMER_FEES_SUP','RM','DEV_CUSTOMER_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+        Else
+          EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'J_EOM_CUSTOMER_FEES_SUP','RM','TMP_CUSTOMER_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+        End If;
         --DBMS_OUTPUT.PUT_LINE('J_EOM_CUSTOMER_FEES_VHA for the date range '
        -- || startdate || ' -- ' || enddate || ' - ' || v_query2
        -- || ' records inserted into table TMP_CUSTOMER_FEES in ' || round((dbms_utility.get_time-l_start)/100, 6)
