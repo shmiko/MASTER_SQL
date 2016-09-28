@@ -2851,7 +2851,6 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
       l_start number default dbms_utility.get_time;
       QueryTable VARCHAR2(600) := q'{SELECT To_Number(regexp_substr(RM_XX_FEE25,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = :sCustomerCode1}';
       sCust_Rates RM.RM_XX_FEE25%TYPE;/*Destruction Fee*/
-  
        CURSOR c
       IS
   
@@ -2937,8 +2936,9 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
     AND       s.SH_STATUS <> 3
     AND       d.SD_LINE = 1
     AND       s.SH_ORDER = t.ST_ORDER
-    AND       t.ST_DESP_DATE >= startdate AND t.ST_DESP_DATE <= enddate;
-  
+    AND       t.ST_DESP_DATE >= startdate AND t.ST_DESP_DATE <= enddate
+    Group By d.SD_STOCK;
+    
       CURSOR cDEV
       IS
   
@@ -7371,139 +7371,156 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           l_query := q'{Select  f1.DESPDATE,f1.ORDERNUM,f1.DESPNOTE,f1.CUSTOMER,
             f1.ATTENTIONTO,f1.ADDRESS,f1.ADDRESS2,f1.SUBURB,f1.STATE,f1.POSTCODE,
             f1.ITEM,f1.DESCRIPTION,f1.QTY
-                 ,CASE   WHEN f1.FEETYPE like 'Stock' AND LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE THEN (Select f2.SELLEXCL From TMP_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND f2.FEETYPE = 'Pick Fee' ) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
+                 ,CASE   WHEN f1.FEETYPE like 'Stock' AND LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE THEN (Select f2.SELLEXCL From DEV_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND f2.FEETYPE = 'Pick Fee' ) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
                         ELSE 0
                         END AS "Line Charge"
-                ,CASE   WHEN f1.FEETYPE like 'Stock' AND LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE THEN (Select f2.SELLEXCL From TMP_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND f2.FEETYPE = 'Handeling Fee is ' ) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
+                ,CASE   WHEN f1.FEETYPE like 'Stock' AND LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE THEN (Select f2.SELLEXCL From DEV_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND f2.FEETYPE = 'Handeling Fee is ' ) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
                         ELSE 0
                         END AS "Order Despatch Charge"
-                ,CASE   WHEN f1.FEETYPE like 'Stock' AND (LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE)  AND (InStr(UPPER(ADDRESS),'CASSELDEN') < 1 AND InStr(UPPER(ADDRESS2),'2 LONSDALE') < 1 )
-                        THEN (Select f2.SELLEXCL From TMP_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND (f2.FEETYPE like 'Freight Fee' OR f2.FEETYPE like 'Manual Freight Fee') AND ROWNUM = 1) --AND ((UPPER(ADDRESS) NOT LIKE '%CASSELDEN%' Or UPPER(ADDRESS) NOT LIKE '2 LONSDALE%') OR (UPPER(ADDRESS2) NOT LIKE '%CASSELDEN%' Or UPPER(ADDRESS2) NOT LIKE '2 LONSDALE%')) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
+                ,CASE   WHEN f1.FEETYPE like 'Stock' AND (LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE)  AND  ((ADDRESS  NOT LIKE '%Casselden%' Or ADDRESS   NOT LIKE '%2 Lonsdale%')
+                          OR (ADDRESS2   NOT LIKE '%Casselden%' Or ADDRESS2   NOT LIKE '%2 Lonsdale%')) 
+                        THEN (Select f2.SELLEXCL From DEV_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND (f2.FEETYPE like 'Freight Fee' OR f2.FEETYPE like 'Manual Freight Fee') AND ROWNUM = 1) --AND ((UPPER(ADDRESS) NOT LIKE '%CASSELDEN%' Or UPPER(ADDRESS) NOT LIKE '2 LONSDALE%') OR (UPPER(ADDRESS2) NOT LIKE '%CASSELDEN%' Or UPPER(ADDRESS2) NOT LIKE '2 LONSDALE%')) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
                         ELSE 0
-                        END AS "Freight Charge"
-          From DEV_ALL_FEES_F f1
-          Where f1.FEETYPE = 'Stock' 
+                        END AS "Freight Charge",
+          IM_XX_QTY_PER_PACK As "Box QTY"              
+          From DEV_ALL_FEES_F f1, IM
+          Where f1.FEETYPE = 'Stock'
+          AND f1.ITEM = IM_STOCK
           
           UNION ALL
           --Monday or the first day of the week
-          Select NULL,NULL,NULL,NULL,
+          Select TO_CHAR(TRUNC(CURRENT_DATE, 'DAY') -7),NULL,NULL,NULL,
             NULL,NULL,NULL,NULL,NULL,NULL,
             NULL,
-           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,0) > 0
+           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,0,'DEV') > 0
           Then 'Daily Van Freight'
           ELSE NULL
           END AS  "Description",
           Case WHEN
-          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,0) > 0 
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,0,'DEV') > 0 
           Then
-          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,0) 
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,0,'DEV') 
           END AS "Qty"
          ,0,0,
-          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,0) > 0 
+          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,0,'DEV') > 0 
           Then 30.71
           ELSE 0
-          END AS  "Freight Charge Cost"
+          END AS  "Freight Charge Cost",NULL
           From DEV_ALL_FEES_F f1
           Where f1.FEETYPE = 'Freight Fee' 
-           AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%Lonsdale%')
-          OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%Lonsdale%'))
+           AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%2 Lonsdale%')
+          OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%2 Lonsdale%'))
           --Group by TRUNC(CURRENT_DATE, 'DAY') -6
+          AND f1.DESPDATE = TRUNC(CURRENT_DATE, 'DAY') -7
+          And ROWNUM = 1
           
           UNION ALL
+          
           --Tuesday or the first day of the week
-          Select NULL,NULL,NULL,NULL,
+          Select TO_CHAR(TRUNC(CURRENT_DATE, 'DAY') -6),NULL,NULL,NULL,
             NULL,NULL,NULL,NULL,NULL,NULL,
             NULL,
-           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,1) > 0
+           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,1,'DEV') > 0
           Then 'Daily Van Freight'
           ELSE NULL
           END AS  "Description",
           Case WHEN
-          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,1) > 0 
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,1,'DEV') > 0 
           Then
-          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,1) 
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,1,'DEV') 
           END AS "Qty"
          ,0,0,
-          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,1) > 0 
+          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,1,'DEV') > 0 
           Then 30.71
           ELSE 0
-          END AS  "Freight Charge Cost"
+          END AS  "Freight Charge Cost",NULL
           From DEV_ALL_FEES_F f1
           Where f1.FEETYPE = 'Freight Fee' 
-           AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%Lonsdale%')
-          OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%Lonsdale%'))
+           AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%2 Lonsdale%')
+          OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%2 Lonsdale%'))
+          AND f1.DESPDATE = TRUNC(CURRENT_DATE, 'DAY') -6
+          And ROWNUM = 1
           
           UNION ALL
+          
           --Wednesday or the first day of the week
-          Select NULL,NULL,NULL,NULL,
+          Select TO_CHAR(TRUNC(CURRENT_DATE, 'DAY') -5),NULL,NULL,NULL,
             NULL,NULL,NULL,NULL,NULL,NULL,
             NULL,
-           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,2) > 0
+           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,2,'DEV') > 0
           Then 'Daily Van Freight'
           ELSE NULL
           END AS  "Description",
           Case WHEN
-          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,2) > 0 
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,2,'DEV') > 0 
           Then
-          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,2) 
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,2,'DEV') 
           END AS "Qty"
          ,0,0,
-          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,2) > 0 
+          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,2,'DEV') > 0 
           Then 30.71
           ELSE 0
-          END AS  "Freight Charge Cost"
+          END AS  "Freight Charge Cost",NULL
           From DEV_ALL_FEES_F f1
           Where f1.FEETYPE = 'Freight Fee' 
-           AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%Lonsdale%')
-          OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%Lonsdale%'))
+           AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%2 Lonsdale%')
+          OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%2 Lonsdale%'))
+          AND f1.DESPDATE = TRUNC(CURRENT_DATE, 'DAY') -5
+          And ROWNUM = 1
           
           UNION ALL
+          
           --Thursday or the first day of the week
-          Select NULL,NULL,NULL,NULL,
+          Select TO_CHAR(TRUNC(CURRENT_DATE, 'DAY') -4),NULL,NULL,NULL,
             NULL,NULL,NULL,NULL,NULL,NULL,
             NULL,
-           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,3) > 0
+           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,3,'DEV') > 0
           Then 'Daily Van Freight'
           ELSE NULL
           END AS  "Description",
           Case WHEN
-          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,3) > 0 
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,3,'DEV') > 0 
           Then
-          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,3) 
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,3,'DEV') 
           END AS "Qty"
          ,0,0,
-          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,3) > 0 
+          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,3,'DEV') > 0 
           Then 30.71
           ELSE 0
-          END AS  "Freight Charge Cost"
+          END AS  "Freight Charge Cost",NULL
           From DEV_ALL_FEES_F f1
           Where f1.FEETYPE = 'Freight Fee' 
-           AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%Lonsdale%')
-          OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%Lonsdale%'))
+           AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%2 Lonsdale%')
+          OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%2 Lonsdale%'))
+          AND f1.DESPDATE = TRUNC(CURRENT_DATE, 'DAY') -4
+          And ROWNUM = 1
           
           UNION ALL
+          
           --Friday or the first day of the week
-          Select NULL,NULL,NULL,NULL,
+          Select TO_CHAR(TRUNC(CURRENT_DATE, 'DAY') -3),NULL,NULL,NULL,
             NULL,NULL,NULL,NULL,NULL,NULL,
             NULL,
-           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,4) > 0
+           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,4,'DEV') > 0
           Then 'Daily Van Freight'
           ELSE NULL
           END AS  "Description",
           Case WHEN
-          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,4) > 0 
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,4,'DEV') > 0 
           Then
-          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,4) 
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,4,'DEV') 
           END AS "Qty"
          ,0,0,
-          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,4) > 0 
+          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,4,'DEV') > 0 
           Then 30.71
           ELSE 0
-          END AS  "Freight Charge Cost"
+          END AS  "Freight Charge Cost",NULL
           From DEV_ALL_FEES_F f1
           Where f1.FEETYPE = 'Freight Fee' 
-           AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%Lonsdale%')
-          OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%Lonsdale%'))
+           AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%2 Lonsdale%')
+          OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%2 Lonsdale%'))
+          AND f1.DESPDATE = TRUNC(CURRENT_DATE, 'DAY') -3
+          And ROWNUM = 1
           }'; 
         Else
           --run specific formatting query for superpartners
@@ -7516,132 +7533,150 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
                 ,CASE   WHEN f1.FEETYPE like 'Stock' AND LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE THEN (Select f2.SELLEXCL From TMP_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND f2.FEETYPE = 'Handeling Fee is ' ) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
                         ELSE 0
                         END AS "Order Despatch Charge"
-                ,CASE   WHEN f1.FEETYPE like 'Stock' AND (LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE)  AND (InStr(UPPER(ADDRESS),'CASSELDEN') < 1 AND InStr(UPPER(ADDRESS2),'2 LONSDALE') < 1 )
+                ,CASE   WHEN f1.FEETYPE like 'Stock' AND (LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE)  AND  ((ADDRESS  NOT LIKE '%Casselden%' Or ADDRESS   NOT LIKE '%2 Lonsdale%')
+                          OR (ADDRESS2   NOT LIKE '%Casselden%' Or ADDRESS2   NOT LIKE '%2 Lonsdale%')) 
                         THEN (Select f2.SELLEXCL From TMP_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND (f2.FEETYPE like 'Freight Fee' OR f2.FEETYPE like 'Manual Freight Fee') AND ROWNUM = 1) --AND ((UPPER(ADDRESS) NOT LIKE '%CASSELDEN%' Or UPPER(ADDRESS) NOT LIKE '2 LONSDALE%') OR (UPPER(ADDRESS2) NOT LIKE '%CASSELDEN%' Or UPPER(ADDRESS2) NOT LIKE '2 LONSDALE%')) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
                         ELSE 0
-                        END AS "Freight Charge"
-          From TMP_ALL_FEES_F f1
+                        END AS "Freight Charge",
+          IM_XX_QTY_PER_PACK As "Box QTY"      
+          From TMP_ALL_FEES_F f1, IM
           Where f1.FEETYPE = 'Stock' 
+          AND f1.ITEM = IM_STOCK
           
           UNION ALL
           --Monday or the first day of the week
-         Select NULL,NULL,NULL,NULL,
+          Select TO_CHAR(TRUNC(CURRENT_DATE, 'DAY') -7),NULL,NULL,NULL,
             NULL,NULL,NULL,NULL,NULL,NULL,
             NULL,
-           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,0) > 0
+           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,0,'DEV') > 0
           Then 'Daily Van Freight'
           ELSE NULL
           END AS  "Description",
           Case WHEN
-          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,0) > 0 
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,0,'DEV') > 0 
           Then
-          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,0) 
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,0,'DEV') 
           END AS "Qty"
          ,0,0,
-          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,0) > 0 
+          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,0,'DEV') > 0 
           Then 30.71
           ELSE 0
-          END AS  "Freight Charge Cost"
-          From DEV_ALL_FEES_F f1
+          END AS  "Freight Charge Cost",NULL
+          From TMP_ALL_FEES_F f1
           Where f1.FEETYPE = 'Freight Fee' 
-           AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%Lonsdale%')
-          OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%Lonsdale%'))
+           AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%2 Lonsdale%')
+          OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%2 Lonsdale%'))
+          --Group by TRUNC(CURRENT_DATE, 'DAY') -6
+          AND f1.DESPDATE = TRUNC(CURRENT_DATE, 'DAY') -7
+          And ROWNUM = 1
           
           UNION ALL
+          
           --Tuesday or the first day of the week
-          Select NULL,NULL,NULL,NULL,
+          Select TO_CHAR(TRUNC(CURRENT_DATE, 'DAY') -6),NULL,NULL,NULL,
             NULL,NULL,NULL,NULL,NULL,NULL,
             NULL,
-           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,1) > 0
+           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,1,'DEV') > 0
           Then 'Daily Van Freight'
           ELSE NULL
           END AS  "Description",
           Case WHEN
-          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,1) > 0 
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,1,'DEV') > 0 
           Then
-          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,1) 
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,1,'DEV') 
           END AS "Qty"
          ,0,0,
-          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,1) > 0 
+          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,1,'DEV') > 0 
           Then 30.71
           ELSE 0
-          END AS  "Freight Charge Cost"
-          From DEV_ALL_FEES_F f1
+          END AS  "Freight Charge Cost",NULL
+          From TMP_ALL_FEES_F f1
           Where f1.FEETYPE = 'Freight Fee' 
-           AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%Lonsdale%')
-          OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%Lonsdale%'))
+           AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%2 Lonsdale%')
+          OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%2 Lonsdale%'))
+          AND f1.DESPDATE = TRUNC(CURRENT_DATE, 'DAY') -6
+          And ROWNUM = 1
           
           UNION ALL
+          
           --Wednesday or the first day of the week
-          Select NULL,NULL,NULL,NULL,
+          Select TO_CHAR(TRUNC(CURRENT_DATE, 'DAY') -5),NULL,NULL,NULL,
             NULL,NULL,NULL,NULL,NULL,NULL,
             NULL,
-           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,2) > 0
+           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,2,'DEV') > 0
           Then 'Daily Van Freight'
           ELSE NULL
           END AS  "Description",
           Case WHEN
-          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,2) > 0 
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,2,'DEV') > 0 
           Then
-          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,2) 
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,2,'DEV') 
           END AS "Qty"
          ,0,0,
-          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,2) > 0 
+          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,2,'DEV') > 0 
           Then 30.71
           ELSE 0
-          END AS  "Freight Charge Cost"
-          From DEV_ALL_FEES_F f1
+          END AS  "Freight Charge Cost",NULL
+          From TMP_ALL_FEES_F f1
           Where f1.FEETYPE = 'Freight Fee' 
-           AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%Lonsdale%')
-          OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%Lonsdale%'))
+           AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%2 Lonsdale%')
+          OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%2 Lonsdale%'))
+          AND f1.DESPDATE = TRUNC(CURRENT_DATE, 'DAY') -5
+          And ROWNUM = 1
           
           UNION ALL
+          
           --Thursday or the first day of the week
-         Select NULL,NULL,NULL,NULL,
+          Select TO_CHAR(TRUNC(CURRENT_DATE, 'DAY') -4),NULL,NULL,NULL,
             NULL,NULL,NULL,NULL,NULL,NULL,
             NULL,
-           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,3) > 0
+           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,3,'DEV') > 0
           Then 'Daily Van Freight'
           ELSE NULL
           END AS  "Description",
           Case WHEN
-          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,3) > 0 
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,3,'DEV') > 0 
           Then
-          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,3) 
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,3,'DEV') 
           END AS "Qty"
          ,0,0,
-          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,3) > 0 
+          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,3,'DEV') > 0 
           Then 30.71
           ELSE 0
-          END AS  "Freight Charge Cost"
-          From DEV_ALL_FEES_F f1
+          END AS  "Freight Charge Cost",NULL
+          From TMP_ALL_FEES_F f1
           Where f1.FEETYPE = 'Freight Fee' 
-           AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%Lonsdale%')
-          OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%Lonsdale%'))
+           AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%2 Lonsdale%')
+          OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%2 Lonsdale%'))
+          AND f1.DESPDATE = TRUNC(CURRENT_DATE, 'DAY') -4
+          And ROWNUM = 1
           
           UNION ALL
+          
           --Friday or the first day of the week
-          Select NULL,NULL,NULL,NULL,
+          Select TO_CHAR(TRUNC(CURRENT_DATE, 'DAY') -3),NULL,NULL,NULL,
             NULL,NULL,NULL,NULL,NULL,NULL,
             NULL,
-           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,4) > 0
+           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,4,'DEV') > 0
           Then 'Daily Van Freight'
           ELSE NULL
           END AS  "Description",
           Case WHEN
-          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,4) > 0 
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,4,'DEV') > 0 
           Then
-          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,4) 
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,4,'DEV') 
           END AS "Qty"
          ,0,0,
-          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,4) > 0 
+          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,4,'DEV') > 0 
           Then 30.71
           ELSE 0
-          END AS  "Freight Charge Cost"
-          From DEV_ALL_FEES_F f1
+          END AS  "Freight Charge Cost",NULL
+          From TMP_ALL_FEES_F f1
           Where f1.FEETYPE = 'Freight Fee' 
-           AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%Lonsdale%')
-          OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%Lonsdale%'));
+           AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%2 Lonsdale%')
+          OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%2 Lonsdale%'))
+          AND f1.DESPDATE = TRUNC(CURRENT_DATE, 'DAY') -3
+          And ROWNUM = 1;
           }'; 
         End If;
  --exclude addresses Casselden Place and/or Lonsdale Street - using SH_ADDRESS and SH_SUBURB --- run a seperate query to count despatches per day and apply a flat rate charge once only
