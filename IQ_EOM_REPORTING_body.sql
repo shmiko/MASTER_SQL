@@ -7358,7 +7358,10 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
       v_time_taken VARCHAR2(205);
       sPath VARCHAR2(60) :=  'EOM_ADMIN_ORDERS';
       l_start number default dbms_utility.get_time;
-     
+      sFileSuffix VARCHAR2(60):= '.csv';
+      sFileTime VARCHAR2(56)  := TO_CHAR(SYSDATE,'YYYYMMDD HH24MISS');
+      filename VARCHAR2(260) := sCustomerCode || '-EOM-ADMIN-ORACLE-' || '-RunBy-' || sOp || '-RunOn-' || startdate || '-TO-' || enddate || '-RunAt-' || sFileTime || sFileSuffix;
+   
       BEGIN
   
 --      nCheckpoint := 1;
@@ -7382,7 +7385,9 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
                         THEN (Select f2.SELLEXCL From DEV_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND (f2.FEETYPE like 'Freight Fee' OR f2.FEETYPE like 'Manual Freight Fee') AND ROWNUM = 1) --AND ((UPPER(ADDRESS) NOT LIKE '%CASSELDEN%' Or UPPER(ADDRESS) NOT LIKE '2 LONSDALE%') OR (UPPER(ADDRESS2) NOT LIKE '%CASSELDEN%' Or UPPER(ADDRESS2) NOT LIKE '2 LONSDALE%')) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
                         ELSE 0
                         END AS "Freight Charge",
-          IM_XX_QTY_PER_PACK As "Box QTY"              
+          REPLACE(IM_XX_QTY_PER_PACK,'Box of ','') As "QTY",
+          NULL 
+          
           From DEV_ALL_FEES_F f1, IM
           Where f1.FEETYPE = 'Stock'
           AND f1.ITEM = IM_STOCK
@@ -7405,7 +7410,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,0,'DEV') > 0 
           Then 30.71
           ELSE 0
-          END AS  "Freight Charge Cost",NULL
+          END AS  "Freight Charge Cost",NULL,NULL
           From DEV_ALL_FEES_F f1
           Where f1.FEETYPE = 'Freight Fee' 
            AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%2 Lonsdale%')
@@ -7433,7 +7438,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,1,'DEV') > 0 
           Then 30.71
           ELSE 0
-          END AS  "Freight Charge Cost",NULL
+          END AS  "Freight Charge Cost",NULL,NULL
           From DEV_ALL_FEES_F f1
           Where f1.FEETYPE = 'Freight Fee' 
            AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%2 Lonsdale%')
@@ -7460,7 +7465,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,2,'DEV') > 0 
           Then 30.71
           ELSE 0
-          END AS  "Freight Charge Cost",NULL
+          END AS  "Freight Charge Cost",NULL,NULL
           From DEV_ALL_FEES_F f1
           Where f1.FEETYPE = 'Freight Fee' 
            AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%2 Lonsdale%')
@@ -7487,7 +7492,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,3,'DEV') > 0 
           Then 30.71
           ELSE 0
-          END AS  "Freight Charge Cost",NULL
+          END AS  "Freight Charge Cost",NULL,NULL
           From DEV_ALL_FEES_F f1
           Where f1.FEETYPE = 'Freight Fee' 
            AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%2 Lonsdale%')
@@ -7514,13 +7519,53 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,4,'DEV') > 0 
           Then 30.71
           ELSE 0
-          END AS  "Freight Charge Cost",NULL
+          END AS  "Freight Charge Cost",NULL,NULL
           From DEV_ALL_FEES_F f1
           Where f1.FEETYPE = 'Freight Fee' 
            AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%2 Lonsdale%')
           OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%2 Lonsdale%'))
           AND f1.DESPDATE = TRUNC(CURRENT_DATE, 'DAY') -3
           And ROWNUM = 1
+          
+          UNION ALL
+          
+          --Facilitate ctn/pallet charges - 3 lines
+          Select TO_CHAR(TRUNC(CURRENT_DATE, 'DAY') -3),NULL,NULL,NULL,
+          NULL,NULL,NULL,NULL,NULL,NULL,
+          NULL,
+          'Destory Pallet Charge' AS  "Description",
+          '1' AS "Qty"
+          ,0,0,
+          38.80 AS  "Pallet Charge Cost",NULL,NULL
+          From DUAL
+          And ROWNUM = 1
+          
+           UNION ALL
+          
+          --Facilitate ctn/pallet charges - 3 lines
+          Select TO_CHAR(TRUNC(CURRENT_DATE, 'DAY') -3),NULL,NULL,NULL,
+          NULL,NULL,NULL,NULL,NULL,NULL,
+          NULL,
+          'Extra Destory Pallet Charge' AS  "Description",
+          '1' AS "Qty"
+          ,0,0,
+          14.55 AS  "Extra Pallet Charge Cost",NULL,NULL
+          From DUAL
+          And ROWNUM = 1
+          
+           UNION ALL
+          
+          --Facilitate ctn/pallet charges - 3 lines
+          Select TO_CHAR(TRUNC(CURRENT_DATE, 'DAY') -3),NULL,NULL,NULL,
+          NULL,NULL,NULL,NULL,NULL,NULL,
+          NULL,
+          'Destory Carton Charge' AS  "Description",
+          '1' AS "Qty"
+          ,0,0,
+          2.43 AS  "Carton Charge Cost",NULL,NULL
+          From DUAL
+          And ROWNUM = 1
+          
           }'; 
         Else
           --run specific formatting query for superpartners
@@ -7538,7 +7583,8 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
                         THEN (Select f2.SELLEXCL From TMP_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND (f2.FEETYPE like 'Freight Fee' OR f2.FEETYPE like 'Manual Freight Fee') AND ROWNUM = 1) --AND ((UPPER(ADDRESS) NOT LIKE '%CASSELDEN%' Or UPPER(ADDRESS) NOT LIKE '2 LONSDALE%') OR (UPPER(ADDRESS2) NOT LIKE '%CASSELDEN%' Or UPPER(ADDRESS2) NOT LIKE '2 LONSDALE%')) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
                         ELSE 0
                         END AS "Freight Charge",
-          IM_XX_QTY_PER_PACK As "Box QTY"      
+          REPLACE(IM_XX_QTY_PER_PACK,'Box of ','') As "QTY",
+          NULL              
           From TMP_ALL_FEES_F f1, IM
           Where f1.FEETYPE = 'Stock' 
           AND f1.ITEM = IM_STOCK
@@ -7561,7 +7607,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,0,'DEV') > 0 
           Then 30.71
           ELSE 0
-          END AS  "Freight Charge Cost",NULL
+          END AS  "Freight Charge Cost",NULL,NULL
           From TMP_ALL_FEES_F f1
           Where f1.FEETYPE = 'Freight Fee' 
            AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%2 Lonsdale%')
@@ -7589,7 +7635,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,1,'DEV') > 0 
           Then 30.71
           ELSE 0
-          END AS  "Freight Charge Cost",NULL
+          END AS  "Freight Charge Cost",NULL,NULL
           From TMP_ALL_FEES_F f1
           Where f1.FEETYPE = 'Freight Fee' 
            AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%2 Lonsdale%')
@@ -7616,7 +7662,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,2,'DEV') > 0 
           Then 30.71
           ELSE 0
-          END AS  "Freight Charge Cost",NULL
+          END AS  "Freight Charge Cost",NULL,NULL
           From TMP_ALL_FEES_F f1
           Where f1.FEETYPE = 'Freight Fee' 
            AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%2 Lonsdale%')
@@ -7643,7 +7689,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,3,'DEV') > 0 
           Then 30.71
           ELSE 0
-          END AS  "Freight Charge Cost",NULL
+          END AS  "Freight Charge Cost",NULL,NULL
           From TMP_ALL_FEES_F f1
           Where f1.FEETYPE = 'Freight Fee' 
            AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%2 Lonsdale%')
@@ -7670,12 +7716,51 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,4,'DEV') > 0 
           Then 30.71
           ELSE 0
-          END AS  "Freight Charge Cost",NULL
+          END AS  "Freight Charge Cost",NULL,NULL
           From TMP_ALL_FEES_F f1
           Where f1.FEETYPE = 'Freight Fee' 
            AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%2 Lonsdale%')
           OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%2 Lonsdale%'))
           AND f1.DESPDATE = TRUNC(CURRENT_DATE, 'DAY') -3
+          And ROWNUM = 1
+          
+          UNION ALL
+          
+          --Facilitate ctn/pallet charges - 3 lines
+          Select TO_CHAR(TRUNC(CURRENT_DATE, 'DAY') -3),NULL,NULL,NULL,
+          NULL,NULL,NULL,NULL,NULL,NULL,
+          NULL,
+          'Destory Pallet Charge' AS  "Description",
+          '1' AS "Qty"
+          ,0,0,
+          38.80 AS  "Pallet Charge Cost",NULL,NULL
+          From DUAL
+          And ROWNUM = 1
+          
+           UNION ALL
+          
+          --Facilitate ctn/pallet charges - 3 lines
+          Select TO_CHAR(TRUNC(CURRENT_DATE, 'DAY') -3),NULL,NULL,NULL,
+          NULL,NULL,NULL,NULL,NULL,NULL,
+          NULL,
+          'Extra Destory Pallet Charge' AS  "Description",
+          '1' AS "Qty"
+          ,0,0,
+          14.55 AS  "Extra Pallet Charge Cost",NULL,NULL
+          From DUAL
+          And ROWNUM = 1
+          
+           UNION ALL
+          
+          --Facilitate ctn/pallet charges - 3 lines
+          Select TO_CHAR(TRUNC(CURRENT_DATE, 'DAY') -3),NULL,NULL,NULL,
+          NULL,NULL,NULL,NULL,NULL,NULL,
+          NULL,
+          'Destory Carton Charge' AS  "Description",
+          '1' AS "Qty"
+          ,0,0,
+          2.43 AS  "Carton Charge Cost",NULL,NULL
+          From DUAL
           And ROWNUM = 1;
           }'; 
         End If;
@@ -7685,7 +7770,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
 --          billed at 1 x pallet @ 38.80
 --          10 x pallets @ 14.55
 --   			  3 x Cartons @ 2.43         
-       l_output := utl_file.fopen( 'EOM_ADMIN_ORDERS', p_filename, 'w' );
+       l_output := utl_file.fopen( 'EOM_ADMIN_ORDERS', filename, 'w' );
        execute immediate 'alter session set nls_date_format=''dd-mon-yyyy hh24:mi:ss''';
 
        dbms_sql.parse(  l_theCursor,  l_query, dbms_sql.native );
