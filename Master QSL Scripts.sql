@@ -4927,3 +4927,243 @@ SELECT IM_BRAND,COUNT(IM_BRAND)
 FROM IM 
 WHERE IM_ACTIVE = 1
 GROUP BY IM_BRAND
+
+
+Select  To_Char(to_date(CURRENT_DATE,'dd/mm/yyyy')) From Dual
+
+select level as dow,
+    to_char(trunc(sysdate ,'D') + level, 'Day') as day
+from dual
+connect by level <= 7;
+
+select level as dow,
+    to_char(trunc(sysdate ,'D') + level - 1, 'Day') as day
+from dual
+connect by level <= 7;
+
+select * from nls_session_parameters
+where parameter = 'NLS_DATE_LANGUAGE';
+
+SELECT DAYOFWEEK('1997-07-16') "DayOfWeek" FROM DUAL;
+
+SELECT F_IS_DAY_FIRST_OF_PREV_WEEK (CURRENT_DATE) FROM DUAL;
+
+Select TRUNC(sysdate, 'DAY') -7 From Dual;
+
+Select NEXT_DAY(CURRENT_DATE, To_Char(to_date(CURRENT_DATE,'dd/mm/yyyy') ,'DAY') ) From Dual;
+
+Select 
+        TRUNC(sysdate, 'DAY') -7 From Dual
+
+select to_char(sysdate, 'D') -7 as d, to_char(sysdate, 'Day') -7 as day from dual;
+
+select 
+TRUNC(sysdate, 'YEAR') Start_of_the_year,
+TRUNC(sysdate+365, 'YEAR')-1 End_of_the_year,
+TRUNC(sysdate, 'MONTH') Start_of_the_month,
+TRUNC(sysdate+30, 'MONTH')-1 End_of_the_month,
+TRUNC(sysdate, 'DAY') -7 start_of_the_prev_week,   -- previous week
+TRUNC(sysdate, 'DAY')+1 start_of_the_week,  -- starting Monday
+TRUNC(sysdate+6, 'DAY') end_of_the_week,     -- finish Sunday
+TRUNC(sysdate+6, 'DAY')-2 end_of_the_week     -- finish Friday
+
+from dual;
+
+create or replace function getSysdate(inc IN VARCHAR2)
+return date is
+
+  l_sysdate date;
+
+begin
+
+  select TRUNC(sysdate, 'DAY') - inc
+    into l_sysdate
+    from dual;
+
+  return l_sysdate;
+
+end;
+/
+
+select F_GET_FIRST_OF_PREV_WEEK(7) AS "Last Monday", 
+  F_GET_FIRST_OF_PREV_WEEK(6) AS "Last Tuesday",
+  F_GET_FIRST_OF_PREV_WEEK(5) AS "Last Wednesday",
+  F_GET_FIRST_OF_PREV_WEEK(4) AS "Last Thursday",
+  F_GET_FIRST_OF_PREV_WEEK(3) AS "Last Friday"  from dual;
+          --Monday or the first day of the week
+          Select TO_CHAR(TRUNC(CURRENT_DATE, 'DAY') -7),NULL,NULL,NULL,
+            NULL,NULL,NULL,NULL,NULL,NULL,
+            NULL,
+           CASE WHEN F_DAILY_FREIGHT_COUNT2(NULL,NULL,0,'DEV') > 0
+          Then 'Daily Van Freight'
+          ELSE NULL
+          END AS  "Description",
+          Case WHEN
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,0,'DEV') > 0 
+          Then
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,0,'DEV') 
+          END AS "Qty"
+         ,0,0,
+          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,0,'DEV') > 0 
+          Then 30.71
+          ELSE 0
+          END AS  "Freight Charge Cost",NULL,NULL
+          From DEV_ALL_FEES_F f1
+          Where f1.FEETYPE = 'Freight Fee' 
+           AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%2 Lonsdale%')
+          OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%2 Lonsdale%'))
+          --Group by TRUNC(CURRENT_DATE, 'DAY') -6
+          AND f1.DESPDATE = TRUNC(CURRENT_DATE, 'DAY') -7
+          And ROWNUM = 1
+          
+          UNION ALL
+          
+          --Tuesday or the first day of the week
+          Select TO_CHAR(TRUNC(CURRENT_DATE, 'DAY') -6),NULL,NULL,NULL,
+            NULL,NULL,NULL,NULL,NULL,NULL,
+            NULL,
+           CASE WHEN F_DAILY_FREIGHT_COUNT2(NULL,NULL,1,'DEV') > 0
+          Then 'Daily Van Freight'
+          ELSE NULL
+          END AS  "Description",
+          Case WHEN
+          F_DAILY_FREIGHT_COUNT2(NULL,NULL,1,'DEV') > 0 
+          Then
+          F_DAILY_FREIGHT_COUNT2(NULL,NULL,1,'DEV') 
+          END AS "Qty"
+         ,0,0,
+          CASE WHEN F_DAILY_FREIGHT_COUNT2(NULL,NULL,1,'DEV') > 0 
+          Then 30.71
+          ELSE 0
+          END AS  "Freight Charge Cost",NULL,NULL
+          From DEV_ALL_FEES_F f1
+          Where f1.FEETYPE = 'Freight Fee' 
+           AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%2 Lonsdale%')
+          OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%2 Lonsdale%'))
+         -- AND f1.DESPDATE = TRUNC(CURRENT_DATE, 'DAY') -6
+          And ROWNUM = 1
+          
+          UNION ALL
+          
+          --Wednesday or the first day of the week
+          Select TO_CHAR(TRUNC(CURRENT_DATE, 'DAY') -5),NULL,NULL,NULL,
+            NULL,NULL,NULL,NULL,NULL,NULL,
+            NULL,
+           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,2,'DEV') > 0
+          Then 'Daily Van Freight'
+          ELSE NULL
+          END AS  "Description",
+          Case WHEN
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,2,'DEV') > 0 
+          Then
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,2,'DEV') 
+          END AS "Qty"
+         ,0,0,
+          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,2,'DEV') > 0 
+          Then 30.71
+          ELSE 0
+          END AS  "Freight Charge Cost",NULL,NULL
+          From DEV_ALL_FEES_F f1
+          Where f1.FEETYPE = 'Freight Fee' 
+           AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%2 Lonsdale%')
+          OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%2 Lonsdale%'))
+          AND f1.DESPDATE = TRUNC(CURRENT_DATE, 'DAY') -5
+          And ROWNUM = 1
+          
+          UNION ALL
+          
+          --Thursday or the first day of the week
+          Select TO_CHAR(TRUNC(CURRENT_DATE, 'DAY') -4),NULL,NULL,NULL,
+            NULL,NULL,NULL,NULL,NULL,NULL,
+            NULL,
+           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,3,'DEV') > 0
+          Then 'Daily Van Freight'
+          ELSE NULL
+          END AS  "Description",
+          Case WHEN
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,3,'DEV') > 0 
+          Then
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,3,'DEV') 
+          END AS "Qty"
+         ,0,0,
+          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,3,'DEV') > 0 
+          Then 30.71
+          ELSE 0
+          END AS  "Freight Charge Cost",NULL,NULL
+          From DEV_ALL_FEES_F f1
+          Where f1.FEETYPE = 'Freight Fee' 
+           AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%2 Lonsdale%')
+          OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%2 Lonsdale%'))
+          AND f1.DESPDATE = TRUNC(CURRENT_DATE, 'DAY') -4
+          And ROWNUM = 1
+          
+          UNION ALL
+          
+          --Friday or the first day of the week
+          Select TO_CHAR(TRUNC(CURRENT_DATE, 'DAY') -3),NULL,NULL,NULL,
+            NULL,NULL,NULL,NULL,NULL,NULL,
+            NULL,
+            
+           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,4,'DEV') > 0
+          Then 'Daily Van Freight'
+          ELSE NULL
+          END AS  "Description",
+          
+          Case WHEN
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,4,'DEV') > 0 
+          Then
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,4,'DEV') 
+          END AS "Qty"
+          
+         ,0,0,
+         
+          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,4,'DEV') > 0 
+          Then 30.71
+          ELSE 0
+          END AS  "Freight Charge Cost",
+          
+          NULL,NULL
+          From DEV_ALL_FEES_F f1
+          Where f1.FEETYPE = 'Freight Fee' 
+           AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%2 Lonsdale%')
+          OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%2 Lonsdale%'))
+          AND f1.DESPDATE = TRUNC(CURRENT_DATE, 'DAY') -3
+          And ROWNUM = 1
+          
+          UNION ALL
+          
+          --Facilitate ctn/pallet charges - 3 lines
+          Select TO_CHAR(TRUNC(CURRENT_DATE, 'DAY') -3),NULL,NULL,NULL,
+            NULL,NULL,NULL,NULL,NULL,NULL,
+            NULL,
+          'Destory Pallet Charge' AS  "Description",
+          1 AS "Qty"
+          ,0,0,
+          38.80 AS  "Pallet Charge Cost",NULL,NULL
+          From DUAL
+          
+          
+           UNION ALL
+          
+          --Facilitate ctn/pallet charges - 3 lines
+          Select TO_CHAR(TRUNC(CURRENT_DATE, 'DAY') -6),NULL,NULL,NULL,
+          NULL,NULL,NULL,NULL,NULL,NULL,
+          NULL,
+          'Extra Destory Pallet Charge' AS  "Description",
+          1 AS "Qty"
+          ,0,0,
+          14.55 AS  "Extra Pallet Charge Cost",NULL,NULL
+          From DUAL
+          
+          
+           UNION ALL
+          
+          --Facilitate ctn/pallet charges - 3 lines
+          Select TO_CHAR(TRUNC(CURRENT_DATE, 'DAY') -6),NULL,NULL,NULL,
+          NULL,NULL,NULL,NULL,NULL,NULL,
+          NULL,
+          'Destory Carton Charge' AS  "Description",
+          1 AS "Qty"
+          ,0,0,
+          2.43 AS  "Carton Charge Cost",NULL,NULL
+          From DUAL;
