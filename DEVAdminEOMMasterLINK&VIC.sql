@@ -3,11 +3,11 @@
 /*decalre variables These are being declared via the stored procedure - just need to redeclare cust so as we can get the rates*/
 
 var cust varchar2(20)
-exec :cust := 'LINK'
+exec :cust := 'LINK14'
 var nx NUMBER
 EXEC :nx := 1810105
 var cust2 varchar2(20)
-exec :cust2 := 'VHAAUS'
+exec :cust2 := 'LINK14'
 var ordernum varchar2(20)
 exec :ordernum := '1363806'
 var stock varchar2(20)
@@ -17,22 +17,24 @@ exec :source := 'BSPRINTN14'
 var sAnalysis varchar2(20) /*VerbalOrderEntryFee*/
 exec SELECT  RM_ANAL INTO :sAnalysis FROM RM where RM_CUST = :cust;
 var anal varchar2(20)
-exec :anal := '22NSWP'
+exec :anal := '22NSWP14'
 var start_date varchar2(20)
-exec :start_date := To_Date('1-May-2016')
+exec :start_date := To_Date('1-Sep-2016')
 var end_date varchar2(20)
-exec :end_date := To_Date('31-May-2016')
+exec :end_date := To_Date('30-Sep-2016')
 
 
 
 
     TRUNCATE TABLE  tbl_AdminData;
     --run this first
-    --EXECUTE EOM_REPORT_PKG.GROUP_CUST_START;
+    --EXECUTE EOM_REPORT_PKG.DEV_GROUP_CUST_START;
+    --EXECUTE EOM_REPORT_PKG.DEV_CREATE_TEMP_DATA_BIND('21VICF','1-Sep-2016','28-Sep-2016');
     --now run 1 of these -change variables at top first for each run
-    --EXECUTE EOM_REPORT_PKG.EOM_CREATE_TEMP_DATA_BIND('21VICP','1-Oct-2015','31-Oct-2015');
-    --EXECUTE EOM_REPORT_PKG.EOM_CREATE_TEMP_DATA_BIND('22NSWP','1-Oct-2015','31-Oct-2015');
-    --EXECUTE EOM_REPORT_PKG.EOM_CREATE_TEMP_DATA_BIND('22NSWP14','1-Oct-2015','31-Oct-2015');
+    --EXECUTE CREATE_TEMP_LOCN_BY_CUST('21VICP');
+    --EXECUTE CREATE_TEMP_LOCN_BY_CUST('21VICF');
+    --EXECUTE CREATE_TEMP_LOCN_BY_CUST('22NSWP');
+    --EXECUTE CREATE_TEMP_LOCN_BY_CUST('22NSWP14');
 
   /*SELECT  RM_ANAL FROM RM WHERE RM_CUST = 'LINK' */
 
@@ -194,7 +196,7 @@ exec :end_date := To_Date('31-May-2016')
 
   /*insert into temp admin data table   */
 
-	  INSERT into tbl_AdminData( --Select * From Tmp_Cust_Reporting )
+	  INSERT into Dev_AdminData( --Select * From Tmp_Cust_Reporting )
 				  Customer,
 				  Parent,
 				  CostCentre,
@@ -1979,7 +1981,7 @@ exec :end_date := To_Date('31-May-2016')
            NULL As   Cost,
            s.SH_SPARE_INT_4 AS PaymentType
 
-	  FROM  Tmp_Admin_Data_Pick_LineCounts t LEFT JOIN PWIN175.SH s ON  LTrim(s.SH_ORDER) = t.vSLOrderNum
+	  FROM  Dev_Admin_Data_Pick_LineCounts t LEFT JOIN PWIN175.SH s ON  LTrim(s.SH_ORDER) = t.vSLOrderNum
 	  INNER JOIN RM r ON r.RM_CUST = s.SH_CUST
 	  WHERE  :nRM_XX_FEE16 > 0
 	  AND  s.SH_STATUS <> 3
@@ -2091,7 +2093,7 @@ exec :end_date := To_Date('31-May-2016')
 
 
 
-	  FROM  Tmp_Admin_Data_Pick_LineCounts t LEFT JOIN PWIN175.SH s ON  LTrim(s.SH_ORDER) = LTrim(t.vSLOrderNum)
+	  FROM  Dev_Admin_Data_Pick_LineCounts t LEFT JOIN PWIN175.SH s ON  LTrim(s.SH_ORDER) = LTrim(t.vSLOrderNum)
 	  INNER JOIN RM r ON r.RM_CUST = s.SH_CUST
 		  WHERE  :nRM_XX_FEE06 > 0
 	  AND  s.SH_STATUS <> 3
@@ -2430,7 +2432,7 @@ exec :end_date := To_Date('31-May-2016')
     FROM  NA n1 INNER JOIN IL l1 ON l1.IL_UID = n1.NA_EXT_KEY
       INNER JOIN NE e ON e.NE_ACCOUNT = n1.NA_ACCOUNT
       INNER JOIN IM  ON  IM_STOCK = n1.NA_STOCK
-      INNER JOIN Tmp_Locn_Cnt_By_Cust ON sLocn = l1.IL_LOCN  AND sCust = IM_CUST
+      INNER JOIN Dev_Locn_Cnt_By_Cust ON sLocn = l1.IL_LOCN  AND sCust = IM_CUST
 
                     WHERE n1.NA_EXT_TYPE = 1210067
                       AND e.NE_AVAIL_ACTUAL >= '1'
