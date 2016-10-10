@@ -5142,7 +5142,6 @@ select F_GET_FIRST_OF_PREV_WEEK(7) AS "Last Monday",
           38.80 AS  "Pallet Charge Cost",NULL,NULL
           From DUAL
           
-          
            UNION ALL
           
           --Facilitate ctn/pallet charges - 3 lines
