@@ -1,3 +1,4 @@
+USE PWIN171
 SELECT RM_CUST
       ,(
         CASE
@@ -15,9 +16,34 @@ AND RM_ACTIVE = 1
 CONNECT BY PRIOR RM_CUST = RM_PARENT
 START WITH Length(RM_PARENT) <= 1;
 
+ USING PWIN171
+ SELECT RM_CUST
+                          ,(
+                            CASE
+                              WHEN LEVEL = 1 THEN RM_CUST
+                              WHEN LEVEL = 2 THEN RM_PARENT
+                              WHEN LEVEL = 3 THEN PRIOR RM_PARENT
+                              ELSE NULL
+                            END
+                          ) AS CC
+                          ,LEVEL
+                    FROM PWIN771.RM
+                    WHERE RM_TYPE = 0
+                    AND RM_ACTIVE = 1
+                    --AND Length(RM_GROUP_CUST) <=  1
+                    CONNECT BY PRIOR RM_CUST = RM_PARENT
+                    START WITH Length(RM_PARENT) <= 1;
+
 Select * From DEV_GROUP_CUST
 Where sCUST like 'G-%'
+
 AND AREA = 'FROST';
+
+USE PWIN171
+Select * From RM
+Where RM_CUST like 'G-%'
+AND RM_ANAL = 'VICP'
+AND RM_AREA = 'FROST';
 
 Declare
   start_date VARCHAR2(20) := '01-Sep-2016';
@@ -772,3 +798,21 @@ END EOM_REPORT_PKG;
     tmp.NCOUNTOFSTOCKS,IM_REPORTING_PRICE,r.sGroupCust,IM_LEVEL_UNIT,IM_XX_COST_CENTRE01,IM_STOCK,IM_STD_COST,IM_LAST_COST;
     
     TRUNCATE TABLE DEV_STOR_ALL_FEES;
+    
+    
+    SELECT RM_CUST
+            ,(
+              CASE
+                WHEN LEVEL = 1 THEN RM_CUST
+                WHEN LEVEL = 2 THEN RM_PARENT
+                WHEN LEVEL = 3 THEN PRIOR RM_PARENT
+                ELSE NULL
+              END
+            ) AS CC
+            ,LEVEL,RM_AREA,RM_TERR,(Select MAX(DV_VALUE) FROM TMP_DROP_LIST Where DV_INDEX = TO_NUMBER(RM_DBL_2)),RM_ANAL,RM_SOURCE,RM_GROUP_CUST
+      FROM RM
+      WHERE RM_TYPE = 0
+      AND RM_ACTIVE = 1
+      --AND Length(RM_GROUP_CUST) <=  1
+      CONNECT BY PRIOR RM_CUST = RM_PARENT
+      START WITH Length(RM_PARENT) <= 1;
