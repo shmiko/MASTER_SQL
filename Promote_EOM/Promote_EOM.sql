@@ -816,3 +816,9 @@ END EOM_REPORT_PKG;
       --AND Length(RM_GROUP_CUST) <=  1
       CONNECT BY PRIOR RM_CUST = RM_PARENT
       START WITH Length(RM_PARENT) <= 1;
+      
+      
+      
+ select *
+          FROM DEV_STOR_ALL_FEES t
+          WHERE  t.waivefee = 'VICP';
