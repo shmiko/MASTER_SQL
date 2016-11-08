@@ -1,4 +1,4 @@
-create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
+create or replace PACKAGE BODY           "EOM_REPORTING" AS
     /*   A Group all customer down 3 tiers - this makes getting all children and grandchildren simples   */
     /*   Temp Tables Used   */
     /*   1. Tmp_Group_Cust   */
@@ -421,6 +421,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
         ,startdate IN VARCHAR2-- := To_Date('1-Jun-2015') or format date as 01-Jun-15 -- use this when you want the date entered automatically
         ,enddate IN VARCHAR2-- := To_Date('30-Jun-2015')
         ,sOp IN VARCHAR2
+        ,sAnalysis IN VARCHAR2
       )
       IS    
       --If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
@@ -611,6 +612,182 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           d.SD_STOCK,d.SD_ADD_OP,d.SD_DESC,d.SD_LINE,d.SD_EXCL,d.SD_INCL,d.SD_NOTE_1,d.SD_SELL_PRICE,d.SD_XX_OW_UNIT_PRICE,d.SD_XX_FREIGHT_CHG,
           d.SD_XX_PSLIP_NUM,d.SD_ADD_DATE,
           r.sGroupCust,r.rmdbl2,r.terr,r.area;
+          
+       CURSOR canal
+      IS
+        /* F_EOM_TMP_ALL_FREIGHT_ALL freight fees*/
+      SELECT    s.SH_CUST                AS "Customer",
+          r.sGroupCust              AS "Parent",
+          s.SH_SPARE_STR_4         AS "CostCentre",
+          s.SH_ORDER               AS "Order",
+          s.SH_SPARE_STR_5         AS "OrderwareNum",
+          s.SH_CUST_REF            AS "CustomerRef",
+          t.ST_PICK                AS "PickNum",
+          t.ST_PSLIP               AS "DespNote",
+          substr(To_Char(d.SD_ADD_DATE),0,10)            AS "DespatchDate",
+          substr(To_Char(s.SH_ADD_DATE),0,10) AS "OrderDate",
+          CASE  WHEN  d.SD_SELL_PRICE >= 0.1 AND   d.SD_ADD_OP = 'RV'  THEN 'Manual Freight Fee'
+                WHEN  d.SD_STOCK like 'COURIER%' AND d.SD_SELL_PRICE >= 0.1 AND LTRIM(RTRIM(d.SD_XX_PICKLIST_NUM)) IS NOT NULL AND d.SD_ADD_OP = 'SERV2' THEN 'Freight Fee'
+                WHEN  d.SD_ADD_OP != 'RV' AND   d.SD_ADD_OP != 'SERV2' AND d.SD_XX_FREIGHT_CHG > 0.1 THEN 'XX Manual Freight Fee'
+                WHEN  d.SD_ADD_OP = 'SERV2' AND d.SD_XX_FREIGHT_CHG > 0.1 THEN 'XX? Manual Freight Fee'
+                WHEN  d.SD_ADD_OP != 'RV' AND   d.SD_ADD_OP != 'SERV2' AND d.SD_SELL_PRICE >= 0.1 THEN 'Other Manual Freight Fee'
+                ELSE 'UnPricedManualFreight'
+          END                      AS "FeeType",
+          d.SD_STOCK               AS "Item",
+          REPLACE(d.SD_DESC,',','|')              AS "Description",
+          CASE  WHEN d.SD_LINE IS NOT NULL THEN  1
+                ELSE NULL
+          END                     AS "Qty",
+          CASE  WHEN d.SD_LINE IS NOT NULL THEN  '1'
+                ELSE NULL
+          END                      AS "UOI",
+          CASE  WHEN  d.SD_SELL_PRICE >= 0.1 AND   d.SD_ADD_OP = 'RV'  THEN f_calc_freight_fee(d.SD_SELL_PRICE,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER) 
+                WHEN  d.SD_STOCK like 'COURIER%' AND d.SD_SELL_PRICE >= 0.1 AND LTRIM(RTRIM(d.SD_XX_PICKLIST_NUM)) IS NOT NULL AND d.SD_ADD_OP = 'SERV2' THEN f_calc_freight_fee(d.SD_SELL_PRICE,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER) 
+                WHEN  d.SD_ADD_OP != 'RV' AND   d.SD_ADD_OP != 'SERV2' AND d.SD_XX_FREIGHT_CHG > 0.1 THEN f_calc_freight_fee(d.SD_XX_FREIGHT_CHG,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER)
+                WHEN  d.SD_ADD_OP = 'SERV2' AND d.SD_XX_FREIGHT_CHG > 0.1 THEN f_calc_freight_fee(d.SD_XX_FREIGHT_CHG,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER)
+                WHEN  d.SD_ADD_OP != 'RV' AND   d.SD_ADD_OP != 'SERV2' AND d.SD_SELL_PRICE >= 0.1 THEN f_calc_freight_fee(d.SD_SELL_PRICE,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER) 
+                ELSE TO_NUMBER('999')
+          END AS "UnitPriceMarkedUp", 
+          d.SD_SELL_PRICE  AS "OWUnitPrice",
+          CASE  WHEN  d.SD_SELL_PRICE >= 0.1 AND   d.SD_ADD_OP = 'RV'  THEN f_calc_freight_fee(d.SD_SELL_PRICE,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER) 
+                WHEN  d.SD_STOCK like 'COURIER%' AND d.SD_SELL_PRICE >= 0.1 AND LTRIM(RTRIM(d.SD_XX_PICKLIST_NUM)) IS NOT NULL AND d.SD_ADD_OP = 'SERV2' THEN f_calc_freight_fee(d.SD_SELL_PRICE,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER) 
+                WHEN  d.SD_ADD_OP != 'RV' AND   d.SD_ADD_OP != 'SERV2' AND d.SD_XX_FREIGHT_CHG > 0.1 THEN f_calc_freight_fee(d.SD_XX_FREIGHT_CHG,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER)
+                WHEN  d.SD_ADD_OP = 'SERV2' AND d.SD_XX_FREIGHT_CHG > 0.1 THEN f_calc_freight_fee(d.SD_XX_FREIGHT_CHG,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER)
+                WHEN  d.SD_ADD_OP != 'RV' AND   d.SD_ADD_OP != 'SERV2' AND d.SD_SELL_PRICE >= 0.1 THEN f_calc_freight_fee(d.SD_SELL_PRICE,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER) 
+                ELSE d.SD_EXCL   
+          END AS "DExcl",
+          CASE  WHEN  d.SD_SELL_PRICE >= 0.1 AND   d.SD_ADD_OP = 'RV'  THEN f_calc_freight_fee(d.SD_SELL_PRICE,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER) * 1.1
+                WHEN  d.SD_STOCK like 'COURIER%' AND d.SD_SELL_PRICE >= 0.1 AND LTRIM(RTRIM(d.SD_XX_PICKLIST_NUM)) IS NOT NULL AND d.SD_ADD_OP = 'SERV2' THEN f_calc_freight_fee(d.SD_SELL_PRICE,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER)  * 1.1
+                WHEN  d.SD_ADD_OP != 'RV' AND   d.SD_ADD_OP != 'SERV2' AND d.SD_XX_FREIGHT_CHG > 0.1 THEN f_calc_freight_fee(d.SD_XX_FREIGHT_CHG,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER) * 1.1
+                WHEN  d.SD_ADD_OP = 'SERV2' AND d.SD_XX_FREIGHT_CHG > 0.1 THEN f_calc_freight_fee(d.SD_XX_FREIGHT_CHG,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER) * 1.1
+                WHEN  d.SD_ADD_OP != 'RV' AND   d.SD_ADD_OP != 'SERV2' AND d.SD_SELL_PRICE >= 0.1 THEN f_calc_freight_fee(d.SD_SELL_PRICE,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER)  * 1.1
+                ELSE d.SD_INCL   
+          END AS "DIncl",
+          d.SD_XX_FREIGHT_CHG                   AS "ReportingPrice",
+          CASE  WHEN regexp_substr(SD_NOTE_1,'\d') IS NOT NULL THEN TO_NUMBER(SD_NOTE_1) --TO_NUMBER(d.SD_NOTE_1,'fm999999.99999999','nls_numeric_characters = ''.,''')      
+                ELSE TO_NUMBER('999')
+          END AS "ReportingPrice",
+          d.SD_COST_PRICE           AS "COSTPRICE",
+          REPLACE(s.SH_ADDRESS, ',')             AS "Address",
+          REPLACE(s.SH_SUBURB, ',')              AS "Address2",
+          REPLACE(s.SH_CITY, ',')                AS "Suburb",
+          s.SH_STATE               AS "State",
+          s.SH_POST_CODE           AS "Postcode",
+          REPLACE(s.SH_NOTE_1, ',')              AS "DeliverTo",
+          REPLACE(s.SH_NOTE_2, ',')              AS "AttentionTo" ,
+          t.ST_WEIGHT              AS "Weight",
+          t.ST_PACKAGES            AS "Packages",
+          s.SH_SPARE_DBL_9         AS "OrderSource",
+          r.area AS "Pallet/Shelf Space as area", 
+          r.rmdbl2 AS "Locn_as rmdbl2", 
+          d.SD_LINE, 
+          CASE  WHEN regexp_substr(s.SH_SPARE_STR_3,'[a-z]+', 1, 2) IS NOT NULL THEN  s.SH_SPARE_STR_3 || '@' || s.SH_SPARE_STR_1
+                ELSE ''
+          END AS Email,
+          'N/A' AS Brand,
+          r.terr,null,
+          r.anal,d.SD_COST_PRICE,
+          s.SH_SPARE_INT_4,s.SH_CAMPAIGN,
+          d.SD_ADD_DATE,d.SD_ADD_OP,
+          d.SD_XX_FREIGHT_CHG
+    FROM  PWIN175.SD d
+          INNER JOIN PWIN175.SH s  ON s.SH_ORDER  = d.SD_ORDER
+          LEFT OUTER JOIN PWIN175.ST t  ON LTRIM(RTRIM(t.ST_PICK))  = LTRIM(RTRIM(d.SD_XX_PICKLIST_NUM))
+          LEFT JOIN Tmp_Group_Cust r ON r.sCust = s.SH_CUST
+          
+    WHERE d.SD_STOCK IN ('COURIERM','COURIERS','COURIER','DETENTIONTIMEM','DETENTIONTIMES','FREIGHTDUTY')
+    AND   d.SD_ADD_DATE >= startdate AND d.SD_ADD_DATE <= enddate
+    AND       r.ANAL = sAnalysis
+
+    GROUP BY  
+          s.SH_CUST,s.SH_SPARE_STR_4,s.SH_CAMPAIGN,s.SH_ORDER,s.SH_XX_FEE_WAIVE,s.SH_SPARE_INT_4,s.SH_CAMPAIGN,
+          s.SH_ADDRESS,s.SH_SUBURB,s.SH_CITY,s.SH_STATE,s.SH_POST_CODE,s.SH_NOTE_1,s.SH_ADD_DATE,s.SH_NOTE_2,
+          s.SH_SPARE_DBL_9,s.SH_SPARE_STR_5,s.SH_CUST_REF,s.SH_SPARE_STR_3,s.SH_SPARE_STR_1,
+          t.ST_PICK,t.ST_PSLIP,t.ST_DESP_DATE,t.ST_WEIGHT,t.ST_PACKAGES,t.ST_SPARE_DBL_1, 
+          d.SD_XX_PICKLIST_NUM,d.SD_QTY_ORDER,d.SD_QTY_ORDER,d.SD_ORDER,d.SD_XX_FREIGHT_CHG,d.SD_COST_PRICE,d.SD_NOTE_1,d.SD_COST_PRICE,
+          d.SD_STOCK,d.SD_ADD_OP,d.SD_DESC,d.SD_LINE,d.SD_EXCL,d.SD_INCL,d.SD_NOTE_1,d.SD_SELL_PRICE,d.SD_XX_OW_UNIT_PRICE,d.SD_XX_FREIGHT_CHG,
+          d.SD_XX_PSLIP_NUM,d.SD_ADD_DATE,r.anal,
+          r.sGroupCust,r.terr,r.area,r.rmdbl2
+          
+          UNION ALL
+          
+          
+     SELECT    s.SH_CUST                AS "Customer",
+          r.sGroupCust              AS "Parent",
+          s.SH_SPARE_STR_4         AS "CostCentre",
+          s.SH_ORDER               AS "Order",
+          s.SH_SPARE_STR_5         AS "OrderwareNum",
+          s.SH_CUST_REF            AS "CustomerRef",
+          d.SD_XX_PICKLIST_NUM                AS "PickNum",
+          d.SD_XX_PSLIP_NUM               AS "DespNote",
+          substr(To_Char(d.SD_ADD_DATE),0,10)            AS "DespatchDate",
+          substr(To_Char(s.SH_ADD_DATE),0,10) AS "OrderDate",
+          CASE  WHEN d.SD_XX_FREIGHT_CHG >= 0.1  THEN 'XX Van Manual Freight Fee'
+			          ELSE 'UnPricedXXFreight'
+			          END                      AS "FeeType",
+          d.SD_STOCK               AS "Item",
+          REPLACE(d.SD_DESC,',','|')              AS "Description",
+          CASE  WHEN d.SD_LINE IS NOT NULL THEN  1
+                ELSE NULL
+          END                     AS "Qty",
+          CASE  WHEN d.SD_LINE IS NOT NULL THEN  '1'
+                ELSE NULL
+          END                      AS "UOI",
+         f_calc_freight_fee(d.SD_XX_FREIGHT_CHG,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER) AS "UnitPriceMarkedUp", 
+          CASE  WHEN d.SD_SELL_PRICE >= 1 THEN f_calc_freight_fee(d.SD_XX_FREIGHT_CHG,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER)      
+          ELSE d.SD_XX_FREIGHT_CHG   
+          END AS "OWUnitPrice",
+          CASE  WHEN d.SD_XX_FREIGHT_CHG >= 1 THEN f_calc_freight_fee(d.SD_XX_FREIGHT_CHG,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER)      
+          ELSE d.SD_EXCL   
+          END AS "DExcl",
+          CASE  WHEN d.SD_XX_FREIGHT_CHG >= 1 THEN f_calc_freight_fee(d.SD_XX_FREIGHT_CHG,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER) * 1.1     
+          ELSE d.SD_INCL   
+          END AS "DIncl",
+          d.SD_XX_FREIGHT_CHG                   AS "ReportingPrice",
+          CASE  WHEN regexp_substr(SD_NOTE_1,'\d') IS NOT NULL THEN TO_NUMBER(SD_NOTE_1) --TO_NUMBER(d.SD_NOTE_1,'fm999999.99999999','nls_numeric_characters = ''.,''')      
+                ELSE TO_NUMBER('999')
+          END AS "ReportingPrice",
+          d.SD_COST_PRICE           AS "COSTPRICE",
+          REPLACE(s.SH_ADDRESS, ',')             AS "Address",
+          REPLACE(s.SH_SUBURB, ',')              AS "Address2",
+          REPLACE(s.SH_CITY, ',')                AS "Suburb",
+          s.SH_STATE               AS "State",
+          s.SH_POST_CODE           AS "Postcode",
+          REPLACE(s.SH_NOTE_1, ',')              AS "DeliverTo",
+          REPLACE(s.SH_NOTE_2, ',')              AS "AttentionTo" ,
+          NULL              AS "Weight",
+          NULL            AS "Packages",
+          s.SH_SPARE_DBL_9         AS "OrderSource",
+          r.area AS "Pallet/Shelf Space as area", 
+          r.rmdbl2 AS "Locn_as rmdbl2", 
+          d.SD_LINE, 
+          CASE  WHEN regexp_substr(s.SH_SPARE_STR_3,'[a-z]+', 1, 2) IS NOT NULL THEN  s.SH_SPARE_STR_3 || '@' || s.SH_SPARE_STR_1
+                ELSE ''
+          END AS Email,
+          'N/A' AS Brand,
+          r.terr AS "ownedby as terr",null,
+          r.anal,d.SD_COST_PRICE,
+          s.SH_SPARE_INT_4,s.SH_CAMPAIGN,
+          d.SD_ADD_DATE,d.SD_ADD_OP,
+          d.SD_XX_FREIGHT_CHG
+    FROM      PWIN175.SD d
+			  INNER JOIN PWIN175.SH s  ON s.SH_ORDER  = d.SD_ORDER
+			  LEFT JOIN Tmp_Group_Cust r ON r.sCust = s.SH_CUST
+	WHERE d.SD_STOCK = 'COURIER'--IN ('COURIERM','COURIERS','COURIER','DETENTIONTIMEM','DETENTIONTIMES','FREIGHTDUTY')
+	AND       d.SD_ADD_DATE >= startdate AND d.SD_ADD_DATE <= enddate
+  AND   d.SD_ADD_OP NOT LIKE 'SERV%' 
+  AND   d.SD_ADD_OP != 'RV'
+  AND       r.ANAL = sAnalysis
+
+    GROUP BY  
+          s.SH_CUST,s.SH_SPARE_STR_4,s.SH_CAMPAIGN,s.SH_ORDER,s.SH_XX_FEE_WAIVE,s.SH_SPARE_INT_4,s.SH_CAMPAIGN,
+          s.SH_ADDRESS,s.SH_SUBURB,s.SH_CITY,s.SH_STATE,s.SH_POST_CODE,s.SH_NOTE_1,s.SH_ADD_DATE,s.SH_NOTE_2,
+          s.SH_SPARE_DBL_9,s.SH_SPARE_STR_5,s.SH_CUST_REF,s.SH_SPARE_STR_3,s.SH_SPARE_STR_1,
+          --t.ST_PICK,t.ST_PSLIP,t.ST_DESP_DATE,t.ST_WEIGHT,t.ST_PACKAGES,t.ST_SPARE_DBL_1, 
+          d.SD_XX_PICKLIST_NUM,d.SD_QTY_ORDER,d.SD_QTY_ORDER,d.SD_ORDER,d.SD_XX_FREIGHT_CHG,d.SD_COST_PRICE,d.SD_NOTE_1,d.SD_COST_PRICE,
+          d.SD_STOCK,d.SD_ADD_OP,d.SD_DESC,d.SD_LINE,d.SD_EXCL,d.SD_INCL,d.SD_NOTE_1,d.SD_SELL_PRICE,d.SD_XX_OW_UNIT_PRICE,d.SD_XX_FREIGHT_CHG,
+          d.SD_XX_PSLIP_NUM,d.SD_ADD_DATE,r.anal,
+          r.sGroupCust,r.rmdbl2,r.terr,r.area;
      
       CURSOR cDEV
       IS
@@ -781,7 +958,185 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           d.SD_XX_PICKLIST_NUM,d.SD_QTY_ORDER,d.SD_QTY_ORDER,d.SD_ORDER,d.SD_XX_FREIGHT_CHG,d.SD_COST_PRICE,d.SD_NOTE_1,d.SD_COST_PRICE,
           d.SD_STOCK,d.SD_ADD_OP,d.SD_DESC,d.SD_LINE,d.SD_EXCL,d.SD_INCL,d.SD_NOTE_1,d.SD_SELL_PRICE,d.SD_XX_OW_UNIT_PRICE,d.SD_XX_FREIGHT_CHG,
           d.SD_XX_PSLIP_NUM,d.SD_ADD_DATE,
-          r.sGroupCust,r.rmdbl2,r.terr,r.area;    
+          r.sGroupCust,r.rmdbl2,r.terr,r.area;   
+          
+          
+    CURSOR canalDEV
+      IS
+        /* F_EOM_TMP_ALL_FREIGHT_ALL freight fees*/
+      SELECT    s.SH_CUST                AS "Customer",
+          r.sGroupCust              AS "Parent",
+          s.SH_SPARE_STR_4         AS "CostCentre",
+          s.SH_ORDER               AS "Order",
+          s.SH_SPARE_STR_5         AS "OrderwareNum",
+          s.SH_CUST_REF            AS "CustomerRef",
+          t.ST_PICK                AS "PickNum",
+          t.ST_PSLIP               AS "DespNote",
+          substr(To_Char(d.SD_ADD_DATE),0,10)            AS "DespatchDate",
+          substr(To_Char(s.SH_ADD_DATE),0,10) AS "OrderDate",
+          CASE  WHEN  d.SD_SELL_PRICE >= 0.1 AND   d.SD_ADD_OP = 'RV'  THEN 'Manual Freight Fee'
+                WHEN  d.SD_STOCK like 'COURIER%' AND d.SD_SELL_PRICE >= 0.1 AND LTRIM(RTRIM(d.SD_XX_PICKLIST_NUM)) IS NOT NULL AND d.SD_ADD_OP = 'SERV2' THEN 'Freight Fee'
+                WHEN  d.SD_ADD_OP != 'RV' AND   d.SD_ADD_OP != 'SERV2' AND d.SD_XX_FREIGHT_CHG > 0.1 THEN 'XX Manual Freight Fee'
+                WHEN  d.SD_ADD_OP = 'SERV2' AND d.SD_XX_FREIGHT_CHG > 0.1 THEN 'XX? Manual Freight Fee'
+                WHEN  d.SD_ADD_OP != 'RV' AND   d.SD_ADD_OP != 'SERV2' AND d.SD_SELL_PRICE >= 0.1 THEN 'Other Manual Freight Fee'
+                ELSE 'UnPricedManualFreight'
+          END                      AS "FeeType",
+          d.SD_STOCK               AS "Item",
+          REPLACE(d.SD_DESC,',','|')              AS "Description",
+          CASE  WHEN d.SD_LINE IS NOT NULL THEN  1
+                ELSE NULL
+          END                     AS "Qty",
+          CASE  WHEN d.SD_LINE IS NOT NULL THEN  '1'
+                ELSE NULL
+          END                      AS "UOI",
+          CASE  WHEN  d.SD_SELL_PRICE >= 0.1 AND   d.SD_ADD_OP = 'RV'  THEN f_calc_freight_fee(d.SD_SELL_PRICE,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER) 
+                WHEN  d.SD_STOCK like 'COURIER%' AND d.SD_SELL_PRICE >= 0.1 AND LTRIM(RTRIM(d.SD_XX_PICKLIST_NUM)) IS NOT NULL AND d.SD_ADD_OP = 'SERV2' THEN f_calc_freight_fee(d.SD_SELL_PRICE,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER) 
+                WHEN  d.SD_ADD_OP != 'RV' AND   d.SD_ADD_OP != 'SERV2' AND d.SD_XX_FREIGHT_CHG > 0.1 THEN f_calc_freight_fee(d.SD_XX_FREIGHT_CHG,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER)
+                WHEN  d.SD_ADD_OP = 'SERV2' AND d.SD_XX_FREIGHT_CHG > 0.1 THEN f_calc_freight_fee(d.SD_XX_FREIGHT_CHG,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER)
+                WHEN  d.SD_ADD_OP != 'RV' AND   d.SD_ADD_OP != 'SERV2' AND d.SD_SELL_PRICE >= 0.1 THEN f_calc_freight_fee(d.SD_SELL_PRICE,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER) 
+                ELSE TO_NUMBER('999')
+          END AS "UnitPriceMarkedUp", 
+          d.SD_SELL_PRICE  AS "OWUnitPrice",
+          CASE  WHEN  d.SD_SELL_PRICE >= 0.1 AND   d.SD_ADD_OP = 'RV'  THEN f_calc_freight_fee(d.SD_SELL_PRICE,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER) 
+                WHEN  d.SD_STOCK like 'COURIER%' AND d.SD_SELL_PRICE >= 0.1 AND LTRIM(RTRIM(d.SD_XX_PICKLIST_NUM)) IS NOT NULL AND d.SD_ADD_OP = 'SERV2' THEN f_calc_freight_fee(d.SD_SELL_PRICE,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER) 
+                WHEN  d.SD_ADD_OP != 'RV' AND   d.SD_ADD_OP != 'SERV2' AND d.SD_XX_FREIGHT_CHG > 0.1 THEN f_calc_freight_fee(d.SD_XX_FREIGHT_CHG,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER)
+                WHEN  d.SD_ADD_OP = 'SERV2' AND d.SD_XX_FREIGHT_CHG > 0.1 THEN f_calc_freight_fee(d.SD_XX_FREIGHT_CHG,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER)
+                WHEN  d.SD_ADD_OP != 'RV' AND   d.SD_ADD_OP != 'SERV2' AND d.SD_SELL_PRICE >= 0.1 THEN f_calc_freight_fee(d.SD_SELL_PRICE,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER) 
+                ELSE d.SD_EXCL   
+          END AS "DExcl",
+          CASE  WHEN  d.SD_SELL_PRICE >= 0.1 AND   d.SD_ADD_OP = 'RV'  THEN f_calc_freight_fee(d.SD_SELL_PRICE,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER) * 1.1
+                WHEN  d.SD_STOCK like 'COURIER%' AND d.SD_SELL_PRICE >= 0.1 AND LTRIM(RTRIM(d.SD_XX_PICKLIST_NUM)) IS NOT NULL AND d.SD_ADD_OP = 'SERV2' THEN f_calc_freight_fee(d.SD_SELL_PRICE,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER)  * 1.1
+                WHEN  d.SD_ADD_OP != 'RV' AND   d.SD_ADD_OP != 'SERV2' AND d.SD_XX_FREIGHT_CHG > 0.1 THEN f_calc_freight_fee(d.SD_XX_FREIGHT_CHG,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER) * 1.1
+                WHEN  d.SD_ADD_OP = 'SERV2' AND d.SD_XX_FREIGHT_CHG > 0.1 THEN f_calc_freight_fee(d.SD_XX_FREIGHT_CHG,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER) * 1.1
+                WHEN  d.SD_ADD_OP != 'RV' AND   d.SD_ADD_OP != 'SERV2' AND d.SD_SELL_PRICE >= 0.1 THEN f_calc_freight_fee(d.SD_SELL_PRICE,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER)  * 1.1
+                ELSE d.SD_INCL   
+          END AS "DIncl",
+          d.SD_XX_FREIGHT_CHG                   AS "ReportingPrice",
+          CASE  WHEN regexp_substr(SD_NOTE_1,'\d') IS NOT NULL THEN TO_NUMBER(SD_NOTE_1) --TO_NUMBER(d.SD_NOTE_1,'fm999999.99999999','nls_numeric_characters = ''.,''')      
+                ELSE TO_NUMBER('999')
+          END AS "ReportingPrice",
+          d.SD_COST_PRICE           AS "COSTPRICE",
+          REPLACE(s.SH_ADDRESS, ',')             AS "Address",
+          REPLACE(s.SH_SUBURB, ',')              AS "Address2",
+          REPLACE(s.SH_CITY, ',')                AS "Suburb",
+          s.SH_STATE               AS "State",
+          s.SH_POST_CODE           AS "Postcode",
+          REPLACE(s.SH_NOTE_1, ',')              AS "DeliverTo",
+          REPLACE(s.SH_NOTE_2, ',')              AS "AttentionTo" ,
+          t.ST_WEIGHT              AS "Weight",
+          t.ST_PACKAGES            AS "Packages",
+          s.SH_SPARE_DBL_9         AS "OrderSource",
+          r.area AS "Pallet/Shelf Space as area", 
+          r.rmdbl2 AS "Locn_as rmdbl2", 
+          d.SD_LINE, 
+          CASE  WHEN regexp_substr(s.SH_SPARE_STR_3,'[a-z]+', 1, 2) IS NOT NULL THEN  s.SH_SPARE_STR_3 || '@' || s.SH_SPARE_STR_1
+                ELSE ''
+          END AS Email,
+          'N/A' AS Brand,
+          r.terr,null,
+          r.anal,d.SD_COST_PRICE,
+          s.SH_SPARE_INT_4,s.SH_CAMPAIGN,
+          d.SD_ADD_DATE,d.SD_ADD_OP,
+          d.SD_XX_FREIGHT_CHG
+    FROM  PWIN175.SD d
+          INNER JOIN PWIN175.SH s  ON s.SH_ORDER  = d.SD_ORDER
+          LEFT OUTER JOIN PWIN175.ST t  ON LTRIM(RTRIM(t.ST_PICK))  = LTRIM(RTRIM(d.SD_XX_PICKLIST_NUM))
+          LEFT JOIN Dev_Group_Cust r ON r.sCust = s.SH_CUST
+    WHERE d.SD_STOCK IN ('COURIERM','COURIERS','COURIER','DETENTIONTIMEM','DETENTIONTIMES','FREIGHTDUTY')
+    AND   d.SD_ADD_DATE >= startdate AND d.SD_ADD_DATE <= enddate
+    AND       r.ANAL = sAnalysis
+
+    GROUP BY  
+          s.SH_CUST,s.SH_SPARE_STR_4,s.SH_CAMPAIGN,s.SH_ORDER,s.SH_XX_FEE_WAIVE,s.SH_SPARE_INT_4,s.SH_CAMPAIGN,
+          s.SH_ADDRESS,s.SH_SUBURB,s.SH_CITY,s.SH_STATE,s.SH_POST_CODE,s.SH_NOTE_1,s.SH_ADD_DATE,s.SH_NOTE_2,
+          s.SH_SPARE_DBL_9,s.SH_SPARE_STR_5,s.SH_CUST_REF,s.SH_SPARE_STR_3,s.SH_SPARE_STR_1,
+          t.ST_PICK,t.ST_PSLIP,t.ST_DESP_DATE,t.ST_WEIGHT,t.ST_PACKAGES,t.ST_SPARE_DBL_1, 
+          d.SD_XX_PICKLIST_NUM,d.SD_QTY_ORDER,d.SD_QTY_ORDER,d.SD_ORDER,d.SD_XX_FREIGHT_CHG,d.SD_COST_PRICE,d.SD_NOTE_1,d.SD_COST_PRICE,
+          d.SD_STOCK,d.SD_ADD_OP,d.SD_DESC,d.SD_LINE,d.SD_EXCL,d.SD_INCL,d.SD_NOTE_1,d.SD_SELL_PRICE,d.SD_XX_OW_UNIT_PRICE,d.SD_XX_FREIGHT_CHG,
+          d.SD_XX_PSLIP_NUM,d.SD_ADD_DATE,r.anal,
+          r.sGroupCust,r.terr,r.area,r.rmdbl2
+          
+          UNION ALL
+          
+          
+     SELECT    s.SH_CUST                AS "Customer",
+          r.sGroupCust              AS "Parent",
+          s.SH_SPARE_STR_4         AS "CostCentre",
+          s.SH_ORDER               AS "Order",
+          s.SH_SPARE_STR_5         AS "OrderwareNum",
+          s.SH_CUST_REF            AS "CustomerRef",
+          d.SD_XX_PICKLIST_NUM                AS "PickNum",
+          d.SD_XX_PSLIP_NUM               AS "DespNote",
+          substr(To_Char(d.SD_ADD_DATE),0,10)            AS "DespatchDate",
+          substr(To_Char(s.SH_ADD_DATE),0,10) AS "OrderDate",
+          CASE  WHEN d.SD_XX_FREIGHT_CHG >= 0.1  THEN 'XX Van Manual Freight Fee'
+			          ELSE 'UnPricedXXFreight'
+			          END                      AS "FeeType",
+          d.SD_STOCK               AS "Item",
+          REPLACE(d.SD_DESC,',','|')              AS "Description",
+          CASE  WHEN d.SD_LINE IS NOT NULL THEN  1
+                ELSE NULL
+          END                     AS "Qty",
+          CASE  WHEN d.SD_LINE IS NOT NULL THEN  '1'
+                ELSE NULL
+          END                      AS "UOI",
+         f_calc_freight_fee(d.SD_XX_FREIGHT_CHG,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER) AS "UnitPriceMarkedUp", 
+          CASE  WHEN d.SD_SELL_PRICE >= 1 THEN f_calc_freight_fee(d.SD_XX_FREIGHT_CHG,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER)      
+          ELSE d.SD_XX_FREIGHT_CHG   
+          END AS "OWUnitPrice",
+          CASE  WHEN d.SD_XX_FREIGHT_CHG >= 1 THEN f_calc_freight_fee(d.SD_XX_FREIGHT_CHG,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER)      
+          ELSE d.SD_EXCL   
+          END AS "DExcl",
+          CASE  WHEN d.SD_XX_FREIGHT_CHG >= 1 THEN f_calc_freight_fee(d.SD_XX_FREIGHT_CHG,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER) * 1.1     
+          ELSE d.SD_INCL   
+          END AS "DIncl",
+          d.SD_XX_FREIGHT_CHG                   AS "ReportingPrice",
+          CASE  WHEN regexp_substr(SD_NOTE_1,'\d') IS NOT NULL THEN TO_NUMBER(SD_NOTE_1) --TO_NUMBER(d.SD_NOTE_1,'fm999999.99999999','nls_numeric_characters = ''.,''')      
+                ELSE TO_NUMBER('999')
+          END AS "ReportingPrice",
+          d.SD_COST_PRICE           AS "COSTPRICE",
+          REPLACE(s.SH_ADDRESS, ',')             AS "Address",
+          REPLACE(s.SH_SUBURB, ',')              AS "Address2",
+          REPLACE(s.SH_CITY, ',')                AS "Suburb",
+          s.SH_STATE               AS "State",
+          s.SH_POST_CODE           AS "Postcode",
+          REPLACE(s.SH_NOTE_1, ',')              AS "DeliverTo",
+          REPLACE(s.SH_NOTE_2, ',')              AS "AttentionTo" ,
+          NULL              AS "Weight",
+          NULL            AS "Packages",
+          s.SH_SPARE_DBL_9         AS "OrderSource",
+          r.area AS "Pallet/Shelf Space as area", 
+          r.rmdbl2 AS "Locn_as rmdbl2", 
+          d.SD_LINE, 
+          CASE  WHEN regexp_substr(s.SH_SPARE_STR_3,'[a-z]+', 1, 2) IS NOT NULL THEN  s.SH_SPARE_STR_3 || '@' || s.SH_SPARE_STR_1
+                ELSE ''
+          END AS Email,
+          'N/A' AS Brand,
+          r.terr AS "ownedby as terr",null,
+          r.anal,d.SD_COST_PRICE,
+          s.SH_SPARE_INT_4,s.SH_CAMPAIGN,
+          d.SD_ADD_DATE,d.SD_ADD_OP,
+          d.SD_XX_FREIGHT_CHG
+    FROM      PWIN175.SD d
+			  INNER JOIN PWIN175.SH s  ON s.SH_ORDER  = d.SD_ORDER
+			  LEFT JOIN Dev_Group_Cust r ON r.sCust = s.SH_CUST
+	WHERE d.SD_STOCK = 'COURIER'--IN ('COURIERM','COURIERS','COURIER','DETENTIONTIMEM','DETENTIONTIMES','FREIGHTDUTY')
+	AND       d.SD_ADD_DATE >= startdate AND d.SD_ADD_DATE <= enddate
+  AND   d.SD_ADD_OP NOT LIKE 'SERV%' 
+  AND   d.SD_ADD_OP != 'RV'
+  AND       r.ANAL = sAnalysis
+
+    GROUP BY  
+          s.SH_CUST,s.SH_SPARE_STR_4,s.SH_CAMPAIGN,s.SH_ORDER,s.SH_XX_FEE_WAIVE,s.SH_SPARE_INT_4,s.SH_CAMPAIGN,
+          s.SH_ADDRESS,s.SH_SUBURB,s.SH_CITY,s.SH_STATE,s.SH_POST_CODE,s.SH_NOTE_1,s.SH_ADD_DATE,s.SH_NOTE_2,
+          s.SH_SPARE_DBL_9,s.SH_SPARE_STR_5,s.SH_CUST_REF,s.SH_SPARE_STR_3,s.SH_SPARE_STR_1,
+          --t.ST_PICK,t.ST_PSLIP,t.ST_DESP_DATE,t.ST_WEIGHT,t.ST_PACKAGES,t.ST_SPARE_DBL_1, 
+          d.SD_XX_PICKLIST_NUM,d.SD_QTY_ORDER,d.SD_QTY_ORDER,d.SD_ORDER,d.SD_XX_FREIGHT_CHG,d.SD_COST_PRICE,d.SD_NOTE_1,d.SD_COST_PRICE,
+          d.SD_STOCK,d.SD_ADD_OP,d.SD_DESC,d.SD_LINE,d.SD_EXCL,d.SD_INCL,d.SD_NOTE_1,d.SD_SELL_PRICE,d.SD_XX_OW_UNIT_PRICE,d.SD_XX_FREIGHT_CHG,
+          d.SD_XX_PSLIP_NUM,d.SD_ADD_DATE,r.anal,
+          r.sGroupCust,r.rmdbl2,r.terr,r.area;   
+          
+    
           
         nbreakpoint   NUMBER;
         l_start number default dbms_utility.get_time;   
@@ -795,7 +1150,23 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           v_query := 'TRUNCATE TABLE DEV_ALL_FREIGHT_ALL';
           EXECUTE IMMEDIATE v_query;
           COMMIT;
+          If (sAnalysis = '21VICP') Then
+             OPEN canalDEV;
+          ----DBMS_OUTPUT.PUT_LINE(?? || '.' );
+          LOOP
+          FETCH canalDEV BULK COLLECT INTO l_data LIMIT p_array_size;
+  
+          FORALL i IN 1..l_data.COUNT
+          ----DBMS_OUTPUT.PUT_LINE(l_data(10) || '.' );
           
+          INSERT INTO DEV_ALL_FREIGHT_ALL VALUES l_data(i);
+          --USING sCust;
+          EXIT WHEN canalDEV%NOTFOUND;
+  
+          END LOOP;
+          ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+          CLOSE canalDEV;
+        Else
           OPEN cDEV;
           ----DBMS_OUTPUT.PUT_LINE(?? || '.' );
           LOOP
@@ -814,11 +1185,28 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
          --FOR i IN l_data.FIRST .. l_data.LAST LOOP
           ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).unitprice || '.' );
          --END LOOP;
-        Else
+        End If;
+     Else
           v_query := 'TRUNCATE TABLE TMP_ALL_FREIGHT_ALL';
           EXECUTE IMMEDIATE v_query;
           COMMIT;
+          If (sAnalysis = '21VICP') Then
+             OPEN canal;
+          ----DBMS_OUTPUT.PUT_LINE(?? || '.' );
+          LOOP
+          FETCH canal BULK COLLECT INTO l_data LIMIT p_array_size;
+  
+          FORALL i IN 1..l_data.COUNT
+          ----DBMS_OUTPUT.PUT_LINE(l_data(10) || '.' );
           
+          INSERT INTO TMP_ALL_FREIGHT_ALL VALUES l_data(i);
+          --USING sCust;
+          EXIT WHEN canal%NOTFOUND;
+  
+          END LOOP;
+          ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+          CLOSE canal;
+        Else
           OPEN c;
           ----DBMS_OUTPUT.PUT_LINE(?? || '.' );
           LOOP
@@ -834,6 +1222,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           END LOOP;
           ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
           CLOSE c;
+        End If;
          --FOR i IN l_data.FIRST .. l_data.LAST LOOP
           ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).unitprice || '.' );
          --END LOOP;
@@ -1265,6 +1654,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
         ,sCustomerCode IN VARCHAR2
         ,sFilterBy IN VARCHAR2
         ,sOp IN VARCHAR2
+        ,sAnalysis IN VARCHAR2
       )
       IS
       TYPE ARRAY IS TABLE OF TMP_ALL_FREIGHT_F%ROWTYPE;
@@ -1317,6 +1707,14 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
         WHERE ROWID IN ( SELECT MAX(ROWID) FROM TMP_ALL_FREIGHT_ALL GROUP BY description )
         AND t.ILNOTE2 = sCustomerCode;
         
+        CURSOR canal4        
+        IS       
+        /*All freight fees by area*/
+        select  *
+        FROM  TMP_ALL_FREIGHT_ALL t
+        WHERE ROWID IN ( SELECT MAX(ROWID) FROM TMP_ALL_FREIGHT_ALL GROUP BY description )
+        AND t.WAIVEFEE = sAnalysis;
+        
         CURSOR c1Dev   
         IS 
         /*All freight fees by Parent*/
@@ -1348,6 +1746,14 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
         FROM  DEV_ALL_FREIGHT_ALL t
         WHERE ROWID IN ( SELECT MAX(ROWID) FROM DEV_ALL_FREIGHT_ALL GROUP BY description )
         AND t.ILNOTE2 = sCustomerCode;
+        
+        CURSOR canal4Dev        
+        IS       
+        /*All freight fees by area*/
+        select  *
+        FROM  DEV_ALL_FREIGHT_ALL t
+        WHERE ROWID IN ( SELECT MAX(ROWID) FROM DEV_ALL_FREIGHT_ALL GROUP BY description )
+        AND t.WAIVEFEE = sAnalysis;
        
       nbreakpoint   NUMBER;
       l_start number default dbms_utility.get_time;
@@ -1605,7 +2011,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
     /*   Temp Tables Used   */
     /*   1. TMP_STOR_FEES   */
     /*   Prism Rate Field Used   */
-    /*   A. RM_XX_FEE11 & RM_XX_FEE12   */
+    /*   A. RM_XX_FEE11 null   */
     PROCEDURE H4_EOM_ALL_STOR_FEES (
         p_array_size IN PLS_INTEGER DEFAULT 100
         ,startdate IN VARCHAR2-- := To_Date('1-Jun-2015') or format date as 01-Jun-15 -- use this when you want the date entered automatically
@@ -1741,7 +2147,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
       IM_BRAND AS Brand,
       IM_OWNED_By AS    OwnedBy,
       IM_PROFILE AS    sProfile,
-      NULL AS    WaiveFee,
+      r.ANAL AS    WaiveFee,
       NULL As   Cost,
       NULL AS PaymentType,NULL,NULL,NULL,NULL
   
@@ -1753,9 +2159,273 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
     AND n1.NI_AVAIL_ACTUAL >= '1'
     AND n1.NI_STATUS <> 0
     AND tmp.SCUST = sCustomerCode
-    GROUP BY l1.IL_LOCN,IM_CUST,IM_BRAND,IM_OWNED_By,IM_PROFILE,l1.IL_NOTE_2,n1.NI_LOCN,n1.NI_STOCK,
+    GROUP BY l1.IL_LOCN,IM_CUST,IM_BRAND,IM_OWNED_By,IM_PROFILE,l1.IL_NOTE_2,n1.NI_LOCN,n1.NI_STOCK,r.ANAL,
     tmp.NCOUNTOFSTOCKS,IM_REPORTING_PRICE,r.sGroupCust,IM_LEVEL_UNIT,IM_XX_COST_CENTRE01,IM_STOCK,IM_STD_COST,IM_LAST_COST;
 
+    
+     CURSOR canal
+      IS
+    /* EOM Storage Fees */
+      select IM_CUST AS "Customer",
+      r.sGroupCust AS "Parent",
+      IM_XX_COST_CENTRE01     AS "CostCentre",
+      NULL               AS "Order",
+      NULL               AS "OrderwareNum",
+      NULL               AS "CustomerRef",
+      NULL         AS "Pickslip",
+      NULL                      AS "DespatchNote",
+      NULL               AS "DespatchNote",
+      NULL             AS "OrderDate",
+      CASE /*Fee Type*/
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW'
+          THEN 'FEEPALLETS'
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW'
+          THEN 'SLOWFEEPALLETS'
+        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW'
+          THEN 'FEESHELFS'
+        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW'
+          THEN 'SLOWFEESHELFS'
+        ELSE 'UNKNOWN'
+        END AS "FeeType",
+      IM_STOCK AS "Item",
+      CASE /*explanation of charge*/
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES' 
+          THEN 'Pallet Space Utilisation Fee (per month) is split across ' || tmp.NCOUNTOFSTOCKS || ' stock(s)'
+        ELSE 'Shelf SPace Utilisation Fee (per month) is split across ' ||	tmp.NCOUNTOFSTOCKS  || ' stock(s)'
+        END AS "Description",
+      CASE   
+        WHEN l1.IL_NOTE_2 IS NOT NULL THEN  1
+        ELSE 0
+        END                     AS "Qty",
+      IM_LEVEL_UNIT AS "UOI", 
+      CASE
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES'  AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --pallet for fast moving
+          f_get_fee('RM_XX_FEE11',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --shelf for fast moving
+          f_get_fee('RM_XX_FEE12',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) !=0 THEN --pallet for slow moving if slow rate exists
+         f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',r.sGroupCust) !=0 THEN --shelf for slow moving if slow rate exists
+          f_get_fee('RM_XX_FEE30',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) =0 THEN --pallet for slow moving if slow rate DOESN't exist, revert to normal charge
+         f_get_fee('RM_XX_FEE11',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',r.sGroupCust) =0 THEN --shelf for slow moving if slow rate DOESN't exist
+          f_get_fee('RM_XX_FEE12',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        ELSE 999
+        END AS "UnitPrice",
+      CASE
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES'  AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --pallet for fast moving
+          f_get_fee('RM_XX_FEE11',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --shelf for fast moving
+          f_get_fee('RM_XX_FEE12',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) !=0 THEN --pallet for slow moving if slow rate exists
+         f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',r.sGroupCust) !=0 THEN --shelf for slow moving if slow rate exists
+          f_get_fee('RM_XX_FEE30',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) =0 THEN --pallet for slow moving if slow rate DOESN't exist, revert to normal charge
+         f_get_fee('RM_XX_FEE11',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',r.sGroupCust) =0 THEN --shelf for slow moving if slow rate DOESN't exist
+          f_get_fee('RM_XX_FEE12',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        ELSE 999
+        END AS "OWUnitPrice",
+      CASE
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES'  AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --pallet for fast moving
+          f_get_fee('RM_XX_FEE11',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --shelf for fast moving
+          f_get_fee('RM_XX_FEE12',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) !=0 THEN --pallet for slow moving if slow rate exists
+         f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',r.sGroupCust) !=0 THEN --shelf for slow moving if slow rate exists
+          f_get_fee('RM_XX_FEE30',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) =0 THEN --pallet for slow moving if slow rate DOESN't exist, revert to normal charge
+         f_get_fee('RM_XX_FEE11',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',r.sGroupCust) =0 THEN --shelf for slow moving if slow rate DOESN't exist
+          f_get_fee('RM_XX_FEE12',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        ELSE 999
+        END AS "DExcl",
+      CASE 
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES'  AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --pallet for fast moving
+          (f_get_fee('RM_XX_FEE11',r.sGroupCust) / tmp.NCOUNTOFSTOCKS) * 1.1
+        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --shelf for fast moving
+          (f_get_fee('RM_XX_FEE12',r.sGroupCust) / tmp.NCOUNTOFSTOCKS) * 1.1
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) !=0 THEN --pallet for slow moving if slow rate exists
+          (f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) / tmp.NCOUNTOFSTOCKS) * 1.1
+        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',r.sGroupCust) !=0 THEN --shelf for slow moving if slow rate exists
+          (f_get_fee('RM_XX_FEE30',r.sGroupCust) / tmp.NCOUNTOFSTOCKS) * 1.1
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) =0 THEN --pallet for slow moving if slow rate DOESN't exist, revert to normal charge
+          (f_get_fee('RM_XX_FEE11',r.sGroupCust) / tmp.NCOUNTOFSTOCKS) * 1.1
+        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',r.sGroupCust) =0 THEN --shelf for slow moving if slow rate DOESN't exist
+          (f_get_fee('RM_XX_FEE12',r.sGroupCust) / tmp.NCOUNTOFSTOCKS) * 1.1
+        ELSE 999
+        END AS "DIncl",
+      TO_NUMBER(IM_REPORTING_PRICE),
+      IM_STD_COST AS "PreMarkUpPrice",
+			  IM_LAST_COST           AS "COSTPRICE",
+      NULL             AS "Address",
+      NULL              AS "Address2",
+      NULL                AS "Suburb",
+      NULL               AS "State",
+      NULL           AS "Postcode",
+      NULL              AS "DeliverTo",
+      NULL              AS "AttentionTo" ,
+      0              AS "Weight",
+      0            AS "Packages",
+      0         AS "OrderSource",
+      l1.IL_NOTE_2 AS "Pallet/Space", 
+      l1.IL_LOCN AS "Locn",
+      tmp.NCOUNTOFSTOCKS AS CountCustStocks,
+      NULL AS Email,
+      IM_BRAND AS Brand,
+      IM_OWNED_By AS    OwnedBy,
+      IM_PROFILE AS    sProfile,
+      r.ANAL AS    WaiveFee,
+      NULL As   Cost,
+      NULL AS PaymentType,NULL,NULL,NULL,NULL
+  
+    FROM NI n1 INNER JOIN IM ON IM_STOCK = n1.NI_STOCK --AND IM_CUST = tmp.SCUST
+    INNER JOIN IL l1 ON l1.IL_LOCN = n1.NI_LOCN
+    INNER JOIN Tmp_Locn_Cnt_By_Cust tmp ON tmp.SLOCN = l1.IL_LOCN
+    LEFT JOIN Tmp_Group_Cust r ON r.sCust = tmp.SCUST
+    WHERE  IM_ACTIVE = 1
+    AND n1.NI_AVAIL_ACTUAL >= '1'
+    AND n1.NI_STATUS <> 0
+    --AND tmp.SCUST = sCustomerCode
+    AND   tmp.SCUST IN (SELECT RM_CUST FROM RM WHERE RM_ANAL = sAnalysis AND RM_TYPE = 0 AND RM_ACTIVE = 1 )
+    GROUP BY l1.IL_LOCN,IM_CUST,IM_BRAND,IM_OWNED_By,IM_PROFILE,l1.IL_NOTE_2,n1.NI_LOCN,n1.NI_STOCK,r.ANAL,
+    tmp.NCOUNTOFSTOCKS,IM_REPORTING_PRICE,r.sGroupCust,IM_LEVEL_UNIT,IM_XX_COST_CENTRE01,IM_STOCK,IM_STD_COST,IM_LAST_COST;
+    
+    
+    
+      CURSOR canalDev
+      IS
+    /* EOM Storage Fees */
+      select IM_CUST AS "Customer",
+      r.sGroupCust AS "Parent",
+      r.ANAL     AS "CostCentre",
+      NULL               AS "Order",
+      NULL               AS "OrderwareNum",
+      NULL               AS "CustomerRef",
+      NULL         AS "Pickslip",
+      NULL                      AS "DespatchNote",
+      NULL               AS "DespatchNote",
+      NULL             AS "OrderDate",
+      CASE /*Fee Type*/
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW'
+          THEN 'FEEPALLETS'
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW'
+          THEN 'SLOWFEEPALLETS'
+        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW'
+          THEN 'FEESHELFS'
+        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW'
+          THEN 'SLOWFEESHELFS'
+        ELSE 'UNKNOWN'
+        END AS "FeeType",
+      IM_STOCK AS "Item",
+      CASE /*explanation of charge*/
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES' 
+          THEN 'Pallet Space Utilisation Fee (per month) is split across ' || tmp.NCOUNTOFSTOCKS || ' stock(s)'
+        ELSE 'Shelf SPace Utilisation Fee (per month) is split across ' ||	tmp.NCOUNTOFSTOCKS  || ' stock(s)'
+        END AS "Description",
+      CASE   
+        WHEN l1.IL_NOTE_2 IS NOT NULL THEN  1
+        ELSE 0
+        END                     AS "Qty",
+      IM_LEVEL_UNIT AS "UOI", 
+      CASE
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES'  AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --pallet for fast moving
+          f_get_fee('RM_XX_FEE11',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --shelf for fast moving
+          f_get_fee('RM_XX_FEE12',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) !=0 THEN --pallet for slow moving if slow rate exists
+         f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',r.sGroupCust) !=0 THEN --shelf for slow moving if slow rate exists
+          f_get_fee('RM_XX_FEE30',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) =0 THEN --pallet for slow moving if slow rate DOESN't exist, revert to normal charge
+         f_get_fee('RM_XX_FEE11',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',r.sGroupCust) =0 THEN --shelf for slow moving if slow rate DOESN't exist
+          f_get_fee('RM_XX_FEE12',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        ELSE 999
+        END AS "UnitPrice",
+      CASE
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES'  AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --pallet for fast moving
+          f_get_fee('RM_XX_FEE11',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --shelf for fast moving
+          f_get_fee('RM_XX_FEE12',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) !=0 THEN --pallet for slow moving if slow rate exists
+         f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',r.sGroupCust) !=0 THEN --shelf for slow moving if slow rate exists
+          f_get_fee('RM_XX_FEE30',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) =0 THEN --pallet for slow moving if slow rate DOESN't exist, revert to normal charge
+         f_get_fee('RM_XX_FEE11',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',r.sGroupCust) =0 THEN --shelf for slow moving if slow rate DOESN't exist
+          f_get_fee('RM_XX_FEE12',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        ELSE 999
+        END AS "OWUnitPrice",
+      CASE
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES'  AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --pallet for fast moving
+          f_get_fee('RM_XX_FEE11',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --shelf for fast moving
+          f_get_fee('RM_XX_FEE12',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) !=0 THEN --pallet for slow moving if slow rate exists
+         f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',r.sGroupCust) !=0 THEN --shelf for slow moving if slow rate exists
+          f_get_fee('RM_XX_FEE30',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) =0 THEN --pallet for slow moving if slow rate DOESN't exist, revert to normal charge
+         f_get_fee('RM_XX_FEE11',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',r.sGroupCust) =0 THEN --shelf for slow moving if slow rate DOESN't exist
+          f_get_fee('RM_XX_FEE12',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        ELSE 999
+        END AS "DExcl",
+      CASE 
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES'  AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --pallet for fast moving
+          (f_get_fee('RM_XX_FEE11',r.sGroupCust) / tmp.NCOUNTOFSTOCKS) * 1.1
+        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --shelf for fast moving
+          (f_get_fee('RM_XX_FEE12',r.sGroupCust) / tmp.NCOUNTOFSTOCKS) * 1.1
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) !=0 THEN --pallet for slow moving if slow rate exists
+          (f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) / tmp.NCOUNTOFSTOCKS) * 1.1
+        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',r.sGroupCust) !=0 THEN --shelf for slow moving if slow rate exists
+          (f_get_fee('RM_XX_FEE30',r.sGroupCust) / tmp.NCOUNTOFSTOCKS) * 1.1
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) =0 THEN --pallet for slow moving if slow rate DOESN't exist, revert to normal charge
+          (f_get_fee('RM_XX_FEE11',r.sGroupCust) / tmp.NCOUNTOFSTOCKS) * 1.1
+        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',r.sGroupCust) =0 THEN --shelf for slow moving if slow rate DOESN't exist
+          (f_get_fee('RM_XX_FEE12',r.sGroupCust) / tmp.NCOUNTOFSTOCKS) * 1.1
+        ELSE 999
+        END AS "DIncl",
+      TO_NUMBER(IM_REPORTING_PRICE),
+      IM_STD_COST AS "PreMarkUpPrice",
+			  IM_LAST_COST           AS "COSTPRICE",
+      NULL             AS "Address",
+      NULL              AS "Address2",
+      NULL                AS "Suburb",
+      NULL               AS "State",
+      NULL           AS "Postcode",
+      NULL              AS "DeliverTo",
+      NULL              AS "AttentionTo" ,
+      0              AS "Weight",
+      0            AS "Packages",
+      0         AS "OrderSource",
+      l1.IL_NOTE_2 AS "Pallet/Space", 
+      l1.IL_LOCN AS "Locn",
+      tmp.NCOUNTOFSTOCKS AS CountCustStocks,
+      NULL AS Email,
+      IM_BRAND AS Brand,
+      IM_OWNED_By AS    OwnedBy,
+      IM_PROFILE AS    sProfile,
+      r.ANAL AS    WaiveFee,
+      NULL As   Cost,
+      NULL AS PaymentType,NULL,NULL,NULL,NULL
+  
+    FROM NI n1 INNER JOIN IM ON IM_STOCK = n1.NI_STOCK --AND IM_CUST = tmp.SCUST
+    INNER JOIN IL l1 ON l1.IL_LOCN = n1.NI_LOCN
+    INNER JOIN Dev_Locn_Cnt_By_Cust tmp ON tmp.SLOCN = l1.IL_LOCN
+    LEFT JOIN Dev_Group_Cust r ON r.sCust = tmp.SCUST
+    WHERE  IM_ACTIVE = 1
+    AND n1.NI_AVAIL_ACTUAL >= '1'
+    AND n1.NI_STATUS <> 0
+    --AND tmp.SCUST = sCustomerCode
+    AND   tmp.SCUST IN (SELECT RM_CUST FROM RM WHERE RM_ANAL = sAnalysis AND RM_TYPE = 0 AND RM_ACTIVE = 1 )
+    GROUP BY l1.IL_LOCN,IM_CUST,IM_BRAND,IM_OWNED_By,IM_PROFILE,l1.IL_NOTE_2,n1.NI_LOCN,n1.NI_STOCK,r.ANAL,
+    tmp.NCOUNTOFSTOCKS,IM_REPORTING_PRICE,r.sGroupCust,IM_LEVEL_UNIT,IM_XX_COST_CENTRE01,IM_STOCK,IM_STD_COST,IM_LAST_COST;
     
     CURSOR cDEV
       IS
@@ -1872,7 +2542,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
       IM_BRAND AS Brand,
       IM_OWNED_By AS    OwnedBy,
       IM_PROFILE AS    sProfile,
-      NULL AS    WaiveFee,
+      r.ANAL AS    WaiveFee,
       NULL As   Cost,
       NULL AS PaymentType,NULL,NULL,NULL,NULL
   
@@ -1884,7 +2554,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
     AND n1.NI_AVAIL_ACTUAL >= '1'
     AND n1.NI_STATUS <> 0
     AND tmp.SCUST = sCustomerCode
-    GROUP BY l1.IL_LOCN,IM_CUST,IM_BRAND,IM_OWNED_By,IM_PROFILE,l1.IL_NOTE_2,n1.NI_LOCN,n1.NI_STOCK,
+    GROUP BY l1.IL_LOCN,IM_CUST,IM_BRAND,IM_OWNED_By,IM_PROFILE,l1.IL_NOTE_2,n1.NI_LOCN,n1.NI_STOCK,r.ANAL,
     tmp.NCOUNTOFSTOCKS,IM_REPORTING_PRICE,r.sGroupCust,IM_LEVEL_UNIT,IM_XX_COST_CENTRE01,IM_STOCK,IM_STD_COST,IM_LAST_COST;
   
     QueryTable VARCHAR2(600) := q'{SELECT To_Number(regexp_substr(RM_XX_FEE11,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = :sCustomerCode}';
@@ -1902,46 +2572,81 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
     
     nCheckpoint := 2;      
     If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          DBMS_OUTPUT.PUT_LINE(sOp || ' - . And sAnalysis is ' || sAnalysis );
           v_query := 'TRUNCATE TABLE DEV_STOR_ALL_FEES';
           EXECUTE IMMEDIATE v_query;
-          
-          OPEN cDEV;
-          ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
-          LOOP
-          FETCH cDEV BULK COLLECT INTO l_data LIMIT p_array_size;
-
-          FORALL i IN 1..l_data.COUNT
-          ----DBMS_OUTPUT.PUT_LINE(i || '.' );
-          INSERT INTO DEV_STOR_ALL_FEES VALUES l_data(i);
-          --USING sCust;
-
-          EXIT WHEN cDEV%NOTFOUND;
-
-          END LOOP;
-         -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-          CLOSE cDEV;
+          If (sAnalysis = '21VICP') Then
+            OPEN canalDev;
+            ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
+            LOOP
+            FETCH canalDev BULK COLLECT INTO l_data LIMIT p_array_size;
+  
+            FORALL i IN 1..l_data.COUNT
+            ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+            INSERT INTO DEV_STOR_ALL_FEES VALUES l_data(i);
+            --USING sCust;
+  
+            EXIT WHEN canalDev%NOTFOUND;
+  
+            END LOOP;
+            DBMS_OUTPUT.PUT_LINE(sAnalysis || ' - .' );
+            CLOSE canalDev;
+          Else
+           OPEN cDEV;
+            ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
+            LOOP
+            FETCH cDEV BULK COLLECT INTO l_data LIMIT p_array_size;
+  
+            FORALL i IN 1..l_data.COUNT
+            ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+            INSERT INTO DEV_STOR_ALL_FEES VALUES l_data(i);
+            --USING sCust;
+  
+            EXIT WHEN cDEV%NOTFOUND;
+  
+            END LOOP;
+           -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+            CLOSE cDEV;
+          End If;
         -- FOR i IN l_data.FIRST .. l_data.LAST LOOP
           ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
         --END LOOP;
     Else
         v_query := 'TRUNCATE TABLE TMP_STOR_ALL_FEES';
         EXECUTE IMMEDIATE v_query;
-        
-        OPEN c;
-          ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
-          LOOP
-          FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
-
-          FORALL i IN 1..l_data.COUNT
-          ----DBMS_OUTPUT.PUT_LINE(i || '.' );
-          INSERT INTO TMP_STOR_ALL_FEES VALUES l_data(i);
-          --USING sCust;
-
-          EXIT WHEN c%NOTFOUND;
-
-          END LOOP;
-         -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-          CLOSE c;
+          If (sAnalysis = '21VICP') Then
+            OPEN canal;
+            ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
+            LOOP
+            FETCH canal BULK COLLECT INTO l_data LIMIT p_array_size;
+  
+            FORALL i IN 1..l_data.COUNT
+            ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+            INSERT INTO TMP_STOR_ALL_FEES VALUES l_data(i);
+            --USING sCust;
+  
+            EXIT WHEN canal%NOTFOUND;
+  
+            END LOOP;
+           -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+            CLOSE canal;
+          Else
+            OPEN c;
+              ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
+              LOOP
+              FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
+    
+              FORALL i IN 1..l_data.COUNT
+              ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+              INSERT INTO TMP_STOR_ALL_FEES VALUES l_data(i);
+              --USING sCust;
+    
+              EXIT WHEN c%NOTFOUND;
+    
+              END LOOP;
+             -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+              CLOSE c;
+            End If;
         -- FOR i IN l_data.FIRST .. l_data.LAST LOOP
           ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
         --END LOOP;
@@ -1957,13 +2662,17 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
             --Z2_TMP_FEES_TO_CSV(sFileName,'TMP_STOR_ALL_FEES');
             ----DBMS_OUTPUT.PUT_LINE('Z2_TMP_FEES_TO_CSV for ' || sFileName || '.' );
             --COMMIT;
-            --DBMS_OUTPUT.PUT_LINE('H4A_EOM_ALL_STOR_FEES Fees for the date range '
-                --|| startdate || ' -- ' || enddate || ' - ' || v_query2 || ' records inserted into table TMP_ALL_STOR_FEES in ' || (round((dbms_utility.get_time-l_start)/100, 6) ||
-               -- ' Seconds...for customer ' || sCustomerCode ));
+            DBMS_OUTPUT.PUT_LINE('H4A_EOM_ALL_STOR_FEES Fees for the date range '
+                || startdate || ' -- ' || enddate || ' - ' || v_query2 || ' records inserted into table TMP_ALL_STOR_FEES in ' || (round((dbms_utility.get_time-l_start)/100, 6) ||
+                ' Seconds...for customer ' || sCustomerCode ));
       
           --Else
             --DBMS_OUTPUT.PUT_LINE('H4A_EOM_ALL_STOR_FEES Std Shelf Storage Fees rates are not empty - but there was no data, still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) ||
             --' Seconds...for customer ' || sCustomerCode);
+          Else
+            DBMS_OUTPUT.PUT_LINE('H4A_EOM_ALL_STOR_FEES Fees FAILED for the date range '
+                || startdate || ' -- ' || enddate || ' - ' || v_query2 || ' records inserted into table TMP_ALL_STOR_FEES in ' || (round((dbms_utility.get_time-l_start)/100, 6) ||
+                ' Seconds...for customer ' || sCustomerCode ));
           END IF;
         Else
           If F_IS_TABLE_EEMPTY('TMP_STOR_ALL_FEES') > 0 Then
@@ -2000,7 +2709,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
     /*   Temp Tables Used   */
     /*   1. TMP_STOR_FEES   */
     /*   Prism Rate Field Used   */
-    /*   A. RM_XX_FEE11 & RM_XX_FEE12   */
+    /*   A. RM_XX_FEE11 null   */
     PROCEDURE H4_EOM_ALL_STOR (
         p_array_size IN PLS_INTEGER DEFAULT 100
         ,startdate IN VARCHAR2-- := To_Date('1-Jun-2015') or format date as 01-Jun-15 -- use this when you want the date entered automatically
@@ -2039,6 +2748,13 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           WHERE  t.Customer = sCustomerCode OR t.parent = sCustomerCode
           OR t.Customer = 'CGU' OR t.parent = 'CGU';
           
+          CURSOR canal1
+          IS
+          /* EOM Storage Fees */
+          select *
+          FROM DEV_STOR_ALL_FEES t
+          WHERE  t.waivefee = '21VICP';
+          
        -- Else
           CURSOR c2
           IS
@@ -2053,6 +2769,13 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           FROM TMP_STOR_ALL_FEES t
           WHERE  t.Customer = sCustomerCode OR t.parent = sCustomerCode
           OR t.Customer = 'CGU' OR t.parent = 'CGU';
+          
+          CURSOR canal
+          IS
+          /* EOM Storage Fees */
+          select *
+          FROM TMP_STOR_ALL_FEES t
+          WHERE  t.waivefee = '21VICP' ;
           
         --End If;
      
@@ -2076,7 +2799,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
             v_query := 'TRUNCATE TABLE DEV_STOR_FEES';
             EXECUTE IMMEDIATE v_query;
-            If (sCustomerCode != 'IAG') Then
+            If (sCustomerCode != 'IAG')AND (sAnalysis != '21VICP') Then
                 OPEN c;
                 ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
                 LOOP
@@ -2095,7 +2818,26 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
               -- FOR i IN l_data.FIRST .. l_data.LAST LOOP
                 ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
               --END LOOP;
-              Else
+             ElsIf (sAnalysis = '21VICP') Then
+                OPEN canal1;
+                ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
+                LOOP
+                FETCH canal1 BULK COLLECT INTO l_data LIMIT p_array_size;
+    
+                FORALL i IN 1..l_data.COUNT
+                ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+                INSERT INTO DEV_STOR_FEES VALUES l_data(i);
+                --USING sCust;
+    
+                EXIT WHEN canal1%NOTFOUND;
+    
+                END LOOP;
+               -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+                CLOSE canal1;
+              -- FOR i IN l_data.FIRST .. l_data.LAST LOOP
+                ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+              --END LOOP; 
+             Else
                  OPEN c1;
                 ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
                 LOOP
@@ -2118,22 +2860,41 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
             Else
               v_query := 'TRUNCATE TABLE TMP_STOR_FEES';
               EXECUTE IMMEDIATE v_query;
-              If (sCustomerCode != 'IAG') Then
-              OPEN c2;
+              If (sCustomerCode != 'IAG')AND (sAnalysis != '21VICP') Then
+                  OPEN c2;
+                  ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
+                  LOOP
+                  FETCH c2 BULK COLLECT INTO l_data LIMIT p_array_size;
+      
+                  FORALL i IN 1..l_data.COUNT
+                  ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+                  INSERT INTO TMP_STOR_FEES VALUES l_data(i);
+                  --USING sCust;
+      
+                  EXIT WHEN c2%NOTFOUND;
+      
+                  END LOOP;
+                 -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+                  CLOSE c2;
+                -- FOR i IN l_data.FIRST .. l_data.LAST LOOP
+                  ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+                --END LOOP;
+              ElsIf (sAnalysis = '21VICP') Then
+              OPEN canal;
               ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
               LOOP
-              FETCH c2 BULK COLLECT INTO l_data LIMIT p_array_size;
+              FETCH canal BULK COLLECT INTO l_data LIMIT p_array_size;
   
               FORALL i IN 1..l_data.COUNT
               ----DBMS_OUTPUT.PUT_LINE(i || '.' );
               INSERT INTO TMP_STOR_FEES VALUES l_data(i);
               --USING sCust;
   
-              EXIT WHEN c2%NOTFOUND;
+              EXIT WHEN canal%NOTFOUND;
   
               END LOOP;
              -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-              CLOSE c2;
+              CLOSE canal;
             -- FOR i IN l_data.FIRST .. l_data.LAST LOOP
               ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
             --END LOOP;
@@ -2936,8 +3697,8 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
     AND       s.SH_STATUS <> 3
     AND       d.SD_LINE = 1
     AND       s.SH_ORDER = t.ST_ORDER
-    AND       t.ST_DESP_DATE >= startdate AND t.ST_DESP_DATE <= enddate
-    Group By d.SD_STOCK;
+    AND       t.ST_DESP_DATE >= startdate AND t.ST_DESP_DATE <= enddate;
+   -- Group By d.SD_STOCK;
     
       CURSOR cDEV
       IS
@@ -3268,6 +4029,131 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           s.SH_SPARE_STR_5,
           s.SH_CUST_REF,s.SH_SPARE_STR_3,s.SH_SPARE_STR_1,
                 i.IM_BRAND,i.IM_OWNED_By,i.IM_PROFILE,s.SH_XX_FEE_WAIVE,d.SD_COST_PRICE,s.SH_SPARE_INT_4;
+                
+                
+      CURSOR canal
+      IS
+      SELECT    s.SH_CUST,
+          r.sGroupCust,
+          CASE    WHEN IM_CUST <> 'TABCORP' THEN s.SH_SPARE_STR_4
+          WHEN IM_CUST = 'TABCORP' THEN IM_XX_COST_CENTRE01
+          ELSE s.SH_SPARE_STR_4
+          END,
+          s.SH_ORDER,s.SH_SPARE_STR_5,s.SH_CUST_REF,
+          t.ST_PICK                AS "PickNum",
+          t.ST_PSLIP               AS "DespNote",
+          substr(To_Char(t.ST_DESP_DATE),0,10)            AS "DespatchDate",
+          substr(To_Char(s.SH_ADD_DATE),0,10) AS "OrderDate",
+          CASE    WHEN t.ST_XX_NUM_PAL_SW >= 1 THEN 'ShrinkWrap Despatch Fee'
+          ELSE NULL
+          END                      AS "FeeType",
+          CASE    WHEN t.ST_XX_NUM_PAL_SW >= 1 THEN  'ShrinkWrap Despatch'
+          ELSE NULL
+          END                     AS "Item",
+          CASE    WHEN t.ST_XX_NUM_PAL_SW >= 1 THEN  'ShrinkWraping Despatch Fee'
+          ELSE NULL
+          END                     AS "Description",
+          CASE    WHEN t.ST_XX_NUM_PAL_SW >= 1 THEN  t.ST_XX_NUM_PAL_SW
+          ELSE NULL
+          END                     AS "Qty",
+          CASE    WHEN t.ST_XX_NUM_PAL_SW >= 1 THEN  '1'
+          ELSE ''
+          END                     AS "UOI",
+          CASE   WHEN t.ST_XX_NUM_PAL_SW >= 1 THEN  f_get_fee('RM_XX_FEE18',sCustomerCode) --(SELECT To_Number(regexp_substr(RM_XX_FEE18,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode)
+          ELSE null
+          END                      AS "UnitPrice",
+          CASE   WHEN t.ST_XX_NUM_PAL_SW >= 1 THEN  f_get_fee('RM_XX_FEE18',sCustomerCode) --(SELECT To_Number(regexp_substr(RM_XX_FEE18,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode)
+          ELSE null
+          END                                           AS "OWUnitPrice",
+          CASE   WHEN t.ST_XX_NUM_PAL_SW >= 1  THEN  f_get_fee('RM_XX_FEE18',sCustomerCode) --(SELECT To_Number(regexp_substr(RM_XX_FEE18,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode)
+          ELSE NULL
+          END                        AS "DExcl",
+          CASE   WHEN t.ST_XX_NUM_PAL_SW >= 1 THEN f_get_fee('RM_XX_FEE18',sCustomerCode)   * 1.1 -- (SELECT To_Number(regexp_substr(RM_XX_FEE18,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode)  * 1.1
+          ELSE NULL
+          END                                           AS "DIncl",
+          CASE   WHEN t.ST_XX_NUM_PAL_SW >= 1 THEN f_get_fee('RM_XX_FEE18',sCustomerCode) -- (SELECT To_Number(regexp_substr(RM_XX_FEE18,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode)
+          ELSE null
+          END                                           AS "ReportingPrice",
+          NULL,
+          NULL,
+          REPLACE(s.SH_ADDRESS, ',')             AS "Address",
+          REPLACE(s.SH_SUBURB, ',')              AS "Address2",
+          REPLACE(s.SH_CITY, ',')                AS "Suburb",
+          s.SH_STATE               AS "State",
+          s.SH_POST_CODE           AS "Postcode",
+          REPLACE(s.SH_NOTE_1, ',')              AS "DeliverTo",
+          REPLACE(s.SH_NOTE_2, ',')              AS "AttentionTo" ,
+          t.ST_WEIGHT              AS "Weight",
+          t.ST_PACKAGES            AS "Packages",
+          s.SH_SPARE_DBL_9         AS "OrderSource",
+          NULL AS "Pallet/Shelf Space",
+          NULL AS "Locn",
+          0 AS "CountOfStocks",
+          CASE  WHEN regexp_substr(s.SH_SPARE_STR_3,'[a-z]+', 1, 2) IS NOT NULL THEN  s.SH_SPARE_STR_3 || '@' || s.SH_SPARE_STR_1
+          ELSE ''
+          END AS Email,
+          i.IM_BRAND AS Brand,
+          i.IM_OWNED_By,i.IM_PROFILE,
+          s.SH_XX_FEE_WAIVE,d.SD_COST_PRICE,
+          s.SH_SPARE_INT_4,s.SH_CAMPAIGN,
+          d.SD_NOTE_1,d.SD_COST_PRICE,
+          d.SD_XX_FREIGHT_CHG
+    FROM      PWIN175.SD d
+          INNER JOIN PWIN175.SH s  ON s.SH_ORDER  = d.SD_ORDER
+          INNER JOIN PWIN175.ST t  ON t.ST_ORDER  = s.SH_ORDER
+          LEFT JOIN Tmp_Group_Cust r ON r.sCust = s.SH_CUST
+          INNER JOIN PWIN175.IM i  ON i.IM_STOCK = d.SD_STOCK
+    WHERE  s.SH_STATUS <> 3
+    AND f_get_fee('RM_XX_FEE18',sCustomerCode) > 0.1
+    AND       r.ANAL = sAnalysis --(r.sGroupCust = sCustomerCode OR r.sCust = sCustomerCode)
+    AND       t.ST_XX_NUM_PAL_SW >= 1
+    AND       d.SD_LINE = 1
+    AND t.ST_PSLIP != 'CANCELLED'
+  --	AND       TO_CHAR(t.ST_DESP_DATE,'YYYY-MM-DD') >= start_date AND TO_CHAR(t.ST_DESP_DATE,'YYYY-MM-DD') <= end_date
+    AND       t.ST_DESP_DATE >= startdate AND t.ST_DESP_DATE <= enddate
+  
+    GROUP BY  s.SH_CUST,
+          r.sGroupCust,
+          r.sCust,
+          s.SH_NOTE_1,
+          s.SH_CAMPAIGN,
+          s.SH_SPARE_STR_4,
+          s.SH_ORDER,
+          t.ST_PICK,
+          d.SD_XX_PICKLIST_NUM,s.SH_CAMPAIGN,
+          t.ST_PSLIP,
+          t.ST_DESP_DATE,
+          t.ST_XX_NUM_PAL_SW,
+          i.IM_TYPE,
+          IM_CUST,
+          IM_XX_COST_CENTRE01,
+          d.SD_STOCK,
+          d.SD_DESC,
+          d.SD_LINE,
+          d.SD_EXCL,
+          d.SD_INCL,
+          d.SD_SELL_PRICE,
+          d.SD_XX_OW_UNIT_PRICE,s.SH_ADD_DATE,
+          d.SD_QTY_ORDER,
+          d.SD_QTY_ORDER,
+          s.SH_ADDRESS,
+          s.SH_SUBURB,
+          s.SH_CITY, i.IM_OWNED_By,i.IM_PROFILE,
+          s.SH_XX_FEE_WAIVE,d.SD_COST_PRICE,
+          s.SH_SPARE_INT_4,s.SH_CAMPAIGN,
+          d.SD_NOTE_1,d.SD_COST_PRICE,
+          d.SD_XX_FREIGHT_CHG,
+          s.SH_STATE,
+          s.SH_POST_CODE,
+          s.SH_NOTE_1,
+          s.SH_NOTE_2,
+          t.ST_WEIGHT,
+          t.ST_PACKAGES,
+          s.SH_SPARE_DBL_9,
+          r.sGroupCust,
+          s.SH_SPARE_STR_5,
+          s.SH_CUST_REF,s.SH_SPARE_STR_3,s.SH_SPARE_STR_1,
+                i.IM_BRAND,i.IM_OWNED_By,i.IM_PROFILE,s.SH_XX_FEE_WAIVE,d.SD_COST_PRICE,s.SH_SPARE_INT_4;
   
       CURSOR cDEV
       IS
@@ -3392,6 +4278,131 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           s.SH_SPARE_STR_5,
           s.SH_CUST_REF,s.SH_SPARE_STR_3,s.SH_SPARE_STR_1,
                 i.IM_BRAND,i.IM_OWNED_By,i.IM_PROFILE,s.SH_XX_FEE_WAIVE,d.SD_COST_PRICE,s.SH_SPARE_INT_4;
+                
+       CURSOR canalDEV
+      IS
+      SELECT    s.SH_CUST,
+          r.sGroupCust,
+          CASE    WHEN IM_CUST <> 'TABCORP' THEN s.SH_SPARE_STR_4
+          WHEN IM_CUST = 'TABCORP' THEN IM_XX_COST_CENTRE01
+          ELSE s.SH_SPARE_STR_4
+          END,
+          s.SH_ORDER,s.SH_SPARE_STR_5,s.SH_CUST_REF,
+          t.ST_PICK                AS "PickNum",
+          t.ST_PSLIP               AS "DespNote",
+          substr(To_Char(t.ST_DESP_DATE),0,10)            AS "DespatchDate",
+          substr(To_Char(s.SH_ADD_DATE),0,10) AS "OrderDate",
+          CASE    WHEN t.ST_XX_NUM_PAL_SW >= 1 THEN 'ShrinkWrap Despatch Fee'
+          ELSE NULL
+          END                      AS "FeeType",
+          CASE    WHEN t.ST_XX_NUM_PAL_SW >= 1 THEN  'ShrinkWrap Despatch'
+          ELSE NULL
+          END                     AS "Item",
+          CASE    WHEN t.ST_XX_NUM_PAL_SW >= 1 THEN  'ShrinkWraping Despatch Fee'
+          ELSE NULL
+          END                     AS "Description",
+          CASE    WHEN t.ST_XX_NUM_PAL_SW >= 1 THEN  t.ST_XX_NUM_PAL_SW
+          ELSE NULL
+          END                     AS "Qty",
+          CASE    WHEN t.ST_XX_NUM_PAL_SW >= 1 THEN  '1'
+          ELSE ''
+          END                     AS "UOI",
+          CASE   WHEN t.ST_XX_NUM_PAL_SW >= 1 THEN  f_get_fee('RM_XX_FEE18',sCustomerCode) --(SELECT To_Number(regexp_substr(RM_XX_FEE18,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode)
+          ELSE null
+          END                      AS "UnitPrice",
+          CASE   WHEN t.ST_XX_NUM_PAL_SW >= 1 THEN  f_get_fee('RM_XX_FEE18',sCustomerCode) --(SELECT To_Number(regexp_substr(RM_XX_FEE18,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode)
+          ELSE null
+          END                                           AS "OWUnitPrice",
+          CASE   WHEN t.ST_XX_NUM_PAL_SW >= 1  THEN  f_get_fee('RM_XX_FEE18',sCustomerCode) --(SELECT To_Number(regexp_substr(RM_XX_FEE18,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode)
+          ELSE NULL
+          END                        AS "DExcl",
+          CASE   WHEN t.ST_XX_NUM_PAL_SW >= 1 THEN f_get_fee('RM_XX_FEE18',sCustomerCode)   * 1.1 -- (SELECT To_Number(regexp_substr(RM_XX_FEE18,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode)  * 1.1
+          ELSE NULL
+          END                                           AS "DIncl",
+          CASE   WHEN t.ST_XX_NUM_PAL_SW >= 1 THEN f_get_fee('RM_XX_FEE18',sCustomerCode) -- (SELECT To_Number(regexp_substr(RM_XX_FEE18,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode)
+          ELSE null
+          END                                           AS "ReportingPrice",
+          NULL,
+          NULL,
+          REPLACE(s.SH_ADDRESS, ',')             AS "Address",
+          REPLACE(s.SH_SUBURB, ',')              AS "Address2",
+          REPLACE(s.SH_CITY, ',')                AS "Suburb",
+          s.SH_STATE               AS "State",
+          s.SH_POST_CODE           AS "Postcode",
+          REPLACE(s.SH_NOTE_1, ',')              AS "DeliverTo",
+          REPLACE(s.SH_NOTE_2, ',')              AS "AttentionTo" ,
+          t.ST_WEIGHT              AS "Weight",
+          t.ST_PACKAGES            AS "Packages",
+          s.SH_SPARE_DBL_9         AS "OrderSource",
+          NULL AS "Pallet/Shelf Space",
+          NULL AS "Locn",
+          0 AS "CountOfStocks",
+          CASE  WHEN regexp_substr(s.SH_SPARE_STR_3,'[a-z]+', 1, 2) IS NOT NULL THEN  s.SH_SPARE_STR_3 || '@' || s.SH_SPARE_STR_1
+          ELSE ''
+          END AS Email,
+          i.IM_BRAND AS Brand,
+          i.IM_OWNED_By,i.IM_PROFILE,
+          s.SH_XX_FEE_WAIVE,d.SD_COST_PRICE,
+          s.SH_SPARE_INT_4,s.SH_CAMPAIGN,
+          d.SD_NOTE_1,d.SD_COST_PRICE,
+          d.SD_XX_FREIGHT_CHG
+    FROM      PWIN175.SD d
+          INNER JOIN PWIN175.SH s  ON s.SH_ORDER  = d.SD_ORDER
+          INNER JOIN PWIN175.ST t  ON t.ST_ORDER  = s.SH_ORDER
+          LEFT JOIN Dev_Group_Cust r ON r.sCust = s.SH_CUST
+          INNER JOIN PWIN175.IM i  ON i.IM_STOCK = d.SD_STOCK
+    WHERE  s.SH_STATUS <> 3
+    AND f_get_fee('RM_XX_FEE18',sCustomerCode) > 0.1
+    AND      r.ANAL = sAnalysis -- (r.sGroupCust = sCustomerCode OR r.sCust = sCustomerCode)
+    AND       t.ST_XX_NUM_PAL_SW >= 1
+    AND       d.SD_LINE = 1
+    AND t.ST_PSLIP != 'CANCELLED'
+  --	AND       TO_CHAR(t.ST_DESP_DATE,'YYYY-MM-DD') >= start_date AND TO_CHAR(t.ST_DESP_DATE,'YYYY-MM-DD') <= end_date
+    AND       t.ST_DESP_DATE >= startdate AND t.ST_DESP_DATE <= enddate
+  
+    GROUP BY  s.SH_CUST,
+          r.sGroupCust,
+          r.sCust,
+          s.SH_NOTE_1,
+          s.SH_CAMPAIGN,
+          s.SH_SPARE_STR_4,
+          s.SH_ORDER,
+          t.ST_PICK,
+          d.SD_XX_PICKLIST_NUM,s.SH_CAMPAIGN,
+          t.ST_PSLIP,
+          t.ST_DESP_DATE,
+          t.ST_XX_NUM_PAL_SW,
+          i.IM_TYPE,
+          IM_CUST,
+          IM_XX_COST_CENTRE01,
+          d.SD_STOCK,
+          d.SD_DESC,
+          d.SD_LINE,
+          d.SD_EXCL,
+          d.SD_INCL,
+          d.SD_SELL_PRICE,
+          d.SD_XX_OW_UNIT_PRICE,s.SH_ADD_DATE,
+          d.SD_QTY_ORDER,
+          d.SD_QTY_ORDER,
+          s.SH_ADDRESS,
+          s.SH_SUBURB,
+          s.SH_CITY, i.IM_OWNED_By,i.IM_PROFILE,
+          s.SH_XX_FEE_WAIVE,d.SD_COST_PRICE,
+          s.SH_SPARE_INT_4,s.SH_CAMPAIGN,
+          d.SD_NOTE_1,d.SD_COST_PRICE,
+          d.SD_XX_FREIGHT_CHG,
+          s.SH_STATE,
+          s.SH_POST_CODE,
+          s.SH_NOTE_1,
+          s.SH_NOTE_2,
+          t.ST_WEIGHT,
+          t.ST_PACKAGES,
+          s.SH_SPARE_DBL_9,
+          r.sGroupCust,
+          s.SH_SPARE_STR_5,
+          s.SH_CUST_REF,s.SH_SPARE_STR_3,s.SH_SPARE_STR_1,
+                i.IM_BRAND,i.IM_OWNED_By,i.IM_PROFILE,s.SH_XX_FEE_WAIVE,d.SD_COST_PRICE,s.SH_SPARE_INT_4;
+                
       --QueryTable VARCHAR2(600) := q'{Select f_get_fee('RM_XX_FEE18',:sCustomerCode) From DUAl}';--q'{SELECT To_Number(regexp_substr(RM_XX_FEE18,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = :sCustomerCode5}';
       QueryTable VARCHAR2(600) := q'{SELECT To_Number(regexp_substr(RM_XX_FEE18,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = :sCustomerCode5}';
       sCust_Rates RM.RM_XX_FEE18%TYPE;/*1 PickFee*/
@@ -3410,23 +4421,55 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
            If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
             v_query := 'TRUNCATE TABLE DEV_SHRINKWRAP_FEES';
             EXECUTE IMMEDIATE v_query;
-            OPEN cDEV;
-            ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
-            LOOP
-            FETCH cDEV BULK COLLECT INTO l_data LIMIT p_array_size;
-    
-            FORALL i IN 1..l_data.COUNT
-            ----DBMS_OUTPUT.PUT_LINE(i || '.' );
-            INSERT INTO DEV_SHRINKWRAP_FEES VALUES l_data(i);
-            --USING sCust;
-            EXIT WHEN cDEV%NOTFOUND;
-            END LOOP;
-           -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-            CLOSE cDEV;
+            
+            If (sAnalysis = '21VICP') Then
+               OPEN canalDEV;
+              ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
+              LOOP
+              FETCH canalDEV BULK COLLECT INTO l_data LIMIT p_array_size;
+      
+              FORALL i IN 1..l_data.COUNT
+              ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+              INSERT INTO DEV_SHRINKWRAP_FEES VALUES l_data(i);
+              --USING sCust;
+              EXIT WHEN canalDEV%NOTFOUND;
+              END LOOP;
+             -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+              CLOSE canalDEV;
+            Else
+              OPEN cDEV;
+              ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
+              LOOP
+              FETCH cDEV BULK COLLECT INTO l_data LIMIT p_array_size;
+      
+              FORALL i IN 1..l_data.COUNT
+              ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+              INSERT INTO DEV_SHRINKWRAP_FEES VALUES l_data(i);
+              --USING sCust;
+              EXIT WHEN cDEV%NOTFOUND;
+              END LOOP;
+             -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+              CLOSE cDEV;
+            End If;
           Else
             v_query := 'TRUNCATE TABLE TMP_SHRINKWRAP_FEES';
             EXECUTE IMMEDIATE v_query;
-             OPEN c;
+            If (sAnalysis = '21VICP') Then
+             OPEN canal;
+              ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
+              LOOP
+              FETCH canal BULK COLLECT INTO l_data LIMIT p_array_size;
+      
+              FORALL i IN 1..l_data.COUNT
+              ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+              INSERT INTO TMP_SHRINKWRAP_FEES VALUES l_data(i);
+              --USING sCust;
+              EXIT WHEN canal%NOTFOUND;
+              END LOOP;
+             -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+              CLOSE canal;
+            Else
+              OPEN c;
               ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
               LOOP
               FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
@@ -3439,6 +4482,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
               END LOOP;
              -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
               CLOSE c;
+            End If;
           End If;
            --FOR i IN l_data.FIRST .. l_data.LAST LOOP
           --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
@@ -3499,7 +4543,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
       v_query2          VARCHAR2(32767);
       nCheckpoint       NUMBER;
       nbreakpoint   NUMBER;
-       CURSOR c
+      CURSOR c
       IS
       /*Stocks*/
       SELECT 
@@ -3563,7 +4607,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
             t.ST_PACKAGES            AS "Packages",
             s.SH_SPARE_DBL_9         AS "OrderSource", --nedd function to return text value
             IM_XX_QTY_PER_PACK AS "Inner", /*Pallet/Space*/
-            IM_XX_QTY_SHIP_ON_PAL AS "Outer", /*Locn*/
+            IM_XX_QTY_PER_PACK AS "Outer", /*Locn*/
             0 AS "CountOfStocks",
             CASE   WHEN regexp_substr(s.SH_SPARE_STR_3,'[a-z]+', 1, 2) IS NOT NULL THEN  s.SH_SPARE_STR_3 || '@' || s.SH_SPARE_STR_1
             ELSE ''
@@ -3592,7 +4636,8 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           AND       t.ST_DESP_DATE >= startdate AND t.ST_DESP_DATE <= enddate;
           --AND       d.SD_LAST_PICK_NUM = t.ST_PICK;
           
-       CURSOR cDEV
+          
+      CURSOR canal
       IS
       /*Stocks*/
       SELECT 
@@ -3656,7 +4701,100 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
             t.ST_PACKAGES            AS "Packages",
             s.SH_SPARE_DBL_9         AS "OrderSource", --nedd function to return text value
             IM_XX_QTY_PER_PACK AS "Inner", /*Pallet/Space*/
-            IM_XX_QTY_SHIP_ON_PAL AS "Outer", /*Locn*/
+            IM_XX_QTY_PER_PACK AS "Outer", /*Locn*/
+            0 AS "CountOfStocks",
+            CASE   WHEN regexp_substr(s.SH_SPARE_STR_3,'[a-z]+', 1, 2) IS NOT NULL THEN  s.SH_SPARE_STR_3 || '@' || s.SH_SPARE_STR_1
+            ELSE ''
+            END AS Email,
+            i.IM_BRAND AS Brand,
+            r.OW_CAT AS OwnedBy,
+            i.IM_OWNED_BY AS sProfile,
+            NULL AS WaiveFee,
+            NULL AS Cost,
+            NULL AS PaymentType,s.SH_CAMPAIGN,NULL,NULL,SD_XX_ARIBA_LINE_NO
+      FROM      SD d
+         INNER JOIN SH s  ON s.SH_ORDER  = d.SD_ORDER
+          --INNER JOIN ST t  ON t.ST_PICK  = d.SD_LAST_PICK_NUM
+          INNER JOIN SL l  ON l.SL_ORDER  = d.SD_ORDER  AND SL_ORDER_LINE = SD_LINE
+          INNER JOIN ST t  ON t.ST_PICK  = l.SL_PICK
+          INNER JOIN Tmp_Group_Cust r ON r.sCust = s.SH_CUST
+          INNER JOIN IM i  ON i.IM_STOCK = d.SD_STOCK
+          --INNER JOIN NE n  ON n.NE_STOCK = l.SL_UID
+          INNER JOIN IU ON IU_UNIT = i.IM_LEVEL_UNIT
+          WHERE SD_STATUS != 3
+          AND SL_PSLIP_QTY >= 1
+          AND r.ANAL = sAnalysis --(r.sGroupCust = sCustomerCode OR r.sCust = sCustomerCode)
+          AND t.ST_PSLIP != 'CANCELLED'
+          --AND       s.SH_ORDER = t.ST_ORDER
+          --AND       TO_CHAR(t.ST_DESP_DATE,'YYYY-MM-DD') >= start_date AND TO_CHAR(t.ST_DESP_DATE,'YYYY-MM-DD') <= end_date
+          AND       t.ST_DESP_DATE >= startdate AND t.ST_DESP_DATE <= enddate;
+          --AND       d.SD_LAST_PICK_NUM = t.ST_PICK;
+          
+      CURSOR cDEV
+      IS
+      /*Stocks*/
+      SELECT 
+            s.SH_CUST                AS "Customer",
+            i.IM_CUST              AS "Parent",
+            CASE   WHEN i.IM_CUST <> 'TABCORP' AND s.SH_SPARE_STR_4 IS NULL THEN s.SH_CUST
+            WHEN i.IM_CUST <> 'TABCORP' THEN s.SH_SPARE_STR_4
+            WHEN i.IM_CUST = 'TABCORP' THEN i.IM_XX_COST_CENTRE01
+            ELSE i.IM_XX_COST_CENTRE01
+            END                      AS "CostCentre",
+            s.SH_ORDER               AS "Order",
+            s.SH_SPARE_STR_5         AS "OrderwareNum",
+            s.SH_CUST_REF            AS "CustomerRef",
+            t.ST_PICK                AS "PickNum",
+          t.ST_PSLIP               AS "DespNote",
+          substr(To_Char(t.ST_DESP_DATE),0,10)            AS "DespatchDate",
+          substr(To_Char(s.SH_ADD_DATE),0,10) AS "OrderDate",
+            CASE    WHEN d.SD_STOCK IS NOT NULL THEN 'Stock'
+            ELSE NULL
+            END                      AS "FeeType",
+            d.SD_STOCK               AS "Item",
+            REPLACE(d.SD_DESC, ',')                AS "Description",
+            l.SL_PSLIP_QTY           AS "Qty",
+            d.SD_QTY_UNIT            AS "UOI",
+            CASE   WHEN d.SD_STOCK IS NOT NULL AND i.IM_CUST <> 'TABCORP' AND i.IM_OWNED_BY = 0 THEN TO_NUMBER(d.SD_SELL_PRICE)--n.NI_SELL_VALUE/n.NI_NX_QUANTITY --TO_NUMBER(d.SD_SELL_PRICE)
+            WHEN d.SD_STOCK IS NOT NULL AND i.IM_CUST <> 'TABCORP' AND i.IM_OWNED_BY = 1 THEN TO_NUMBER(d.SD_SELL_PRICE) --n.NI_SELL_VALUE/n.NI_NX_QUANTITY
+            WHEN d.SD_STOCK IS NOT NULL AND i.IM_CUST = 'TABCORP' AND IU_TO_METRIC = 1 THEN (SELECT To_Number(regexp_substr(RM_XX_FEE08,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode) --* d.SD_QTY_DESP --eom_report_pkg.F_BREAK_UNIT_PRICE(r.sGroupCust,d.SD_STOCK) IS NOT NULL THEN eom_report_pkg.F_BREAK_UNIT_PRICE(r.sGroupCust,d.SD_STOCK)
+            WHEN d.SD_STOCK IS NOT NULL AND i.IM_CUST = 'TABCORP' AND IU_TO_METRIC != 1 THEN (SELECT To_Number(regexp_substr(RM_XX_FEE09,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode) --* d.SD_QTY_DESP -- d.SD_XX_OW_UNIT_PRICE
+            ELSE NULL -- 43/50
+            END                        AS "Batch/UnitPrice",
+            CASE   WHEN d.SD_STOCK IS NOT NULL AND i.IM_CUST <> 'TABCORP' THEN To_Number(i.IM_REPORTING_PRICE)
+            WHEN d.SD_STOCK IS NOT NULL AND i.IM_CUST = 'TABCORP' THEN NULL
+            ELSE NULL
+            END                        AS "OWUnitPrice", -- fix this for tabcorp
+            CASE  WHEN d.SD_STOCK IS NOT NULL AND i.IM_CUST <> 'TABCORP' AND i.IM_OWNED_BY = 0 THEN d.SD_SELL_PRICE * l.SL_PSLIP_QTY
+            WHEN d.SD_STOCK IS NOT NULL AND i.IM_CUST <> 'TABCORP' AND i.IM_OWNED_BY = 1 THEN TO_NUMBER(d.SD_SELL_PRICE) * l.SL_PSLIP_QTY--(n.NI_SELL_VALUE/n.NI_NX_QUANTITY)
+            WHEN d.SD_STOCK IS NOT NULL AND i.IM_CUST = 'TABCORP' AND IU_TO_METRIC = 1 THEN (SELECT To_Number(regexp_substr(RM_XX_FEE08,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode) * l.SL_PSLIP_QTY --eom_report_pkg.F_BREAK_UNIT_PRICE(r.sGroupCust,d.SD_STOCK) IS NOT NULL THEN eom_report_pkg.F_BREAK_UNIT_PRICE(r.sGroupCust,d.SD_STOCK)
+            WHEN d.SD_STOCK IS NOT NULL AND i.IM_CUST = 'TABCORP' AND IU_TO_METRIC != 1 THEN (SELECT To_Number(regexp_substr(RM_XX_FEE09,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode) * l.SL_PSLIP_QTY -- d.SD_XX_OW_UNIT_PRICE
+            ELSE NULL
+            END          AS "DExcl", 
+            CASE    WHEN d.SD_STOCK IS NOT NULL AND i.IM_CUST <> 'TABCORP' AND i.IM_OWNED_BY = 0 THEN (d.SD_SELL_PRICE * l.SL_PSLIP_QTY) * 1.1
+            WHEN d.SD_STOCK IS NOT NULL AND i.IM_CUST <> 'TABCORP' AND i.IM_OWNED_BY = 1  THEN  (TO_NUMBER(d.SD_SELL_PRICE) * l.SL_PSLIP_QTY) * 1.1
+            WHEN d.SD_STOCK IS NOT NULL AND i.IM_CUST = 'TABCORP' AND IU_TO_METRIC = 1 THEN (((SELECT To_Number(regexp_substr(RM_XX_FEE08,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode) * l.SL_PSLIP_QTY) * 1.1) --eom_report_pkg.F_BREAK_UNIT_PRICE(r.sGroupCust,d.SD_STOCK) IS NOT NULL THEN eom_report_pkg.F_BREAK_UNIT_PRICE(r.sGroupCust,d.SD_STOCK)
+            WHEN d.SD_STOCK IS NOT NULL AND i.IM_CUST = 'TABCORP' AND IU_TO_METRIC != 1 THEN (((SELECT To_Number(regexp_substr(RM_XX_FEE09,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode) * l.SL_PSLIP_QTY) * 1.1) -- d.SD_XX_OW_UNIT_PRICE
+            ELSE NULL
+            END          AS "DIncl",
+            CASE WHEN sCustomerCode = 'TABCORP' Then eom_report_pkg.F_BREAK_UNIT_PRICE(r.OW_CAT,d.SD_STOCK)
+                 WHEN sCustomerCode = 'TABCORP' AND eom_report_pkg.F_BREAK_UNIT_PRICE(r.OW_CAT,d.SD_STOCK) IS NULL Then To_Number(i.IM_REPORTING_PRICE)
+            Else To_Number(i.IM_REPORTING_PRICE)      
+            END AS "ReportingPrice", -- break 
+            IM_STD_COST,
+            IM_LAST_COST,
+            REPLACE(s.SH_ADDRESS, ',')             AS "Address",
+            REPLACE(s.SH_SUBURB, ',')              AS "Address2",
+            REPLACE(s.SH_CITY, ',')                AS "Suburb",
+            s.SH_STATE               AS "State",
+            s.SH_POST_CODE           AS "Postcode",
+            REPLACE(s.SH_NOTE_1, ',')              AS "DeliverTo",
+            REPLACE(s.SH_NOTE_2, ',')              AS "AttentionTo" ,
+            t.ST_WEIGHT              AS "Weight",
+            t.ST_PACKAGES            AS "Packages",
+            s.SH_SPARE_DBL_9         AS "OrderSource", --nedd function to return text value
+            IM_XX_QTY_PER_PACK AS "Inner", /*Pallet/Space*/
+            IM_XX_QTY_PER_PACK AS "Outer", /*Locn*/
             0 AS "CountOfStocks",
             CASE   WHEN regexp_substr(s.SH_SPARE_STR_3,'[a-z]+', 1, 2) IS NOT NULL THEN  s.SH_SPARE_STR_3 || '@' || s.SH_SPARE_STR_1
             ELSE ''
@@ -3684,6 +4822,100 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           --AND       TO_CHAR(t.ST_DESP_DATE,'YYYY-MM-DD') >= start_date AND TO_CHAR(t.ST_DESP_DATE,'YYYY-MM-DD') <= end_date
           AND       t.ST_DESP_DATE >= startdate AND t.ST_DESP_DATE <= enddate;
           --AND       d.SD_LAST_PICK_NUM = t.ST_PICK;
+          
+          
+      CURSOR canalDEV
+      IS
+      /*Stocks*/
+      SELECT 
+            s.SH_CUST                AS "Customer",
+            i.IM_CUST              AS "Parent",
+            CASE   WHEN i.IM_CUST <> 'TABCORP' AND s.SH_SPARE_STR_4 IS NULL THEN s.SH_CUST
+            WHEN i.IM_CUST <> 'TABCORP' THEN s.SH_SPARE_STR_4
+            WHEN i.IM_CUST = 'TABCORP' THEN i.IM_XX_COST_CENTRE01
+            ELSE i.IM_XX_COST_CENTRE01
+            END                      AS "CostCentre",
+            s.SH_ORDER               AS "Order",
+            s.SH_SPARE_STR_5         AS "OrderwareNum",
+            s.SH_CUST_REF            AS "CustomerRef",
+            t.ST_PICK                AS "PickNum",
+          t.ST_PSLIP               AS "DespNote",
+          substr(To_Char(t.ST_DESP_DATE),0,10)            AS "DespatchDate",
+          substr(To_Char(s.SH_ADD_DATE),0,10) AS "OrderDate",
+            CASE    WHEN d.SD_STOCK IS NOT NULL THEN 'Stock'
+            ELSE NULL
+            END                      AS "FeeType",
+            d.SD_STOCK               AS "Item",
+            REPLACE(d.SD_DESC, ',')                AS "Description",
+            l.SL_PSLIP_QTY           AS "Qty",
+            d.SD_QTY_UNIT            AS "UOI",
+            CASE   WHEN d.SD_STOCK IS NOT NULL AND i.IM_CUST <> 'TABCORP' AND i.IM_OWNED_BY = 0 THEN TO_NUMBER(d.SD_SELL_PRICE)--n.NI_SELL_VALUE/n.NI_NX_QUANTITY --TO_NUMBER(d.SD_SELL_PRICE)
+            WHEN d.SD_STOCK IS NOT NULL AND i.IM_CUST <> 'TABCORP' AND i.IM_OWNED_BY = 1 THEN TO_NUMBER(d.SD_SELL_PRICE) --n.NI_SELL_VALUE/n.NI_NX_QUANTITY
+            WHEN d.SD_STOCK IS NOT NULL AND i.IM_CUST = 'TABCORP' AND IU_TO_METRIC = 1 THEN (SELECT To_Number(regexp_substr(RM_XX_FEE08,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode) --* d.SD_QTY_DESP --eom_report_pkg.F_BREAK_UNIT_PRICE(r.sGroupCust,d.SD_STOCK) IS NOT NULL THEN eom_report_pkg.F_BREAK_UNIT_PRICE(r.sGroupCust,d.SD_STOCK)
+            WHEN d.SD_STOCK IS NOT NULL AND i.IM_CUST = 'TABCORP' AND IU_TO_METRIC != 1 THEN (SELECT To_Number(regexp_substr(RM_XX_FEE09,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode) --* d.SD_QTY_DESP -- d.SD_XX_OW_UNIT_PRICE
+            ELSE NULL -- 43/50
+            END                        AS "Batch/UnitPrice",
+            CASE   WHEN d.SD_STOCK IS NOT NULL AND i.IM_CUST <> 'TABCORP' THEN To_Number(i.IM_REPORTING_PRICE)
+            WHEN d.SD_STOCK IS NOT NULL AND i.IM_CUST = 'TABCORP' THEN NULL
+            ELSE NULL
+            END                        AS "OWUnitPrice", -- fix this for tabcorp
+            CASE  WHEN d.SD_STOCK IS NOT NULL AND i.IM_CUST <> 'TABCORP' AND i.IM_OWNED_BY = 0 THEN d.SD_SELL_PRICE * l.SL_PSLIP_QTY
+            WHEN d.SD_STOCK IS NOT NULL AND i.IM_CUST <> 'TABCORP' AND i.IM_OWNED_BY = 1 THEN TO_NUMBER(d.SD_SELL_PRICE) * l.SL_PSLIP_QTY--(n.NI_SELL_VALUE/n.NI_NX_QUANTITY)
+            WHEN d.SD_STOCK IS NOT NULL AND i.IM_CUST = 'TABCORP' AND IU_TO_METRIC = 1 THEN (SELECT To_Number(regexp_substr(RM_XX_FEE08,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode) * l.SL_PSLIP_QTY --eom_report_pkg.F_BREAK_UNIT_PRICE(r.sGroupCust,d.SD_STOCK) IS NOT NULL THEN eom_report_pkg.F_BREAK_UNIT_PRICE(r.sGroupCust,d.SD_STOCK)
+            WHEN d.SD_STOCK IS NOT NULL AND i.IM_CUST = 'TABCORP' AND IU_TO_METRIC != 1 THEN (SELECT To_Number(regexp_substr(RM_XX_FEE09,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode) * l.SL_PSLIP_QTY -- d.SD_XX_OW_UNIT_PRICE
+            ELSE NULL
+            END          AS "DExcl", 
+            CASE    WHEN d.SD_STOCK IS NOT NULL AND i.IM_CUST <> 'TABCORP' AND i.IM_OWNED_BY = 0 THEN (d.SD_SELL_PRICE * l.SL_PSLIP_QTY) * 1.1
+            WHEN d.SD_STOCK IS NOT NULL AND i.IM_CUST <> 'TABCORP' AND i.IM_OWNED_BY = 1  THEN  (TO_NUMBER(d.SD_SELL_PRICE) * l.SL_PSLIP_QTY) * 1.1
+            WHEN d.SD_STOCK IS NOT NULL AND i.IM_CUST = 'TABCORP' AND IU_TO_METRIC = 1 THEN (((SELECT To_Number(regexp_substr(RM_XX_FEE08,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode) * l.SL_PSLIP_QTY) * 1.1) --eom_report_pkg.F_BREAK_UNIT_PRICE(r.sGroupCust,d.SD_STOCK) IS NOT NULL THEN eom_report_pkg.F_BREAK_UNIT_PRICE(r.sGroupCust,d.SD_STOCK)
+            WHEN d.SD_STOCK IS NOT NULL AND i.IM_CUST = 'TABCORP' AND IU_TO_METRIC != 1 THEN (((SELECT To_Number(regexp_substr(RM_XX_FEE09,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode) * l.SL_PSLIP_QTY) * 1.1) -- d.SD_XX_OW_UNIT_PRICE
+            ELSE NULL
+            END          AS "DIncl",
+            CASE WHEN sCustomerCode = 'TABCORP' Then eom_report_pkg.F_BREAK_UNIT_PRICE(r.OW_CAT,d.SD_STOCK)
+                 WHEN sCustomerCode = 'TABCORP' AND eom_report_pkg.F_BREAK_UNIT_PRICE(r.OW_CAT,d.SD_STOCK) IS NULL Then To_Number(i.IM_REPORTING_PRICE)
+            Else To_Number(i.IM_REPORTING_PRICE)      
+            END AS "ReportingPrice", -- break 
+            IM_STD_COST,
+            IM_LAST_COST,
+            REPLACE(s.SH_ADDRESS, ',')             AS "Address",
+            REPLACE(s.SH_SUBURB, ',')              AS "Address2",
+            REPLACE(s.SH_CITY, ',')                AS "Suburb",
+            s.SH_STATE               AS "State",
+            s.SH_POST_CODE           AS "Postcode",
+            REPLACE(s.SH_NOTE_1, ',')              AS "DeliverTo",
+            REPLACE(s.SH_NOTE_2, ',')              AS "AttentionTo" ,
+            t.ST_WEIGHT              AS "Weight",
+            t.ST_PACKAGES            AS "Packages",
+            s.SH_SPARE_DBL_9         AS "OrderSource", --nedd function to return text value
+            IM_XX_QTY_PER_PACK AS "Inner", /*Pallet/Space*/
+            IM_XX_QTY_PER_PACK AS "Outer", /*Locn*/
+            0 AS "CountOfStocks",
+            CASE   WHEN regexp_substr(s.SH_SPARE_STR_3,'[a-z]+', 1, 2) IS NOT NULL THEN  s.SH_SPARE_STR_3 || '@' || s.SH_SPARE_STR_1
+            ELSE ''
+            END AS Email,
+            i.IM_BRAND AS Brand,
+            r.OW_CAT AS OwnedBy,
+            i.IM_OWNED_BY AS sProfile,
+            NULL AS WaiveFee,
+            NULL AS Cost,
+            NULL AS PaymentType,s.SH_CAMPAIGN,NULL,NULL,SD_XX_ARIBA_LINE_NO
+      FROM      SD d
+         INNER JOIN SH s  ON s.SH_ORDER  = d.SD_ORDER
+          --INNER JOIN ST t  ON t.ST_PICK  = d.SD_LAST_PICK_NUM
+          INNER JOIN SL l  ON l.SL_ORDER  = d.SD_ORDER  AND SL_ORDER_LINE = SD_LINE
+          INNER JOIN ST t  ON t.ST_PICK  = l.SL_PICK
+          INNER JOIN Dev_Group_Cust r ON r.sCust = s.SH_CUST
+          INNER JOIN IM i  ON i.IM_STOCK = d.SD_STOCK
+          --INNER JOIN NE n  ON n.NE_STOCK = l.SL_UID
+          INNER JOIN IU ON IU_UNIT = i.IM_LEVEL_UNIT
+          WHERE SD_STATUS != 3
+          AND SL_PSLIP_QTY >= 1
+          AND r.ANAL = sAnalysis --(r.sGroupCust = sCustomerCode OR r.sCust = sCustomerCode)
+          AND t.ST_PSLIP != 'CANCELLED'
+          --AND       s.SH_ORDER = t.ST_ORDER
+          --AND       TO_CHAR(t.ST_DESP_DATE,'YYYY-MM-DD') >= start_date AND TO_CHAR(t.ST_DESP_DATE,'YYYY-MM-DD') <= end_date
+          AND       t.ST_DESP_DATE >= startdate AND t.ST_DESP_DATE <= enddate;
+          --AND       d.SD_LAST_PICK_NUM = t.ST_PICK;
       
       l_start number default dbms_utility.get_time;
      BEGIN
@@ -3695,36 +4927,67 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
             v_query := 'TRUNCATE TABLE DEV_STOCK_FEES';
             EXECUTE IMMEDIATE v_query;
-            OPEN cDEV;
-            ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
-            LOOP
-            FETCH cDEV BULK COLLECT INTO l_data LIMIT p_array_size;
-    
-            FORALL i IN 1..l_data.COUNT
-            ----DBMS_OUTPUT.PUT_LINE(i || '.' );
-            INSERT INTO DEV_STOCK_FEES VALUES l_data(i);
-            --USING sCust;
-            EXIT WHEN cDEV%NOTFOUND;
-            END LOOP;
-           -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-            CLOSE cDEV;
+            If (sAnalysis = '21VICP') Then
+              OPEN canalDEV;
+              ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
+              LOOP
+              FETCH canalDEV BULK COLLECT INTO l_data LIMIT p_array_size;
+      
+              FORALL i IN 1..l_data.COUNT
+              ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+              INSERT INTO DEV_STOCK_FEES VALUES l_data(i);
+              --USING sCust;
+              EXIT WHEN canalDEV%NOTFOUND;
+              END LOOP;
+             -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+              CLOSE canalDEV;
+            Else
+               OPEN cDEV;
+                ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
+                LOOP
+                FETCH cDEV BULK COLLECT INTO l_data LIMIT p_array_size;
+        
+                FORALL i IN 1..l_data.COUNT
+                ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+                INSERT INTO DEV_STOCK_FEES VALUES l_data(i);
+                --USING sCust;
+                EXIT WHEN cDEV%NOTFOUND;
+                END LOOP;
+               -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+                CLOSE cDEV;
+          End If;
           Else
             v_query := 'TRUNCATE TABLE TMP_STOCK_FEES';
             EXECUTE IMMEDIATE v_query;
-            OPEN c;
-            ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
-            LOOP
-            FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
-    
-            FORALL i IN 1..l_data.COUNT
-            ----DBMS_OUTPUT.PUT_LINE(i || '.' );
-            INSERT INTO TMP_STOCK_FEES VALUES l_data(i);
-            --USING sCust;
-            EXIT WHEN c%NOTFOUND;
-            END LOOP;
-           -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-            CLOSE c;
-
+            If (sAnalysis = '21VICP') Then
+              OPEN canal;
+              ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
+              LOOP
+              FETCH canal BULK COLLECT INTO l_data LIMIT p_array_size;
+      
+              FORALL i IN 1..l_data.COUNT
+              ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+              INSERT INTO TMP_STOCK_FEES VALUES l_data(i);
+              --USING sCust;
+              EXIT WHEN canal%NOTFOUND;
+              END LOOP;
+             -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+              CLOSE canal;
+            Else
+              OPEN c;
+              ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
+              LOOP
+              FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
+      
+              FORALL i IN 1..l_data.COUNT
+              ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+              INSERT INTO TMP_STOCK_FEES VALUES l_data(i);
+              --USING sCust;
+              EXIT WHEN c%NOTFOUND;
+              END LOOP;
+             -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+              CLOSE c;
+            End If;
           End If;
           -- FOR i IN l_data.FIRST .. l_data.LAST LOOP
          -- DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
@@ -3845,7 +5108,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
             t.ST_PACKAGES            AS "Packages",
             s.SH_SPARE_DBL_9         AS "OrderSource", --nedd function to return text value
             IM_XX_QTY_PER_PACK AS "Inner", /*Pallet/Space*/
-            IM_XX_QTY_SHIP_ON_PAL AS "Outer", /*Locn*/
+            IM_XX_QTY_PER_PACK AS "Outer", /*Locn*/
             0 AS "CountOfStocks",
             CASE   WHEN regexp_substr(s.SH_SPARE_STR_3,'[a-z]+', 1, 2) IS NOT NULL THEN  s.SH_SPARE_STR_3 || '@' || s.SH_SPARE_STR_1
             ELSE ''
@@ -3950,7 +5213,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
     /*   Temp Tables Used   */
     /*   1. TMP_PACKING_FEES   Packing Fee  */
     /*   Prism Rate Field Used   */
-    /*   A. RM_XX_FEE08 & RM_XX_FEE09   */
+    /*   A. RM_XX_FEE08 null   */
     PROCEDURE G3_PACKING_FEES (
         p_array_size IN PLS_INTEGER DEFAULT 100
         ,startdate IN VARCHAR2-- := To_Date('1-Jun-2015') or format date as 01-Jun-15 -- use this when you want the date entered automatically
@@ -4149,7 +5412,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
         EXECUTE IMMEDIATE v_query;
   
         IF To_Number(regexp_substr(sCust_Rates,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) != 0 
-        AND sCustomerCode != 'BEYONDBLUE' OR sCustomerCode != 'TABCORP'
+        AND sCustomerCode != 'BEYONDBL' OR sCustomerCode != 'TABCORP'
         Then
           ----DBMS_OUTPUT.PUT_LINE('G3_PACKING_FEES Inner rates are $' || sCust_Rates || '. G3_PACKING_FEES Outer rates are $' || sCust_Rates2 || '. Prism rate fields are RM_XX_FEE08 * RM_XX_FEE09.');      
           
@@ -4359,6 +5622,119 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           t.ST_DESP_DATE,s.SH_ADDRESS,s.SH_SUBURB,s.SH_CITY,s.SH_STATE,s.SH_POST_CODE,s.SH_NOTE_1,s.SH_ADD_DATE,
           s.SH_NOTE_2,t.ST_WEIGHT,t.ST_PACKAGES,s.SH_SPARE_DBL_9,r.sGroupCust,
           s.SH_CUST_REF,s.SH_SPARE_STR_3,s.SH_SPARE_STR_1,s.SH_SPARE_INT_4,s.SH_SPARE_STR_5,s.SH_CAMPAIGN,NULL,NULL,NULL;
+          
+          
+    CURSOR canal
+      IS
+      /*Handeling Fee*/
+      SELECT
+            s.SH_CUST            AS "Customer",
+            r.sGroupCust            AS "Parent",
+            s.SH_SPARE_STR_4          AS "CostCentre",
+            s.SH_ORDER               AS "Order",
+            s.SH_SPARE_STR_5         AS "OrderwareNum",
+            s.SH_CUST_REF            AS "CustomerRef",
+            t.ST_PICK         AS "Pickslip",
+            t.ST_PSLIP                      AS "DespatchNote",
+            t.ST_DESP_DATE               AS "DespatchNote",
+            s.SH_ADD_DATE             AS "OrderDate",
+            CASE    WHEN t.ST_PSLIP IS NOT NULL THEN 'Handeling Fee is '
+            ELSE NULL
+            END                      AS "FeeType",
+            CASE    WHEN t.ST_PSLIP IS NOT NULL THEN  'Handeling'
+            ELSE NULL
+            END                     AS "Item",
+            CASE    WHEN t.ST_PSLIP IS NOT NULL THEN  'Handeling Fee'
+            ELSE NULL
+            END                     AS "Description",
+            CASE    WHEN t.ST_PSLIP IS NOT NULL THEN  1
+            ELSE NULL
+            END                     AS "Qty",
+            CASE    WHEN t.ST_PSLIP IS NOT NULL THEN  '1'
+            ELSE ''
+            END                     AS "UOI",
+            CASE    
+              WHEN r.sGroupCust = 'VHAAUS' AND s.SH_CAMPAIGN = 'DIST' 
+              AND t.ST_PSLIP IS NOT NULL
+              THEN TO_NUMBER('0')
+              WHEN t.ST_PSLIP IS NOT NULL THEN  (SELECT To_Number(regexp_substr(RM_XX_FEE06,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode)
+              ELSE NULL
+            END                      AS "UnitPrice",
+            CASE    
+            WHEN r.sGroupCust = 'VHAAUS' AND s.SH_CAMPAIGN = 'DIST' 
+            AND t.ST_PSLIP IS NOT NULL
+            THEN TO_NUMBER('0')
+            WHEN t.ST_PSLIP IS NOT NULL THEN  (SELECT To_Number(regexp_substr(RM_XX_FEE06,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode)
+            ELSE NULL
+            END                                      AS "OWUnitPrice",
+            CASE    
+            WHEN r.sGroupCust = 'VHAAUS' AND s.SH_CAMPAIGN = 'DIST' 
+            AND t.ST_PSLIP IS NOT NULL
+            THEN TO_NUMBER('0')
+            WHEN t.ST_PSLIP IS NOT NULL THEN  (SELECT To_Number(regexp_substr(RM_XX_FEE06,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode)
+            ELSE NULL
+            END                      AS "DExcl",
+            CASE    
+            WHEN r.sGroupCust = 'VHAAUS' AND s.SH_CAMPAIGN = 'DIST' 
+            AND t.ST_PSLIP IS NOT NULL
+            THEN TO_NUMBER('0')
+            WHEN t.ST_PSLIP IS NOT NULL THEN (SELECT To_Number(regexp_substr(RM_XX_FEE06,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode) * 1.1
+            ELSE NULL
+            END                      AS "DIncl",
+            CASE    
+            WHEN r.sGroupCust = 'VHAAUS' AND s.SH_CAMPAIGN = 'DIST' 
+            AND t.ST_PSLIP IS NOT NULL
+            THEN TO_NUMBER('0')
+            WHEN t.ST_PSLIP IS NOT NULL THEN  (Select To_Number(i.IM_REPORTING_PRICE) from IM i where i.IM_STOCK = 'COURIERM')
+            ELSE NULL
+            END                      AS "ReportingPrice",
+            NULL,
+            NULL,
+            REPLACE(s.SH_ADDRESS, ',')             AS "Address",
+            REPLACE(s.SH_SUBURB, ',')              AS "Address2",
+            REPLACE(s.SH_CITY, ',')                AS "Suburb",
+            s.SH_STATE               AS "State",
+            s.SH_POST_CODE           AS "Postcode",
+            REPLACE(s.SH_NOTE_1, ',')              AS "DeliverTo",
+            REPLACE(s.SH_NOTE_2, ',')              AS "AttentionTo" ,
+            t.ST_WEIGHT              AS "Weight",
+            t.ST_PACKAGES            AS "Packages",
+            s.SH_SPARE_DBL_9         AS "OrderSource",
+            NULL AS "Pallet/Shelf Space", /*Pallet/Space*/
+            NULL AS "Locn", /*Locn*/
+            0 AS "CountOfStocks",
+            CASE  WHEN regexp_substr(s.SH_SPARE_STR_3,'[a-z]+', 1, 2) IS NOT NULL THEN  s.SH_SPARE_STR_3 || '@' || s.SH_SPARE_STR_1
+            ELSE ''
+            END AS Email,
+            'N/A' AS Brand,
+            NULL AS    OwnedBy,
+            NULL AS    sProfile,
+            NULL AS    WaiveFee,
+            NULL As   Cost,
+            s.SH_SPARE_INT_4 AS PaymentType,s.SH_CAMPAIGN,NULL,NULL,NULL
+      --  FROM  ST t LEFT JOIN PWIN175.SH s ON  LTrim(s.SH_ORDER) = LTrim(t.ST_ORDER)
+        --    LEFT JOIN Tmp_Group_Cust r ON r.sCust = s.SH_CUST
+            
+        FROM      SD d
+         INNER JOIN SH s  ON s.SH_ORDER  = d.SD_ORDER
+          --INNER JOIN ST t  ON t.ST_PICK  = d.SD_LAST_PICK_NUM
+          INNER JOIN SL l  ON l.SL_ORDER  = d.SD_ORDER  AND SL_ORDER_LINE = SD_LINE
+          INNER JOIN ST t  ON t.ST_PICK  = l.SL_PICK
+          INNER JOIN Tmp_Group_Cust r ON r.sCust = s.SH_CUST
+          INNER JOIN IM i  ON i.IM_STOCK = d.SD_STOCK
+          --INNER JOIN NE n  ON n.NE_STOCK = l.SL_UID
+          INNER JOIN IU ON IU_UNIT = i.IM_LEVEL_UNIT    
+        WHERE  d.SD_STATUS <> 3
+            AND r.ANAL = sAnalysis --(r.sGroupCust = sCustomerCode OR r.sCust = sCustomerCode)
+            AND (SELECT To_Number(regexp_substr(RM_XX_FEE06,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode) > 0.1
+            AND t.ST_PSLIP <> 'CANCELLED'
+            AND SL_PSLIP_QTY >= 1
+            AND t.ST_DESP_DATE >= startdate AND t.ST_DESP_DATE <= enddate
+      GROUP BY
+          s.SH_ORDER,r.sGroupCust,r.sCust,s.SH_SPARE_STR_4,s.SH_CUST,t.ST_PICK,t.ST_PSLIP,
+          t.ST_DESP_DATE,s.SH_ADDRESS,s.SH_SUBURB,s.SH_CITY,s.SH_STATE,s.SH_POST_CODE,s.SH_NOTE_1,s.SH_ADD_DATE,
+          s.SH_NOTE_2,t.ST_WEIGHT,t.ST_PACKAGES,s.SH_SPARE_DBL_9,r.sGroupCust,
+          s.SH_CUST_REF,s.SH_SPARE_STR_3,s.SH_SPARE_STR_1,s.SH_SPARE_INT_4,s.SH_SPARE_STR_5,s.SH_CAMPAIGN,NULL,NULL,NULL;
     
     CURSOR cDEV
       IS
@@ -4471,6 +5847,118 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           t.ST_DESP_DATE,s.SH_ADDRESS,s.SH_SUBURB,s.SH_CITY,s.SH_STATE,s.SH_POST_CODE,s.SH_NOTE_1,s.SH_ADD_DATE,
           s.SH_NOTE_2,t.ST_WEIGHT,t.ST_PACKAGES,s.SH_SPARE_DBL_9,r.sGroupCust,
           s.SH_CUST_REF,s.SH_SPARE_STR_3,s.SH_SPARE_STR_1,s.SH_SPARE_INT_4,s.SH_SPARE_STR_5,s.SH_CAMPAIGN,NULL,NULL,NULL;
+          
+    CURSOR canalDEV
+      IS
+      /*Handeling Fee*/
+      SELECT
+            s.SH_CUST            AS "Customer",
+            r.sGroupCust            AS "Parent",
+            s.SH_SPARE_STR_4          AS "CostCentre",
+            s.SH_ORDER               AS "Order",
+            s.SH_SPARE_STR_5         AS "OrderwareNum",
+            s.SH_CUST_REF            AS "CustomerRef",
+            t.ST_PICK         AS "Pickslip",
+            t.ST_PSLIP                      AS "DespatchNote",
+            t.ST_DESP_DATE               AS "DespatchNote",
+            s.SH_ADD_DATE             AS "OrderDate",
+            CASE    WHEN t.ST_PSLIP IS NOT NULL THEN 'Handeling Fee is '
+            ELSE NULL
+            END                      AS "FeeType",
+            CASE    WHEN t.ST_PSLIP IS NOT NULL THEN  'Handeling'
+            ELSE NULL
+            END                     AS "Item",
+            CASE    WHEN t.ST_PSLIP IS NOT NULL THEN  'Handeling Fee'
+            ELSE NULL
+            END                     AS "Description",
+            CASE    WHEN t.ST_PSLIP IS NOT NULL THEN  1
+            ELSE NULL
+            END                     AS "Qty",
+            CASE    WHEN t.ST_PSLIP IS NOT NULL THEN  '1'
+            ELSE ''
+            END                     AS "UOI",
+            CASE    
+              WHEN r.sGroupCust = 'VHAAUS' AND s.SH_CAMPAIGN = 'DIST' 
+              AND t.ST_PSLIP IS NOT NULL
+              THEN TO_NUMBER('0')
+              WHEN t.ST_PSLIP IS NOT NULL THEN  (SELECT To_Number(regexp_substr(RM_XX_FEE06,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode)
+              ELSE NULL
+            END                      AS "UnitPrice",
+            CASE    
+            WHEN r.sGroupCust = 'VHAAUS' AND s.SH_CAMPAIGN = 'DIST' 
+            AND t.ST_PSLIP IS NOT NULL
+            THEN TO_NUMBER('0')
+            WHEN t.ST_PSLIP IS NOT NULL THEN  (SELECT To_Number(regexp_substr(RM_XX_FEE06,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode)
+            ELSE NULL
+            END                                      AS "OWUnitPrice",
+            CASE    
+            WHEN r.sGroupCust = 'VHAAUS' AND s.SH_CAMPAIGN = 'DIST' 
+            AND t.ST_PSLIP IS NOT NULL
+            THEN TO_NUMBER('0')
+            WHEN t.ST_PSLIP IS NOT NULL THEN  (SELECT To_Number(regexp_substr(RM_XX_FEE06,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode)
+            ELSE NULL
+            END                      AS "DExcl",
+            CASE    
+            WHEN r.sGroupCust = 'VHAAUS' AND s.SH_CAMPAIGN = 'DIST' 
+            AND t.ST_PSLIP IS NOT NULL
+            THEN TO_NUMBER('0')
+            WHEN t.ST_PSLIP IS NOT NULL THEN (SELECT To_Number(regexp_substr(RM_XX_FEE06,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode) * 1.1
+            ELSE NULL
+            END                      AS "DIncl",
+            CASE    
+            WHEN r.sGroupCust = 'VHAAUS' AND s.SH_CAMPAIGN = 'DIST' 
+            AND t.ST_PSLIP IS NOT NULL
+            THEN TO_NUMBER('0')
+            WHEN t.ST_PSLIP IS NOT NULL THEN  (Select To_Number(i.IM_REPORTING_PRICE) from IM i where i.IM_STOCK = 'COURIERM')
+            ELSE NULL
+            END                      AS "ReportingPrice",
+            NULL,
+            NULL,
+            REPLACE(s.SH_ADDRESS, ',')             AS "Address",
+            REPLACE(s.SH_SUBURB, ',')              AS "Address2",
+            REPLACE(s.SH_CITY, ',')                AS "Suburb",
+            s.SH_STATE               AS "State",
+            s.SH_POST_CODE           AS "Postcode",
+            REPLACE(s.SH_NOTE_1, ',')              AS "DeliverTo",
+            REPLACE(s.SH_NOTE_2, ',')              AS "AttentionTo" ,
+            t.ST_WEIGHT              AS "Weight",
+            t.ST_PACKAGES            AS "Packages",
+            s.SH_SPARE_DBL_9         AS "OrderSource",
+            NULL AS "Pallet/Shelf Space", /*Pallet/Space*/
+            NULL AS "Locn", /*Locn*/
+            0 AS "CountOfStocks",
+            CASE  WHEN regexp_substr(s.SH_SPARE_STR_3,'[a-z]+', 1, 2) IS NOT NULL THEN  s.SH_SPARE_STR_3 || '@' || s.SH_SPARE_STR_1
+            ELSE ''
+            END AS Email,
+            'N/A' AS Brand,
+            NULL AS    OwnedBy,
+            NULL AS    sProfile,
+            NULL AS    WaiveFee,
+            NULL As   Cost,
+            s.SH_SPARE_INT_4 AS PaymentType,s.SH_CAMPAIGN,NULL,NULL,NULL
+      --  FROM  ST t LEFT JOIN PWIN175.SH s ON  LTrim(s.SH_ORDER) = LTrim(t.ST_ORDER)
+        --    LEFT JOIN Tmp_Group_Cust r ON r.sCust = s.SH_CUST
+            
+        FROM      SD d
+         INNER JOIN SH s  ON s.SH_ORDER  = d.SD_ORDER
+          --INNER JOIN ST t  ON t.ST_PICK  = d.SD_LAST_PICK_NUM
+          INNER JOIN SL l  ON l.SL_ORDER  = d.SD_ORDER  AND SL_ORDER_LINE = SD_LINE
+          INNER JOIN ST t  ON t.ST_PICK  = l.SL_PICK
+          INNER JOIN Dev_Group_Cust r ON r.sCust = s.SH_CUST
+          INNER JOIN IM i  ON i.IM_STOCK = d.SD_STOCK
+          --INNER JOIN NE n  ON n.NE_STOCK = l.SL_UID
+          INNER JOIN IU ON IU_UNIT = i.IM_LEVEL_UNIT    
+        WHERE  d.SD_STATUS <> 3
+            AND r.ANAL = sAnalysis --(r.sGroupCust = sCustomerCode OR r.sCust = sCustomerCode)
+            AND (SELECT To_Number(regexp_substr(RM_XX_FEE06,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode) > 0.1
+            AND t.ST_PSLIP <> 'CANCELLED'
+            AND SL_PSLIP_QTY >= 1
+            AND t.ST_DESP_DATE >= startdate AND t.ST_DESP_DATE <= enddate
+      GROUP BY
+          s.SH_ORDER,r.sGroupCust,r.sCust,s.SH_SPARE_STR_4,s.SH_CUST,t.ST_PICK,t.ST_PSLIP,
+          t.ST_DESP_DATE,s.SH_ADDRESS,s.SH_SUBURB,s.SH_CITY,s.SH_STATE,s.SH_POST_CODE,s.SH_NOTE_1,s.SH_ADD_DATE,
+          s.SH_NOTE_2,t.ST_WEIGHT,t.ST_PACKAGES,s.SH_SPARE_DBL_9,r.sGroupCust,
+          s.SH_CUST_REF,s.SH_SPARE_STR_3,s.SH_SPARE_STR_1,s.SH_SPARE_INT_4,s.SH_SPARE_STR_5,s.SH_CAMPAIGN,NULL,NULL,NULL;
     
     
     QueryTable VARCHAR2(600) := q'{SELECT To_Number(regexp_substr(RM_XX_FEE06,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = :sCustomerCode5}';
@@ -4491,35 +5979,68 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
              v_query := 'TRUNCATE TABLE DEV_HANDLING_FEES';
             EXECUTE IMMEDIATE v_query;
-            OPEN cDEV;
-            ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
-            LOOP
-            FETCH cDEV BULK COLLECT INTO l_data LIMIT p_array_size;
-    
-            FORALL i IN 1..l_data.COUNT
-            ----DBMS_OUTPUT.PUT_LINE(i || '.' );
-            INSERT INTO DEV_HANDLING_FEES VALUES l_data(i);
-            --USING sCust;
-            EXIT WHEN cDEV%NOTFOUND;
-            END LOOP;
-           -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-            CLOSE cDEV;
+            
+            If (sAnalysis = '21VICP') Then 
+              OPEN cDEV;
+              ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
+              LOOP
+              FETCH cDEV BULK COLLECT INTO l_data LIMIT p_array_size;
+      
+              FORALL i IN 1..l_data.COUNT
+              ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+              INSERT INTO DEV_HANDLING_FEES VALUES l_data(i);
+              --USING sCust;
+              EXIT WHEN cDEV%NOTFOUND;
+              END LOOP;
+             -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+              CLOSE cDEV;
+            Else
+              OPEN canalDEV;
+              ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
+              LOOP
+              FETCH canalDEV BULK COLLECT INTO l_data LIMIT p_array_size;
+      
+              FORALL i IN 1..l_data.COUNT
+              ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+              INSERT INTO DEV_HANDLING_FEES VALUES l_data(i);
+              --USING sCust;
+              EXIT WHEN canalDEV%NOTFOUND;
+              END LOOP;
+             -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+              CLOSE canalDEV;
+            End If;
           Else
              v_query := 'TRUNCATE TABLE TMP_HANDLING_FEES';
             EXECUTE IMMEDIATE v_query;
-            OPEN c;
-            ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
-            LOOP
-            FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
-    
-            FORALL i IN 1..l_data.COUNT
-            ----DBMS_OUTPUT.PUT_LINE(i || '.' );
-            INSERT INTO TMP_HANDLING_FEES VALUES l_data(i);
-            --USING sCust;
-            EXIT WHEN c%NOTFOUND;
-            END LOOP;
-           -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-            CLOSE c;
+            If (sAnalysis = '21VICP') Then
+              OPEN canal;
+              ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
+              LOOP
+              FETCH canal BULK COLLECT INTO l_data LIMIT p_array_size;
+      
+              FORALL i IN 1..l_data.COUNT
+              ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+              INSERT INTO TMP_HANDLING_FEES VALUES l_data(i);
+              --USING sCust;
+              EXIT WHEN canal%NOTFOUND;
+              END LOOP;
+             -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+              CLOSE canal;
+            Else
+              OPEN c;
+              ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
+              LOOP
+              FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
+      
+              FORALL i IN 1..l_data.COUNT
+              ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+              INSERT INTO TMP_HANDLING_FEES VALUES l_data(i);
+              --USING sCust;
+              EXIT WHEN c%NOTFOUND;
+              END LOOP;
+             -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+              CLOSE c;
+            End If;
 
           End If;
           -- FOR i IN l_data.FIRST .. l_data.LAST LOOP
@@ -4686,6 +6207,112 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           t.ST_DESP_DATE,s.SH_ADDRESS,s.SH_SUBURB,s.SH_CITY,s.SH_STATE,s.SH_POST_CODE,s.SH_NOTE_1,s.SH_ADD_DATE,
           s.SH_NOTE_2,t.ST_WEIGHT,t.ST_PACKAGES,s.SH_SPARE_DBL_9,r.sGroupCust,
           s.SH_CUST_REF,s.SH_SPARE_STR_3,s.SH_SPARE_STR_1,s.SH_SPARE_INT_4,s.SH_SPARE_STR_5,s.SH_CAMPAIGN,NULL,NULL,NULL;
+          
+          
+    CURSOR canal
+      IS
+      /*Handeling Fee*/
+      SELECT
+            s.SH_CUST            AS "Customer",
+            r.sGroupCust            AS "Parent",
+            s.SH_SPARE_STR_4          AS "CostCentre",
+            s.SH_ORDER               AS "Order",
+            s.SH_SPARE_STR_5         AS "OrderwareNum",
+            s.SH_CUST_REF            AS "CustomerRef",
+            t.ST_PICK         AS "Pickslip",
+            t.ST_PSLIP                      AS "DespatchNote",
+            t.ST_DESP_DATE               AS "DespatchNote",
+            s.SH_ADD_DATE             AS "OrderDate",
+            CASE    WHEN t.ST_PSLIP IS NOT NULL THEN 'Pick Fee is '
+            ELSE NULL
+            END                      AS "FeeType",
+            CASE    WHEN t.ST_PSLIP IS NOT NULL THEN  'Picking'
+            ELSE NULL
+            END                     AS "Item",
+            CASE    WHEN t.ST_PSLIP IS NOT NULL THEN  'Pick Fee'
+            ELSE NULL
+            END                     AS "Description",
+            (Select Max(SL_LINE) from SL Where SL_PICK = t.ST_PICK)   AS "Qty",
+            CASE    WHEN t.ST_PSLIP IS NOT NULL THEN  '1'
+            ELSE ''
+            END                     AS "UOI",
+            CASE    WHEN t.ST_PSLIP IS NOT NULL  
+            AND (Select Max(SL_LINE) from SL Where SL_PICK = t.ST_PICK) 
+            > 
+            f_get_fee('RM_XX_FEE01OR01',r.sGroupCust) AND f_get_fee('RM_XX_FEE01OR01',r.sGroupCust) > 0
+            THEN 
+            f_get_fee('RM_XX_FEE36',r.sGroupCust)
+            ELSE f_get_fee('RM_XX_FEE16',r.sGroupCust) 
+            END                      AS "UnitPrice",
+            CASE    WHEN t.ST_PSLIP IS NOT NULL  
+            AND (Select Max(SL_LINE) from SL Where SL_PICK = t.ST_PICK) 
+            > 
+            f_get_fee('RM_XX_FEE01OR01',r.sGroupCust) AND f_get_fee('RM_XX_FEE01OR01',r.sGroupCust) > 0
+            THEN 
+            f_get_fee('RM_XX_FEE36',r.sGroupCust)
+            ELSE f_get_fee('RM_XX_FEE16',r.sGroupCust) 
+            END                      AS "OWUnitPrice",
+            CASE  WHEN t.ST_PSLIP IS NOT NULL  
+            AND (Select Max(SL_LINE) from SL Where SL_PICK = t.ST_PICK) 
+            > 
+            f_get_fee('RM_XX_FEE01OR01',r.sGroupCust) AND f_get_fee('RM_XX_FEE01OR01',r.sGroupCust) > 0
+            THEN  f_get_fee('RM_XX_FEE36',r.sGroupCust)  
+            * 
+            (Select MAX(SL_LINE) from SL Where SL_PICK = t.ST_PICK)
+            ELSE f_get_fee('RM_XX_FEE16',r.sGroupCust)  
+            * 
+            (Select MAX(SL_LINE) from SL Where SL_PICK = t.ST_PICK)
+            END                      AS "DExcl",
+            CASE    WHEN t.ST_PSLIP IS NOT NULL  
+            AND (Select Max(SL_LINE) from SL Where SL_PICK = t.ST_PICK) 
+            > 
+            f_get_fee('RM_XX_FEE01OR01',r.sGroupCust) AND f_get_fee('RM_XX_FEE01OR01',r.sGroupCust) > 0
+            THEN (f_get_fee('RM_XX_FEE36',r.sGroupCust)  * (Select MAX(SL_LINE) from SL Where SL_PICK = t.ST_PICK)) * 1.1
+            ELSE (f_get_fee('RM_XX_FEE16',r.sGroupCust)  * (Select MAX(SL_LINE) from SL Where SL_PICK = t.ST_PICK)) * 1.1
+            END                      AS "DIncl",
+            CASE    WHEN t.ST_PSLIP IS NOT NULL  
+            AND (Select Max(SL_LINE) from SL Where SL_PICK = t.ST_PICK) 
+            > 
+            f_get_fee('RM_XX_FEE01OR01',r.sGroupCust) AND f_get_fee('RM_XX_FEE01OR01',r.sGroupCust) > 0
+            THEN f_get_fee('RM_XX_FEE36',r.sGroupCust)  * (Select MAX(SL_LINE) from SL Where SL_PICK = t.ST_PICK)
+            ELSE (f_get_fee('RM_XX_FEE16',r.sGroupCust)  * (Select MAX(SL_LINE) from SL Where SL_PICK = t.ST_PICK))
+            END                      AS "ReportingPrice",
+            NULL,
+            NULL,
+            REPLACE(s.SH_ADDRESS, ',')             AS "Address",
+            REPLACE(s.SH_SUBURB, ',')              AS "Address2",
+            REPLACE(s.SH_CITY, ',')                AS "Suburb",
+            s.SH_STATE               AS "State",
+            s.SH_POST_CODE           AS "Postcode",
+            REPLACE(s.SH_NOTE_1, ',')              AS "DeliverTo",
+            REPLACE(s.SH_NOTE_2, ',')              AS "AttentionTo" ,
+            t.ST_WEIGHT              AS "Weight",
+            t.ST_PACKAGES            AS "Packages",
+            s.SH_SPARE_DBL_9         AS "OrderSource",
+            NULL AS "Pallet/Shelf Space", /*Pallet/Space*/
+            NULL AS "Locn", /*Locn*/
+            (Select MAX(SL_LINE) from SL Where SL_PICK = t.ST_PICK) AS "CountOfStocks",
+            CASE  WHEN regexp_substr(s.SH_SPARE_STR_3,'[a-z]+', 1, 2) IS NOT NULL THEN  s.SH_SPARE_STR_3 || '@' || s.SH_SPARE_STR_1
+            ELSE ''
+            END AS Email,
+            'N/A' AS Brand,
+            NULL AS    OwnedBy,
+            NULL AS    sProfile,
+            NULL AS    WaiveFee,
+            NULL As   Cost,
+            s.SH_SPARE_INT_4 AS PaymentType,s.SH_CAMPAIGN,NULL,NULL,NULL
+        FROM  ST t LEFT JOIN PWIN175.SH s ON  LTrim(s.SH_ORDER) = LTrim(t.ST_ORDER)
+            LEFT JOIN Tmp_Group_Cust r ON r.sCust = s.SH_CUST
+        WHERE  s.SH_STATUS != 3
+            AND r.ANAL = sAnalysis --(r.sGroupCust = sCustomerCode OR r.sCust = sCustomerCode)
+            AND (SELECT To_Number(regexp_substr(RM_XX_FEE16,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode) > 0.1
+            AND t.ST_PSLIP != 'CANCELLED'
+             AND t.ST_DESP_DATE >= startdate AND t.ST_DESP_DATE <= enddate
+      GROUP BY
+          s.SH_ORDER,r.sGroupCust,r.sCust,s.SH_SPARE_STR_4,s.SH_CUST,t.ST_PICK,t.ST_PSLIP,
+          t.ST_DESP_DATE,s.SH_ADDRESS,s.SH_SUBURB,s.SH_CITY,s.SH_STATE,s.SH_POST_CODE,s.SH_NOTE_1,s.SH_ADD_DATE,
+          s.SH_NOTE_2,t.ST_WEIGHT,t.ST_PACKAGES,s.SH_SPARE_DBL_9,r.sGroupCust,
+          s.SH_CUST_REF,s.SH_SPARE_STR_3,s.SH_SPARE_STR_1,s.SH_SPARE_INT_4,s.SH_SPARE_STR_5,s.SH_CAMPAIGN,NULL,NULL,NULL;
     
     CURSOR cDEV
       IS
@@ -4791,6 +6418,111 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           t.ST_DESP_DATE,s.SH_ADDRESS,s.SH_SUBURB,s.SH_CITY,s.SH_STATE,s.SH_POST_CODE,s.SH_NOTE_1,s.SH_ADD_DATE,
           s.SH_NOTE_2,t.ST_WEIGHT,t.ST_PACKAGES,s.SH_SPARE_DBL_9,r.sGroupCust,
           s.SH_CUST_REF,s.SH_SPARE_STR_3,s.SH_SPARE_STR_1,s.SH_SPARE_INT_4,s.SH_SPARE_STR_5,s.SH_CAMPAIGN,NULL,NULL,NULL;
+          
+    CURSOR canalDEV
+      IS
+      /*Handeling Fee*/
+      SELECT
+            s.SH_CUST            AS "Customer",
+            r.sGroupCust            AS "Parent",
+            s.SH_SPARE_STR_4          AS "CostCentre",
+            s.SH_ORDER               AS "Order",
+            s.SH_SPARE_STR_5         AS "OrderwareNum",
+            s.SH_CUST_REF            AS "CustomerRef",
+            t.ST_PICK         AS "Pickslip",
+            t.ST_PSLIP                      AS "DespatchNote",
+            t.ST_DESP_DATE               AS "DespatchNote",
+            s.SH_ADD_DATE             AS "OrderDate",
+            CASE    WHEN t.ST_PSLIP IS NOT NULL THEN 'Pick Fee is '
+            ELSE NULL
+            END                      AS "FeeType",
+            CASE    WHEN t.ST_PSLIP IS NOT NULL THEN  'Picking'
+            ELSE NULL
+            END                     AS "Item",
+            CASE    WHEN t.ST_PSLIP IS NOT NULL THEN  'Pick Fee'
+            ELSE NULL
+            END                     AS "Description",
+            (Select Max(SL_LINE) from SL Where SL_PICK = t.ST_PICK)   AS "Qty",
+            CASE    WHEN t.ST_PSLIP IS NOT NULL THEN  '1'
+            ELSE ''
+            END                     AS "UOI",
+            CASE    WHEN t.ST_PSLIP IS NOT NULL  
+            AND (Select Max(SL_LINE) from SL Where SL_PICK = t.ST_PICK) 
+            > 
+            f_get_fee('RM_XX_FEE01OR01',r.sGroupCust) AND f_get_fee('RM_XX_FEE01OR01',r.sGroupCust) > 0
+            THEN 
+            f_get_fee('RM_XX_FEE36',r.sGroupCust)
+            ELSE f_get_fee('RM_XX_FEE16',r.sGroupCust) 
+            END                      AS "UnitPrice",
+            CASE    WHEN t.ST_PSLIP IS NOT NULL  
+            AND (Select Max(SL_LINE) from SL Where SL_PICK = t.ST_PICK) 
+            > 
+            f_get_fee('RM_XX_FEE01OR01',r.sGroupCust) AND f_get_fee('RM_XX_FEE01OR01',r.sGroupCust) > 0
+            THEN 
+            f_get_fee('RM_XX_FEE36',r.sGroupCust)
+            ELSE f_get_fee('RM_XX_FEE16',r.sGroupCust) 
+            END                      AS "OWUnitPrice",
+            CASE  WHEN t.ST_PSLIP IS NOT NULL  
+            AND (Select Max(SL_LINE) from SL Where SL_PICK = t.ST_PICK) 
+            > 
+            f_get_fee('RM_XX_FEE01OR01',r.sGroupCust) AND f_get_fee('RM_XX_FEE01OR01',r.sGroupCust) > 0
+            THEN  f_get_fee('RM_XX_FEE36',r.sGroupCust)  
+            * 
+            (Select MAX(SL_LINE) from SL Where SL_PICK = t.ST_PICK)
+            ELSE f_get_fee('RM_XX_FEE16',r.sGroupCust)  
+            * 
+            (Select MAX(SL_LINE) from SL Where SL_PICK = t.ST_PICK)
+            END                      AS "DExcl",
+            CASE    WHEN t.ST_PSLIP IS NOT NULL  
+            AND (Select Max(SL_LINE) from SL Where SL_PICK = t.ST_PICK) 
+            > 
+            f_get_fee('RM_XX_FEE01OR01',r.sGroupCust) AND f_get_fee('RM_XX_FEE01OR01',r.sGroupCust) > 0
+            THEN (f_get_fee('RM_XX_FEE36',r.sGroupCust)  * (Select MAX(SL_LINE) from SL Where SL_PICK = t.ST_PICK)) * 1.1
+            ELSE (f_get_fee('RM_XX_FEE16',r.sGroupCust)  * (Select MAX(SL_LINE) from SL Where SL_PICK = t.ST_PICK)) * 1.1
+            END                      AS "DIncl",
+            CASE    WHEN t.ST_PSLIP IS NOT NULL  
+            AND (Select Max(SL_LINE) from SL Where SL_PICK = t.ST_PICK) 
+            > 
+            f_get_fee('RM_XX_FEE01OR01',r.sGroupCust) AND f_get_fee('RM_XX_FEE01OR01',r.sGroupCust) > 0
+            THEN f_get_fee('RM_XX_FEE36',r.sGroupCust)  * (Select MAX(SL_LINE) from SL Where SL_PICK = t.ST_PICK)
+            ELSE (f_get_fee('RM_XX_FEE16',r.sGroupCust)  * (Select MAX(SL_LINE) from SL Where SL_PICK = t.ST_PICK))
+            END                      AS "ReportingPrice",
+            NULL,
+            NULL,
+            REPLACE(s.SH_ADDRESS, ',')             AS "Address",
+            REPLACE(s.SH_SUBURB, ',')              AS "Address2",
+            REPLACE(s.SH_CITY, ',')                AS "Suburb",
+            s.SH_STATE               AS "State",
+            s.SH_POST_CODE           AS "Postcode",
+            REPLACE(s.SH_NOTE_1, ',')              AS "DeliverTo",
+            REPLACE(s.SH_NOTE_2, ',')              AS "AttentionTo" ,
+            t.ST_WEIGHT              AS "Weight",
+            t.ST_PACKAGES            AS "Packages",
+            s.SH_SPARE_DBL_9         AS "OrderSource",
+            NULL AS "Pallet/Shelf Space", /*Pallet/Space*/
+            NULL AS "Locn", /*Locn*/
+            (Select MAX(SL_LINE) from SL Where SL_PICK = t.ST_PICK) AS "CountOfStocks",
+            CASE  WHEN regexp_substr(s.SH_SPARE_STR_3,'[a-z]+', 1, 2) IS NOT NULL THEN  s.SH_SPARE_STR_3 || '@' || s.SH_SPARE_STR_1
+            ELSE ''
+            END AS Email,
+            'N/A' AS Brand,
+            NULL AS    OwnedBy,
+            NULL AS    sProfile,
+            NULL AS    WaiveFee,
+            NULL As   Cost,
+            s.SH_SPARE_INT_4 AS PaymentType,s.SH_CAMPAIGN,NULL,NULL,NULL
+        FROM  ST t LEFT JOIN PWIN175.SH s ON  LTrim(s.SH_ORDER) = LTrim(t.ST_ORDER)
+            LEFT JOIN Dev_Group_Cust r ON r.sCust = s.SH_CUST
+        WHERE  s.SH_STATUS != 3
+            AND r.ANAL = sAnalysis --(r.sGroupCust = sCustomerCode OR r.sCust = sCustomerCode)
+            AND (SELECT To_Number(regexp_substr(RM_XX_FEE16,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode) > 0.1
+            AND t.ST_PSLIP != 'CANCELLED'
+             AND t.ST_DESP_DATE >= startdate AND t.ST_DESP_DATE <= enddate
+      GROUP BY
+          s.SH_ORDER,r.sGroupCust,r.sCust,s.SH_SPARE_STR_4,s.SH_CUST,t.ST_PICK,t.ST_PSLIP,
+          t.ST_DESP_DATE,s.SH_ADDRESS,s.SH_SUBURB,s.SH_CITY,s.SH_STATE,s.SH_POST_CODE,s.SH_NOTE_1,s.SH_ADD_DATE,
+          s.SH_NOTE_2,t.ST_WEIGHT,t.ST_PACKAGES,s.SH_SPARE_DBL_9,r.sGroupCust,
+          s.SH_CUST_REF,s.SH_SPARE_STR_3,s.SH_SPARE_STR_1,s.SH_SPARE_INT_4,s.SH_SPARE_STR_5,s.SH_CAMPAIGN,NULL,NULL,NULL;
     
     QueryTable VARCHAR2(600) := q'{SELECT To_Number(regexp_substr(RM_XX_FEE16,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = :sCustomerCode5}';
     sCust_Rates RM.RM_XX_FEE16%TYPE;
@@ -4809,35 +6541,68 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
             v_query := 'TRUNCATE TABLE DEV_PICK_FEES';
             EXECUTE IMMEDIATE v_query;
-            OPEN cDEV;
-            ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
-            LOOP
-            FETCH cDEV BULK COLLECT INTO l_data LIMIT p_array_size;
-    
-            FORALL i IN 1..l_data.COUNT
-            ----DBMS_OUTPUT.PUT_LINE(i || '.' );
-            INSERT INTO DEV_PICK_FEES VALUES l_data(i);
-            --USING sCust;
-            EXIT WHEN cDEV%NOTFOUND;
-            END LOOP;
-           -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-            CLOSE cDEV;
+            If (sAnalysis = '21VICP') Then
+              OPEN canalDEV;
+              ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
+              LOOP
+              FETCH canalDEV BULK COLLECT INTO l_data LIMIT p_array_size;
+      
+              FORALL i IN 1..l_data.COUNT
+              ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+              INSERT INTO DEV_PICK_FEES VALUES l_data(i);
+              --USING sCust;
+              EXIT WHEN canalDEV%NOTFOUND;
+              END LOOP;
+             -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+              CLOSE canalDEV;
+            Else
+              OPEN cDEV;
+              ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
+              LOOP
+              FETCH cDEV BULK COLLECT INTO l_data LIMIT p_array_size;
+      
+              FORALL i IN 1..l_data.COUNT
+              ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+              INSERT INTO DEV_PICK_FEES VALUES l_data(i);
+              --USING sCust;
+              EXIT WHEN cDEV%NOTFOUND;
+              END LOOP;
+             -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+              CLOSE cDEV;   
+            End If;
+
           Else
             v_query := 'TRUNCATE TABLE TMP_PICK_FEES';
             EXECUTE IMMEDIATE v_query;
-            OPEN c;
-            ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
-            LOOP
-            FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
-    
-            FORALL i IN 1..l_data.COUNT
-            ----DBMS_OUTPUT.PUT_LINE(i || '.' );
-            INSERT INTO TMP_PICK_FEES VALUES l_data(i);
-            --USING sCust;
-            EXIT WHEN c%NOTFOUND;
-            END LOOP;
-           -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-            CLOSE c;
+             If (sAnalysis = '21VICP') Then
+              OPEN canal;
+              ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
+              LOOP
+              FETCH canal BULK COLLECT INTO l_data LIMIT p_array_size;
+      
+              FORALL i IN 1..l_data.COUNT
+              ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+              INSERT INTO TMP_PICK_FEES VALUES l_data(i);
+              --USING sCust;
+              EXIT WHEN canal%NOTFOUND;
+              END LOOP;
+             -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+              CLOSE canal;
+            Else
+              OPEN c;
+              ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
+              LOOP
+              FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
+      
+              FORALL i IN 1..l_data.COUNT
+              ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+              INSERT INTO TMP_PICK_FEES VALUES l_data(i);
+              --USING sCust;
+              EXIT WHEN c%NOTFOUND;
+              END LOOP;
+             -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+              CLOSE c;
+            End If;
           End If;
           -- FOR i IN l_data.FIRST .. l_data.LAST LOOP
           ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
@@ -5021,7 +6786,155 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
 	WHERE   s.SH_STATUS <> 3
   AND t.ST_PSLIP NOT LIKE 'CANCELLED%'
   AND ((r.sGroupCust = sCustomerCode OR r.sCust = sCustomerCode)   AND  (s.SH_CUST != 'WBCMER'))
-  AND (SELECT To_Number(regexp_substr(RM_XX_FEE16,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = 'BEYONDBLUE') > 0.1
+  AND (SELECT To_Number(regexp_substr(RM_XX_FEE16,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = 'BEYONDBL') > 0.1
+  AND t.ST_DESP_DATE >= startdate AND t.ST_DESP_DATE <= enddate
+  
+   	GROUP BY  s.SH_ORDER,
+			  r.sGroupCust,
+        r.sCust,
+			  s.SH_SPARE_STR_4,
+			  s.SH_CUST,
+			  t.ST_PICK,
+			  t.ST_PSLIP,
+			  t.ST_DESP_DATE,
+			  s.SH_EXCL,
+			  s.SH_INCL,
+			  s.SH_ADDRESS,
+			  s.SH_SUBURB,
+			  s.SH_CITY,
+			  s.SH_STATE,
+			  s.SH_POST_CODE,
+			  s.SH_NOTE_1,
+			  s.SH_NOTE_2 ,
+			  s.SH_NUM_LINES,
+			  t.ST_WEIGHT,
+			  t.ST_PACKAGES,
+			  s.SH_SPARE_DBL_9,
+			  s.SH_ADD_DATE,
+			  r.sGroupCust,
+			  s.SH_SPARE_STR_5,
+			  s.SH_CUST_REF,s.SH_SPARE_STR_3,s.SH_SPARE_STR_1,s.SH_SPARE_INT_4,s.SH_CAMPAIGN;
+        
+       CURSOR canal
+      IS
+    /* Pick fees  */
+  
+    SELECT s.SH_CUST                AS "Customer",
+        r.sGroupCust              AS "Parent",
+        s.SH_SPARE_STR_4         AS "CostCentre",
+        s.SH_ORDER               AS "Order",
+        s.SH_SPARE_STR_5         AS "OrderwareNum",
+        s.SH_CUST_REF            AS "CustomerRef",
+        t.ST_PICK         AS "Pickslip",
+            t.ST_PSLIP                      AS "DespatchNote",
+            t.ST_DESP_DATE               AS "DespatchNote",
+            s.SH_ADD_DATE             AS "OrderDate",
+        CASE    WHEN t.ST_PSLIP IS NOT NULL THEN 'Pick Fee'
+          ELSE NULL
+          END                      AS "FeeType",
+        CASE    WHEN t.ST_PSLIP IS NOT NULL THEN 'FEEPICK'
+          ELSE NULL
+          END                      AS "Item",
+        CASE    WHEN t.ST_PSLIP IS NOT NULL THEN 'Line Picking Fee'
+          ELSE NULL
+          END                      AS "Description",
+         (Select Max(SL_LINE) from SL Where SL_PICK = t.ST_PICK)  AS "Qty",
+         CASE    WHEN t.ST_PSLIP IS NOT NULL THEN  '1'
+          ELSE ''
+          END                     AS "UOI",
+        CASE 
+          WHEN sCustomerCode = 'VHAAUS' AND s.SH_CAMPAIGN = 'DIST'
+            AND t.ST_PSLIP IS NOT NULL
+            THEN TO_NUMBER('0')
+          WHEN t.ST_PSLIP IS NOT NULL  
+            AND (Select Max(SL_LINE) from SL Where SL_PICK = t.ST_PICK) 
+            > 
+            f_get_fee('RM_XX_FEE01OR01',r.sGroupCust) AND f_get_fee('RM_XX_FEE01OR01',r.sGroupCust) > 0
+            THEN 
+            f_get_fee('RM_XX_FEE36',r.sGroupCust)
+          ELSE f_get_fee('RM_XX_FEE16',r.sGroupCust) 
+        END                      AS "UnitPrice",
+        CASE    
+          WHEN sCustomerCode = 'VHAAUS' AND s.SH_CAMPAIGN = 'DIST'
+              AND t.ST_PSLIP IS NOT NULL
+              THEN TO_NUMBER('0')
+          WHEN t.ST_PSLIP IS NOT NULL  
+          AND (Select Max(SL_LINE) from SL Where SL_PICK = t.ST_PICK) 
+          > 
+          f_get_fee('RM_XX_FEE01OR01',r.sGroupCust) AND f_get_fee('RM_XX_FEE01OR01',r.sGroupCust) > 0
+          THEN 
+          f_get_fee('RM_XX_FEE36',r.sGroupCust)
+          ELSE f_get_fee('RM_XX_FEE16',r.sGroupCust) 
+        END                      AS "OWUnitPrice",
+        CASE  
+        WHEN sCustomerCode = 'VHAAUS' AND s.SH_CAMPAIGN = 'DIST'
+            AND t.ST_PSLIP IS NOT NULL
+            THEN TO_NUMBER('0')
+          WHEN t.ST_PSLIP IS NOT NULL  
+          AND (Select Max(SL_LINE) from SL Where SL_PICK = t.ST_PICK) 
+          > 
+          f_get_fee('RM_XX_FEE01OR01',r.sGroupCust) AND f_get_fee('RM_XX_FEE01OR01',r.sGroupCust) > 0
+          THEN  f_get_fee('RM_XX_FEE36',r.sGroupCust)  
+          * 
+          (Select MAX(SL_LINE) from SL Where SL_PICK = t.ST_PICK)
+          ELSE f_get_fee('RM_XX_FEE16',r.sGroupCust)  
+          * 
+          (Select MAX(SL_LINE) from SL Where SL_PICK = t.ST_PICK)
+        END                      AS "DExcl",
+        CASE    
+        WHEN sCustomerCode = 'VHAAUS' AND s.SH_CAMPAIGN = 'DIST' 
+            AND t.ST_PSLIP IS NOT NULL
+            THEN TO_NUMBER('0')
+        WHEN t.ST_PSLIP IS NOT NULL  
+        AND (Select Max(SL_LINE) from SL Where SL_PICK = t.ST_PICK) 
+        > 
+        f_get_fee('RM_XX_FEE01OR01',r.sGroupCust) AND f_get_fee('RM_XX_FEE01OR01',r.sGroupCust) > 0
+        THEN (f_get_fee('RM_XX_FEE36',r.sGroupCust)  * (Select MAX(SL_LINE) from SL Where SL_PICK = t.ST_PICK)) * 1.1
+        ELSE (f_get_fee('RM_XX_FEE16',r.sGroupCust)  * (Select MAX(SL_LINE) from SL Where SL_PICK = t.ST_PICK)) * 1.1
+        END                      AS "DIncl",
+        CASE    
+        WHEN sCustomerCode = 'VHAAUS' AND s.SH_CAMPAIGN = 'DIST' 
+            AND t.ST_PSLIP IS NOT NULL
+            THEN TO_NUMBER('0')
+        WHEN t.ST_PSLIP IS NOT NULL  
+        AND (Select Max(SL_LINE) from SL Where SL_PICK = t.ST_PICK) 
+        > 
+        f_get_fee('RM_XX_FEE01OR01',r.sGroupCust) AND f_get_fee('RM_XX_FEE01OR01',r.sGroupCust) > 0
+        THEN f_get_fee('RM_XX_FEE36',r.sGroupCust)  * (Select MAX(SL_LINE) from SL Where SL_PICK = t.ST_PICK)
+        ELSE (f_get_fee('RM_XX_FEE16',r.sGroupCust)  * (Select MAX(SL_LINE) from SL Where SL_PICK = t.ST_PICK))
+        END                      AS "ReportingPrice",
+        NULL,
+        NULL,
+        REPLACE(s.SH_ADDRESS, ',')             AS "Address",
+        REPLACE(s.SH_SUBURB, ',')              AS "Address2",
+        REPLACE(s.SH_CITY, ',')                AS "Suburb",
+        s.SH_STATE               AS "State",
+        s.SH_POST_CODE           AS "Postcode",
+        REPLACE(s.SH_NOTE_1, ',')              AS "DeliverTo",
+        REPLACE(s.SH_NOTE_2, ',')              AS "AttentionTo" ,
+        t.ST_WEIGHT              AS "Weight",
+        t.ST_PACKAGES            AS "Packages",
+        s.SH_SPARE_DBL_9         AS "OrderSource",
+        NULL                     AS "Pallet/Shelf Space",
+        NULL                     AS "Locn",
+          (Select MAX(SL_LINE) from SL Where SL_PICK = t.ST_PICK)                     AS "CountOfStocks",
+          CASE  WHEN regexp_substr(s.SH_SPARE_STR_3,'[a-z]+', 1, 2) IS NOT NULL THEN  s.SH_SPARE_STR_3 || '@' || s.SH_SPARE_STR_1
+                ELSE ''
+                END AS Email,
+                'N/A' AS Brand,
+             NULL AS    OwnedBy,
+             NULL AS    sProfile,
+             NULL AS    WaiveFee,
+             NULL As   Cost,
+             s.SH_SPARE_INT_4 AS PaymentType,s.SH_CAMPAIGN,NULL,NULL,NULL
+  
+  FROM  ST t LEFT JOIN PWIN175.SH s ON  s.SH_ORDER = t.ST_ORDER
+  INNER JOIN SL l ON l.SL_PICK = t.ST_PICK
+	LEFT JOIN Tmp_Group_Cust r ON r.sCust = s.SH_CUST
+	WHERE   s.SH_STATUS <> 3
+  AND t.ST_PSLIP NOT LIKE 'CANCELLED%'
+  AND r.ANAL = sAnalysis--((r.sGroupCust = sCustomerCode OR r.sCust = sCustomerCode)   AND  (s.SH_CUST != 'WBCMER'))
+  AND (SELECT To_Number(regexp_substr(RM_XX_FEE16,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = 'BEYONDBL') > 0.1
   AND t.ST_DESP_DATE >= startdate AND t.ST_DESP_DATE <= enddate
   
    	GROUP BY  s.SH_ORDER,
@@ -5169,7 +7082,156 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
 	WHERE   s.SH_STATUS <> 3
   AND t.ST_PSLIP NOT LIKE 'CANCELLED%'
   AND ((r.sGroupCust = sCustomerCode OR r.sCust = sCustomerCode)   AND  (s.SH_CUST != 'WBCMER'))
-  AND (SELECT To_Number(regexp_substr(RM_XX_FEE16,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = 'BEYONDBLUE') > 0.1
+  AND (SELECT To_Number(regexp_substr(RM_XX_FEE16,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = 'BEYONDBL') > 0.1
+  AND t.ST_DESP_DATE >= startdate AND t.ST_DESP_DATE <= enddate
+  
+   	GROUP BY  s.SH_ORDER,
+			  r.sGroupCust,
+        r.sCust,
+			  s.SH_SPARE_STR_4,
+			  s.SH_CUST,
+			  t.ST_PICK,
+			  t.ST_PSLIP,
+			  t.ST_DESP_DATE,
+			  s.SH_EXCL,
+			  s.SH_INCL,
+			  s.SH_ADDRESS,
+			  s.SH_SUBURB,
+			  s.SH_CITY,
+			  s.SH_STATE,
+			  s.SH_POST_CODE,
+			  s.SH_NOTE_1,
+			  s.SH_NOTE_2 ,
+			  s.SH_NUM_LINES,
+			  t.ST_WEIGHT,
+			  t.ST_PACKAGES,
+			  s.SH_SPARE_DBL_9,
+			  s.SH_ADD_DATE,
+			  r.sGroupCust,
+			  s.SH_SPARE_STR_5,
+			  s.SH_CUST_REF,s.SH_SPARE_STR_3,s.SH_SPARE_STR_1,s.SH_SPARE_INT_4,s.SH_CAMPAIGN;
+        
+        
+       CURSOR canalDEV
+      IS
+    /* Pick fees  */
+  
+    SELECT s.SH_CUST                AS "Customer",
+        r.sGroupCust              AS "Parent",
+        s.SH_SPARE_STR_4         AS "CostCentre",
+        s.SH_ORDER               AS "Order",
+        s.SH_SPARE_STR_5         AS "OrderwareNum",
+        s.SH_CUST_REF            AS "CustomerRef",
+        t.ST_PICK         AS "Pickslip",
+            t.ST_PSLIP                      AS "DespatchNote",
+            t.ST_DESP_DATE               AS "DespatchNote",
+            s.SH_ADD_DATE             AS "OrderDate",
+        CASE    WHEN t.ST_PSLIP IS NOT NULL THEN 'Pick Fee'
+          ELSE NULL
+          END                      AS "FeeType",
+        CASE    WHEN t.ST_PSLIP IS NOT NULL THEN 'FEEPICK'
+          ELSE NULL
+          END                      AS "Item",
+        CASE    WHEN t.ST_PSLIP IS NOT NULL THEN 'Line Picking Fee'
+          ELSE NULL
+          END                      AS "Description",
+         (Select Max(SL_LINE) from SL Where SL_PICK = t.ST_PICK)  AS "Qty",
+         CASE    WHEN t.ST_PSLIP IS NOT NULL THEN  '1'
+          ELSE ''
+          END                     AS "UOI",
+        CASE 
+          WHEN sCustomerCode = 'VHAAUS' AND s.SH_CAMPAIGN = 'DIST'
+            AND t.ST_PSLIP IS NOT NULL
+            THEN TO_NUMBER('0')
+          WHEN t.ST_PSLIP IS NOT NULL  
+            AND (Select Max(SL_LINE) from SL Where SL_PICK = t.ST_PICK) 
+            > 
+            f_get_fee('RM_XX_FEE01OR01',r.sGroupCust) AND f_get_fee('RM_XX_FEE01OR01',r.sGroupCust) > 0
+            THEN 
+            f_get_fee('RM_XX_FEE36',r.sGroupCust)
+          ELSE f_get_fee('RM_XX_FEE16',r.sGroupCust) 
+        END                      AS "UnitPrice",
+        CASE    
+          WHEN sCustomerCode = 'VHAAUS' AND s.SH_CAMPAIGN = 'DIST'
+              AND t.ST_PSLIP IS NOT NULL
+              THEN TO_NUMBER('0')
+          WHEN t.ST_PSLIP IS NOT NULL  
+          AND (Select Max(SL_LINE) from SL Where SL_PICK = t.ST_PICK) 
+          > 
+          f_get_fee('RM_XX_FEE01OR01',r.sGroupCust) AND f_get_fee('RM_XX_FEE01OR01',r.sGroupCust) > 0
+          THEN 
+          f_get_fee('RM_XX_FEE36',r.sGroupCust)
+          ELSE f_get_fee('RM_XX_FEE16',r.sGroupCust) 
+        END                      AS "OWUnitPrice",
+        CASE  
+        WHEN sCustomerCode = 'VHAAUS' AND s.SH_CAMPAIGN = 'DIST'
+            AND t.ST_PSLIP IS NOT NULL
+            THEN TO_NUMBER('0')
+          WHEN t.ST_PSLIP IS NOT NULL  
+          AND (Select Max(SL_LINE) from SL Where SL_PICK = t.ST_PICK) 
+          > 
+          f_get_fee('RM_XX_FEE01OR01',r.sGroupCust) AND f_get_fee('RM_XX_FEE01OR01',r.sGroupCust) > 0
+          THEN  f_get_fee('RM_XX_FEE36',r.sGroupCust)  
+          * 
+          (Select MAX(SL_LINE) from SL Where SL_PICK = t.ST_PICK)
+          ELSE f_get_fee('RM_XX_FEE16',r.sGroupCust)  
+          * 
+          (Select MAX(SL_LINE) from SL Where SL_PICK = t.ST_PICK)
+        END                      AS "DExcl",
+        CASE    
+        WHEN sCustomerCode = 'VHAAUS' AND s.SH_CAMPAIGN = 'DIST' 
+            AND t.ST_PSLIP IS NOT NULL
+            THEN TO_NUMBER('0')
+        WHEN t.ST_PSLIP IS NOT NULL  
+        AND (Select Max(SL_LINE) from SL Where SL_PICK = t.ST_PICK) 
+        > 
+        f_get_fee('RM_XX_FEE01OR01',r.sGroupCust) AND f_get_fee('RM_XX_FEE01OR01',r.sGroupCust) > 0
+        THEN (f_get_fee('RM_XX_FEE36',r.sGroupCust)  * (Select MAX(SL_LINE) from SL Where SL_PICK = t.ST_PICK)) * 1.1
+        ELSE (f_get_fee('RM_XX_FEE16',r.sGroupCust)  * (Select MAX(SL_LINE) from SL Where SL_PICK = t.ST_PICK)) * 1.1
+        END                      AS "DIncl",
+        CASE    
+        WHEN sCustomerCode = 'VHAAUS' AND s.SH_CAMPAIGN = 'DIST' 
+            AND t.ST_PSLIP IS NOT NULL
+            THEN TO_NUMBER('0')
+        WHEN t.ST_PSLIP IS NOT NULL  
+        AND (Select Max(SL_LINE) from SL Where SL_PICK = t.ST_PICK) 
+        > 
+        f_get_fee('RM_XX_FEE01OR01',r.sGroupCust) AND f_get_fee('RM_XX_FEE01OR01',r.sGroupCust) > 0
+        THEN f_get_fee('RM_XX_FEE36',r.sGroupCust)  * (Select MAX(SL_LINE) from SL Where SL_PICK = t.ST_PICK)
+        ELSE (f_get_fee('RM_XX_FEE16',r.sGroupCust)  * (Select MAX(SL_LINE) from SL Where SL_PICK = t.ST_PICK))
+        END                      AS "ReportingPrice",
+        NULL,
+        NULL,
+        REPLACE(s.SH_ADDRESS, ',')             AS "Address",
+        REPLACE(s.SH_SUBURB, ',')              AS "Address2",
+        REPLACE(s.SH_CITY, ',')                AS "Suburb",
+        s.SH_STATE               AS "State",
+        s.SH_POST_CODE           AS "Postcode",
+        REPLACE(s.SH_NOTE_1, ',')              AS "DeliverTo",
+        REPLACE(s.SH_NOTE_2, ',')              AS "AttentionTo" ,
+        t.ST_WEIGHT              AS "Weight",
+        t.ST_PACKAGES            AS "Packages",
+        s.SH_SPARE_DBL_9         AS "OrderSource",
+        NULL                     AS "Pallet/Shelf Space",
+        NULL                     AS "Locn",
+          (Select MAX(SL_LINE) from SL Where SL_PICK = t.ST_PICK)                     AS "CountOfStocks",
+          CASE  WHEN regexp_substr(s.SH_SPARE_STR_3,'[a-z]+', 1, 2) IS NOT NULL THEN  s.SH_SPARE_STR_3 || '@' || s.SH_SPARE_STR_1
+                ELSE ''
+                END AS Email,
+                'N/A' AS Brand,
+             NULL AS    OwnedBy,
+             NULL AS    sProfile,
+             NULL AS    WaiveFee,
+             NULL As   Cost,
+             s.SH_SPARE_INT_4 AS PaymentType,s.SH_CAMPAIGN,NULL,NULL,NULL
+  
+  FROM  ST t LEFT JOIN PWIN175.SH s ON  s.SH_ORDER = t.ST_ORDER
+  INNER JOIN SL l ON l.SL_PICK = t.ST_PICK
+	LEFT JOIN Dev_Group_Cust r ON r.sCust = s.SH_CUST
+	WHERE   s.SH_STATUS <> 3
+  AND t.ST_PSLIP NOT LIKE 'CANCELLED%'
+  AND r.ANAL = sAnalysis -- ((r.sGroupCust = sCustomerCode OR r.sCust = sCustomerCode)   AND  (s.SH_CUST != 'WBCMER'))
+  AND (SELECT To_Number(regexp_substr(RM_XX_FEE16,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = 'BEYONDBL') > 0.1
   AND t.ST_DESP_DATE >= startdate AND t.ST_DESP_DATE <= enddate
   
    	GROUP BY  s.SH_ORDER,
@@ -5218,6 +7280,21 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
            If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
             v_query := 'TRUNCATE TABLE DEV_PICK_FEES';
             EXECUTE IMMEDIATE v_query;
+            If (sAnalysis = '21VICP') Then
+              OPEN canalDEV;
+              ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
+              LOOP
+              FETCH canalDEV BULK COLLECT INTO l_data LIMIT p_array_size;
+      
+              FORALL i IN 1..l_data.COUNT
+              ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+              INSERT INTO DEV_PICK_FEES VALUES l_data(i);
+              --USING sCust;
+              EXIT WHEN canalDEV%NOTFOUND;
+              END LOOP;
+             -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+              CLOSE canalDEV;
+           Else
               OPEN cDEV;
               ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
               LOOP
@@ -5231,10 +7308,26 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
               END LOOP;
              -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
               CLOSE cDEV;
-            Else
+            End If;
+          Else
               v_query := 'TRUNCATE TABLE TMP_PICK_FEES';
               EXECUTE IMMEDIATE v_query;
-              OPEN c;
+            If (sAnalysis = '21VICP') Then
+              OPEN canal;
+              ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
+              LOOP
+              FETCH canal BULK COLLECT INTO l_data LIMIT p_array_size;
+      
+              FORALL i IN 1..l_data.COUNT
+              ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+              INSERT INTO TMP_PICK_FEES VALUES l_data(i);
+              --USING sCust;
+              EXIT WHEN canal%NOTFOUND;
+              END LOOP;
+             -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+              CLOSE canal;
+            Else
+               OPEN c;
               ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
               LOOP
               FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
@@ -5247,6 +7340,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
               END LOOP;
              -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
               CLOSE c;
+            End If;
           End If;
           -- FOR i IN l_data.FIRST .. l_data.LAST LOOP
           ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
@@ -5792,7 +7886,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
     /*   Temp Tables Used   */
     /*   1. TMP_CUSTOMER_FEES   */
     /*   Prism Rate Field Used   */
-    /*   A. RM_XX_FEE08 & RM_XX_FEE09   */
+    /*   A. RM_XX_FEE08 null   */
     PROCEDURE J_EOM_CUSTOMER_FEES (
         p_array_size IN PLS_INTEGER DEFAULT 100
         ,startdate IN VARCHAR2-- := To_Date('1-Jun-2015') or format date as 01-Jun-15 -- use this when you want the date entered automatically
@@ -6153,8 +8247,8 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
     WHERE       s.SH_ORDER = d.SD_ORDER
     AND       i.IM_TYPE = 'BB_PACK'
     --AND       r.RM_ANAL = :sAnalysis
-    AND     (r.sCust = 'BEYONDBLUE' OR r.sGroupCust = 'BEYONDBLUE')
-    AND     sCustomerCode = 'BEYONDBLUE'
+    AND     (r.sCust = 'BEYONDBL' OR r.sGroupCust = 'BEYONDBL')
+    AND     sCustomerCode = 'BEYONDBL'
    -- AND    nRM_XX_FEE08 > 0
     AND (SELECT To_Number(regexp_substr(RM_XX_FEE08,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode) > 0.1
     AND       s.SH_STATUS <> 3
@@ -6180,12 +8274,12 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
         s.SH_ORDER AS "Order",s.SH_SPARE_STR_5 AS "OrderwareNum",s.SH_CUST_REF AS "CustomerRef",
         NULL AS "Pickslip",NULL AS "PickNum",NULL AS "DespatchNote",substr(To_Char(t.ST_DESP_DATE),0,10) AS "DespatchDate",
         'OrderPhotoFee' AS "FeeType",'PHOTOFEEORDER' AS "Item",'Photo Fee' AS "Description",1 AS "Qty",'1' AS "UOI",
-        (Select To_Number(rm3.RM_XX_FEE32_1) from RM rm3 where rm3.RM_CUST = 'VHAAUS')  AS "UnitPrice",
-        (Select To_Number(rm3.RM_XX_FEE32_1) from RM rm3 where rm3.RM_CUST = 'VHAAUS')   AS "OWUnitPrice",
-        (Select To_Number(rm3.RM_XX_FEE32_1) from RM rm3 where rm3.RM_CUST = 'VHAAUS')   AS "DExcl",
-        (Select To_Number(rm3.RM_XX_FEE32_1) from RM rm3 where rm3.RM_CUST = 'VHAAUS')   AS "Excl_Total",
-        (Select To_Number(rm3.RM_XX_FEE32_1) from RM rm3 where rm3.RM_CUST = 'VHAAUS')   AS "DIncl",
-        (Select To_Number(rm3.RM_XX_FEE32_1) from RM rm3 where rm3.RM_CUST = 'VHAAUS')   AS "Incl_Total",
+        (Select To_Number(rm3.RM_XX_FEE32) from RM rm3 where rm3.RM_CUST = 'VHAAUS')  AS "UnitPrice",
+        (Select To_Number(rm3.RM_XX_FEE32) from RM rm3 where rm3.RM_CUST = 'VHAAUS')   AS "OWUnitPrice",
+        (Select To_Number(rm3.RM_XX_FEE32) from RM rm3 where rm3.RM_CUST = 'VHAAUS')   AS "DExcl",
+        (Select To_Number(rm3.RM_XX_FEE32) from RM rm3 where rm3.RM_CUST = 'VHAAUS')   AS "Excl_Total",
+        (Select To_Number(rm3.RM_XX_FEE32) from RM rm3 where rm3.RM_CUST = 'VHAAUS')   AS "DIncl",
+        (Select To_Number(rm3.RM_XX_FEE32) from RM rm3 where rm3.RM_CUST = 'VHAAUS')   AS "Incl_Total",
         NULL AS "ReportingPrice",
         REPLACE(s.SH_ADDRESS, ',') AS "Address",REPLACE(s.SH_SUBURB, ',') AS "Address2",REPLACE(s.SH_CITY, ',') AS "Suburb",s.SH_STATE AS "State",
         s.SH_POST_CODE AS "Postcode",REPLACE(s.SH_NOTE_1, ',') AS "DeliverTo",REPLACE(s.SH_NOTE_2, ',') AS "AttentionTo" ,0 AS "Weight",0 AS "Packages",
@@ -6207,7 +8301,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
     AND       UPPER(s.SH_CUST_REF) = 'STORE EXPANSION'
     AND       d.SD_LINE = 1
     --AND sCustomerCode = 'VHAAUS'
-    AND (SELECT To_Number(regexp_substr(RM_XX_FEE32_1,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = 'VHAAUS') > 0.1
+    AND (SELECT To_Number(regexp_substr(RM_XX_FEE32,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = 'VHAAUS') > 0.1
     GROUP BY  s.SH_CUST,r.sGroupCust,i.IM_CUST,s.SH_SPARE_STR_4,i.IM_XX_COST_CENTRE01,i.IM_STOCK,
           s.SH_ORDER,s.SH_SPARE_STR_5,s.SH_CUST_REF,t.ST_DESP_DATE,s.SH_SPARE_DBL_9,d.SD_LINE,
           s.SH_ADDRESS,s.SH_SUBURB,s.SH_CITY,s.SH_STATE,s.SH_POST_CODE,s.SH_NOTE_1,s.SH_NOTE_2,s.SH_SPARE_STR_3,
@@ -6220,12 +8314,12 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
         s.SH_ORDER AS "Order",s.SH_SPARE_STR_5 AS "OrderwareNum",s.SH_CUST_REF AS "CustomerRef",
         NULL AS "Pickslip",NULL AS "PickNum",NULL AS "DespatchNote",substr(To_Char(t.ST_DESP_DATE),0,10) AS "DespatchDate",
         'OrderPhotoFee' AS "FeeType",'PHOTOFEEORDER' AS "Item",'Photo Fee' AS "Description",1 AS "Qty",'1' AS "UOI",
-        (Select To_Number(rm3.RM_XX_FEE32_1) from RM rm3 where rm3.RM_CUST = 'VHAAUS')  AS "UnitPrice",
-        (Select To_Number(rm3.RM_XX_FEE32_1) from RM rm3 where rm3.RM_CUST = 'VHAAUS')   AS "OWUnitPrice",
-        (Select To_Number(rm3.RM_XX_FEE32_1) from RM rm3 where rm3.RM_CUST = 'VHAAUS')   AS "DExcl",
-        (Select To_Number(rm3.RM_XX_FEE32_1) from RM rm3 where rm3.RM_CUST = 'VHAAUS')   AS "Excl_Total",
-        (Select To_Number(rm3.RM_XX_FEE32_1) from RM rm3 where rm3.RM_CUST = 'VHAAUS')   AS "DIncl",
-        (Select To_Number(rm3.RM_XX_FEE32_1) from RM rm3 where rm3.RM_CUST = 'VHAAUS')   AS "Incl_Total",
+        (Select To_Number(rm3.RM_XX_FEE32) from RM rm3 where rm3.RM_CUST = 'VHAAUS')  AS "UnitPrice",
+        (Select To_Number(rm3.RM_XX_FEE32) from RM rm3 where rm3.RM_CUST = 'VHAAUS')   AS "OWUnitPrice",
+        (Select To_Number(rm3.RM_XX_FEE32) from RM rm3 where rm3.RM_CUST = 'VHAAUS')   AS "DExcl",
+        (Select To_Number(rm3.RM_XX_FEE32) from RM rm3 where rm3.RM_CUST = 'VHAAUS')   AS "Excl_Total",
+        (Select To_Number(rm3.RM_XX_FEE32) from RM rm3 where rm3.RM_CUST = 'VHAAUS')   AS "DIncl",
+        (Select To_Number(rm3.RM_XX_FEE32) from RM rm3 where rm3.RM_CUST = 'VHAAUS')   AS "Incl_Total",
         NULL AS "ReportingPrice",
         REPLACE(s.SH_ADDRESS, ',') AS "Address",REPLACE(s.SH_SUBURB, ',') AS "Address2",REPLACE(s.SH_CITY, ',') AS "Suburb",s.SH_STATE AS "State",
         s.SH_POST_CODE AS "Postcode",REPLACE(s.SH_NOTE_1, ',') AS "DeliverTo",REPLACE(s.SH_NOTE_2, ',') AS "AttentionTo" ,0 AS "Weight",0 AS "Packages",
@@ -6247,7 +8341,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
     AND       UPPER(s.SH_CUST_REF) = 'STORE EXPANSION'
     AND       d.SD_LINE = 1
     --AND sCustomerCode = 'VHAAUS'
-    AND (SELECT To_Number(regexp_substr(RM_XX_FEE32_1,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = 'VHAAUS') > 0.1
+    AND (SELECT To_Number(regexp_substr(RM_XX_FEE32,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = 'VHAAUS') > 0.1
     GROUP BY  s.SH_CUST,r.sGroupCust,i.IM_CUST,s.SH_SPARE_STR_4,i.IM_XX_COST_CENTRE01,i.IM_STOCK,
           s.SH_ORDER,s.SH_SPARE_STR_5,s.SH_CUST_REF,t.ST_DESP_DATE,s.SH_SPARE_DBL_9,d.SD_LINE,
           s.SH_ADDRESS,s.SH_SUBURB,s.SH_CITY,s.SH_STATE,s.SH_POST_CODE,s.SH_NOTE_1,s.SH_NOTE_2,s.SH_SPARE_STR_3,
@@ -6329,7 +8423,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
     /*   Temp Tables Used   */
     /*   1. TMP_CUSTOMER_FEES   */
     /*   Prism Rate Field Used   */
-    /*   A. RM_XX_FEE08 & RM_XX_FEE09   */
+    /*   A. RM_XX_FEE08 null   */
     PROCEDURE J_EOM_CUSTOMER_FEES_TAB (
         p_array_size IN PLS_INTEGER DEFAULT 100
         ,startdate IN VARCHAR2-- := To_Date('1-Jun-2015') or format date as 01-Jun-15 -- use this when you want the date entered automatically
@@ -6624,7 +8718,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
   
     END J_EOM_CUSTOMER_FEES_TAB;
   
-    /*   J Run this once for BeyondBlue   */
+    /*   J Run this once for BEYONDBL   */
     /*   This gets all the Customer Specific Charges   */
     /*   Temp Tables Used   */
     /*   1. TMP_CUSTOMER_FEES   */
@@ -6741,7 +8835,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
   
       WHERE NI_NV_EXT_TYPE = 1810105 AND NI_STRENGTH = 3 AND NI_DATE = t.ST_DESP_DATE AND NI_STOCK = d.SD_STOCK AND NI_STATUS <> 0
           AND     s.SH_STATUS <> 3
-          AND     i.IM_CUST  = 'BEYONDBLUE'
+          AND     i.IM_CUST  = 'BEYONDBL'
           AND       s.SH_ORDER = t.ST_ORDER
           AND       i.IM_TYPE = 'BB_PACK'
           AND        t.ST_DESP_DATE >= startdate AND t.ST_DESP_DATE <= enddate
@@ -7058,7 +9152,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
     /*   Temp Tables Used   */
     /*   1. TMP_CUSTOMER_FEES   */
     /*   Prism Rate Field Used   */
-    /*   A. RM_XX_FEE32_1   */
+    /*   A. RM_XX_FEE32   */
     PROCEDURE J_EOM_CUSTOMER_FEES_VHA (
         p_array_size IN PLS_INTEGER DEFAULT 100
         ,startdate IN VARCHAR2-- := To_Date('1-Jun-2015') or format date as 01-Jun-15 -- use this when you want the date entered automatically
@@ -7098,10 +9192,10 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
         s.SH_ORDER AS "Order",s.SH_SPARE_STR_5 AS "OrderwareNum",s.SH_CUST_REF AS "CustomerRef",
         t.ST_PICK AS "Pickslip",t.ST_PSLIP AS "DespNum",substr(To_Char(t.ST_DESP_DATE),0,10) AS "DespatchDate",substr(To_Char(s.SH_ADD_DATE),0,10) AS "OrdDate",
         'StoreExpansionFee' AS "FeeType",'STREXPFEEORDER' AS "Item",'Store Expansion Fee' AS "Description",1 AS "Qty",'1' AS "UOI",
-        (Select To_Number(rm3.RM_XX_FEE32_1) from RM rm3 where rm3.RM_CUST = 'VHAAUS')  AS "UnitPrice",
-        (Select To_Number(rm3.RM_XX_FEE32_1) from RM rm3 where rm3.RM_CUST = 'VHAAUS')   AS "OWUnitPrice",
-        (Select To_Number(rm3.RM_XX_FEE32_1) from RM rm3 where rm3.RM_CUST = 'VHAAUS')   AS "DExcl",
-        (Select To_Number(rm3.RM_XX_FEE32_1) from RM rm3 where rm3.RM_CUST = 'VHAAUS')   AS "DIncl",
+        (Select To_Number(rm3.RM_XX_FEE32) from RM rm3 where rm3.RM_CUST = 'VHAAUS')  AS "UnitPrice",
+        (Select To_Number(rm3.RM_XX_FEE32) from RM rm3 where rm3.RM_CUST = 'VHAAUS')   AS "OWUnitPrice",
+        (Select To_Number(rm3.RM_XX_FEE32) from RM rm3 where rm3.RM_CUST = 'VHAAUS')   AS "DExcl",
+        (Select To_Number(rm3.RM_XX_FEE32) from RM rm3 where rm3.RM_CUST = 'VHAAUS')   AS "DIncl",
         NULL AS "ReportingPrice",
         NULL,
         NULL,
@@ -7131,7 +9225,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
     AND       d.SD_LINE = 1
     AND t.ST_PSLIP != 'CANCELLED'
     --AND sCustomerCode = 'VHAAUS'
-    AND (SELECT To_Number(regexp_substr(RM_XX_FEE32_1,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = 'VHAAUS') > 0.1
+    AND (SELECT To_Number(regexp_substr(RM_XX_FEE32,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = 'VHAAUS') > 0.1
     GROUP BY  s.SH_CUST,r.sGroupCust,i.IM_CUST,s.SH_SPARE_STR_4,i.IM_XX_COST_CENTRE01,i.IM_STOCK,
           s.SH_ORDER,s.SH_SPARE_STR_5,s.SH_CUST_REF,t.ST_DESP_DATE,s.SH_SPARE_DBL_9,d.SD_LINE,
           s.SH_ADDRESS,s.SH_SUBURB,s.SH_CITY,s.SH_STATE,s.SH_POST_CODE,s.SH_NOTE_1,s.SH_NOTE_2,s.SH_SPARE_STR_3,
@@ -7323,7 +9417,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
     /*   Temp Tables Used   */
     /*   1. TMP_CUSTOMER_FEES   */
     /*   Prism Rate Field Used   */
-    /*   A. RM_XX_FEE32_1   
+    /*   A. RM_XX_FEE32   
         Need to build into freight consolodation for daily flat rate deliveries
         as well to build into carton fees
     */
@@ -7361,20 +9455,22 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
       sFileSuffix VARCHAR2(60):= '.csv';
       sFileTime VARCHAR2(56)  := TO_CHAR(SYSDATE,'YYYYMMDD HH24MISS');
       filename VARCHAR2(260) := sCustomerCode || '-EOM-ADMIN-ORACLE-' || '-RunBy-' || sOp || '-RunOn-' || startdate || '-TO-' || enddate || '-RunAt-' || sFileTime || sFileSuffix;
-   
+      
       BEGIN
-  
---      nCheckpoint := 1;
+      
+        nCheckpoint := 1;
+        DBMS_OUTPUT.PUT_LINE('Checkpoint 1 J_EOM_CUSTOMER_FEES_SUP about to run startdate: ' || startdate ||
+                            ' and enddate: ' || enddate || ' for:  ' || sCustomerCode);
 --        v_query := 'TRUNCATE TABLE TMP_CUSTOMER_FEES';
 --        EXECUTE IMMEDIATE v_query;
   
       nCheckpoint := 2;
       If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
           --run specific formatting query for superpartners
-          l_query := q'{Select  f1.DESPDATE,f1.ORDERNUM,f1.DESPNOTE,f1.CUSTOMER,
+           l_query := q'{Select  f1.DESPDATE,f1.ORDERNUM,f1.DESPNOTE,f1.CUSTOMER,
             f1.ATTENTIONTO,f1.ADDRESS,f1.ADDRESS2,f1.SUBURB,f1.STATE,f1.POSTCODE,
             f1.ITEM,f1.DESCRIPTION,f1.QTY
-                 ,CASE   WHEN f1.FEETYPE like 'Stock' AND LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE THEN (Select f2.SELLEXCL From DEV_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND f2.FEETYPE = 'Pick Fee' ) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
+                 ,CASE   WHEN f1.FEETYPE like 'Stock' AND LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE THEN (Select f2.SELLEXCL From DEV_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND f2.FEETYPE = 'Pick Fee'  AND ROWNUM = 1) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
                         ELSE 0
                         END AS "Line Charge"
                 ,CASE   WHEN f1.FEETYPE like 'Stock' AND LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE THEN (Select f2.SELLEXCL From DEV_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND f2.FEETYPE = 'Handeling Fee is ' ) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
@@ -7538,7 +9634,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           ,0,0,
           38.80 AS  "Pallet Charge Cost",NULL,NULL
           From DUAL
-          And ROWNUM = 1
+          Where ROWNUM = 1
           
            UNION ALL
           
@@ -7551,7 +9647,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           ,0,0,
           14.55 AS  "Extra Pallet Charge Cost",NULL,NULL
           From DUAL
-          And ROWNUM = 1
+          Where ROWNUM = 1
           
            UNION ALL
           
@@ -7564,37 +9660,38 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           ,0,0,
           2.43 AS  "Carton Charge Cost",NULL,NULL
           From DUAL
-          And ROWNUM = 1
+          Where ROWNUM = 1
           
           }'; 
         Else
           --run specific formatting query for superpartners
-          l_query := q'{Select  f1.DESPDATE,f1.ORDERNUM,f1.DESPNOTE,f1.CUSTOMER,
+          l_query := q'{Select  to_date(f1.DESPDATE,'dd/mm/yyyy'),f1.ORDERNUM,f1.DESPNOTE,f1.CUSTOMER,
             f1.ATTENTIONTO,f1.ADDRESS,f1.ADDRESS2,f1.SUBURB,f1.STATE,f1.POSTCODE,
             f1.ITEM,f1.DESCRIPTION,f1.QTY
-                 ,CASE   WHEN f1.FEETYPE like 'Stock' AND LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE THEN (Select f2.SELLEXCL From TMP_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND f2.FEETYPE = 'Pick Fee' ) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
+                 ,CASE   WHEN f1.FEETYPE like 'Stock' AND LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE THEN (Select f2.SELLEXCL From DEV_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND f2.FEETYPE = 'Pick Fee'  AND ROWNUM = 1) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
                         ELSE 0
                         END AS "Line Charge"
-                ,CASE   WHEN f1.FEETYPE like 'Stock' AND LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE THEN (Select f2.SELLEXCL From TMP_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND f2.FEETYPE = 'Handeling Fee is ' ) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
+                ,CASE   WHEN f1.FEETYPE like 'Stock' AND LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE THEN (Select f2.SELLEXCL From DEV_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND f2.FEETYPE = 'Handeling Fee is ' ) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
                         ELSE 0
                         END AS "Order Despatch Charge"
                 ,CASE   WHEN f1.FEETYPE like 'Stock' AND (LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE)  AND  ((ADDRESS  NOT LIKE '%Casselden%' Or ADDRESS   NOT LIKE '%2 Lonsdale%')
                           OR (ADDRESS2   NOT LIKE '%Casselden%' Or ADDRESS2   NOT LIKE '%2 Lonsdale%')) 
-                        THEN (Select f2.SELLEXCL From TMP_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND (f2.FEETYPE like 'Freight Fee' OR f2.FEETYPE like 'Manual Freight Fee') AND ROWNUM = 1) --AND ((UPPER(ADDRESS) NOT LIKE '%CASSELDEN%' Or UPPER(ADDRESS) NOT LIKE '2 LONSDALE%') OR (UPPER(ADDRESS2) NOT LIKE '%CASSELDEN%' Or UPPER(ADDRESS2) NOT LIKE '2 LONSDALE%')) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
+                        THEN (Select f2.SELLEXCL From DEV_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND (f2.FEETYPE like 'Freight Fee' OR f2.FEETYPE like 'Manual Freight Fee') AND ROWNUM = 1) --AND ((UPPER(ADDRESS) NOT LIKE '%CASSELDEN%' Or UPPER(ADDRESS) NOT LIKE '2 LONSDALE%') OR (UPPER(ADDRESS2) NOT LIKE '%CASSELDEN%' Or UPPER(ADDRESS2) NOT LIKE '2 LONSDALE%')) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
                         ELSE 0
                         END AS "Freight Charge",
           REPLACE(IM_XX_QTY_PER_PACK,'Box of ','') As "QTY",
-          NULL              
-          From TMP_ALL_FEES_F f1, IM
-          Where f1.FEETYPE = 'Stock' 
+          NULL 
+          
+          From DEV_ALL_FEES_F f1, IM
+          Where f1.FEETYPE = 'Stock'
           AND f1.ITEM = IM_STOCK
           
           UNION ALL
-          --Monday or the first day of the week
-          Select TO_CHAR(TRUNC(CURRENT_DATE, 'DAY') -7),NULL,NULL,NULL,
+         --Monday or the first day of the week
+          Select TO_DATE(F_GET_FIRST_OF_PREV_WEEK(7),'dd/mm/yyyy'),NULL,NULL,NULL,
             NULL,NULL,NULL,NULL,NULL,NULL,
             NULL,
-           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,0,'DEV') > 0
+           CASE WHEN F_DAILY_FREIGHT_COUNT2(NULL,NULL,0,'DEV') > 0
           Then 'Daily Van Freight'
           ELSE NULL
           END AS  "Description",
@@ -7608,45 +9705,45 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           Then 30.71
           ELSE 0
           END AS  "Freight Charge Cost",NULL,NULL
-          From TMP_ALL_FEES_F f1
+          From DEV_ALL_FEES_F f1
           Where f1.FEETYPE = 'Freight Fee' 
            AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%2 Lonsdale%')
           OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%2 Lonsdale%'))
           --Group by TRUNC(CURRENT_DATE, 'DAY') -6
-          AND f1.DESPDATE = TRUNC(CURRENT_DATE, 'DAY') -7
+          AND f1.DESPDATE = F_GET_FIRST_OF_PREV_WEEK(7)
           And ROWNUM = 1
-          
+          GROUP BY f1.DESPDATE
           UNION ALL
           
-          --Tuesday or the first day of the week
-          Select TO_CHAR(TRUNC(CURRENT_DATE, 'DAY') -6),NULL,NULL,NULL,
+          --Tuesday or the first day of the week to_date(CURRENT_DATE,'dd/mm/yyyy')
+          Select to_date(F_GET_FIRST_OF_PREV_WEEK(6),'dd/mm/yyyy'),NULL,NULL,NULL,
             NULL,NULL,NULL,NULL,NULL,NULL,
             NULL,
-           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,1,'DEV') > 0
+           CASE WHEN F_DAILY_FREIGHT_COUNT2(NULL,NULL,1,'DEV') > 0
           Then 'Daily Van Freight'
           ELSE NULL
           END AS  "Description",
           Case WHEN
-          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,1,'DEV') > 0 
+          F_DAILY_FREIGHT_COUNT2(NULL,NULL,1,'DEV') > 0 
           Then
-          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,1,'DEV') 
+          F_DAILY_FREIGHT_COUNT2(NULL,NULL,1,'DEV') 
           END AS "Qty"
          ,0,0,
-          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,1,'DEV') > 0 
+          CASE WHEN F_DAILY_FREIGHT_COUNT2(NULL,NULL,1,'DEV') > 0 
           Then 30.71
           ELSE 0
           END AS  "Freight Charge Cost",NULL,NULL
-          From TMP_ALL_FEES_F f1
+          From DEV_ALL_FEES_F f1
           Where f1.FEETYPE = 'Freight Fee' 
            AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%2 Lonsdale%')
           OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%2 Lonsdale%'))
-          AND f1.DESPDATE = TRUNC(CURRENT_DATE, 'DAY') -6
+          AND f1.DESPDATE = F_GET_FIRST_OF_PREV_WEEK(6)
           And ROWNUM = 1
-          
+          GROUP BY f1.DESPDATE
           UNION ALL
           
           --Wednesday or the first day of the week
-          Select TO_CHAR(TRUNC(CURRENT_DATE, 'DAY') -5),NULL,NULL,NULL,
+          Select F_GET_FIRST_OF_PREV_WEEK(5),NULL,NULL,NULL,
             NULL,NULL,NULL,NULL,NULL,NULL,
             NULL,
            CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,2,'DEV') > 0
@@ -7663,17 +9760,17 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           Then 30.71
           ELSE 0
           END AS  "Freight Charge Cost",NULL,NULL
-          From TMP_ALL_FEES_F f1
+          From DEV_ALL_FEES_F f1
           Where f1.FEETYPE = 'Freight Fee' 
            AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%2 Lonsdale%')
           OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%2 Lonsdale%'))
-          AND f1.DESPDATE = TRUNC(CURRENT_DATE, 'DAY') -5
+          AND f1.DESPDATE = F_GET_FIRST_OF_PREV_WEEK(5)
           And ROWNUM = 1
-          
+          GROUP BY f1.DESPDATE
           UNION ALL
           
           --Thursday or the first day of the week
-          Select TO_CHAR(TRUNC(CURRENT_DATE, 'DAY') -4),NULL,NULL,NULL,
+          Select F_GET_FIRST_OF_PREV_WEEK(4),NULL,NULL,NULL,
             NULL,NULL,NULL,NULL,NULL,NULL,
             NULL,
            CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,3,'DEV') > 0
@@ -7690,82 +9787,87 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           Then 30.71
           ELSE 0
           END AS  "Freight Charge Cost",NULL,NULL
-          From TMP_ALL_FEES_F f1
+          From DEV_ALL_FEES_F f1
           Where f1.FEETYPE = 'Freight Fee' 
            AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%2 Lonsdale%')
           OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%2 Lonsdale%'))
-          AND f1.DESPDATE = TRUNC(CURRENT_DATE, 'DAY') -4
+          AND f1.DESPDATE = F_GET_FIRST_OF_PREV_WEEK(4)
           And ROWNUM = 1
-          
+          GROUP BY f1.DESPDATE
           UNION ALL
           
           --Friday or the first day of the week
-          Select TO_CHAR(TRUNC(CURRENT_DATE, 'DAY') -3),NULL,NULL,NULL,
+          Select F_GET_FIRST_OF_PREV_WEEK(3),NULL,NULL,NULL,
             NULL,NULL,NULL,NULL,NULL,NULL,
             NULL,
+            
            CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,4,'DEV') > 0
           Then 'Daily Van Freight'
           ELSE NULL
           END AS  "Description",
+          
           Case WHEN
           F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,4,'DEV') > 0 
           Then
           F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,4,'DEV') 
           END AS "Qty"
+          
          ,0,0,
+         
           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,4,'DEV') > 0 
           Then 30.71
           ELSE 0
-          END AS  "Freight Charge Cost",NULL,NULL
-          From TMP_ALL_FEES_F f1
+          END AS  "Freight Charge Cost",
+          
+          NULL,NULL
+          From DEV_ALL_FEES_F f1
           Where f1.FEETYPE = 'Freight Fee' 
            AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%2 Lonsdale%')
           OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%2 Lonsdale%'))
-          AND f1.DESPDATE = TRUNC(CURRENT_DATE, 'DAY') -3
+          AND f1.DESPDATE = F_GET_FIRST_OF_PREV_WEEK(3)
           And ROWNUM = 1
-          
+          GROUP BY f1.DESPDATE
           UNION ALL
           
           --Facilitate ctn/pallet charges - 3 lines
-          Select TO_CHAR(TRUNC(CURRENT_DATE, 'DAY') -3),NULL,NULL,NULL,
-          NULL,NULL,NULL,NULL,NULL,NULL,
-          NULL,
+          Select F_GET_FIRST_OF_PREV_WEEK(7),NULL,NULL,NULL,
+            NULL,NULL,NULL,NULL,NULL,NULL,
+            NULL,
           'Destory Pallet Charge' AS  "Description",
-          '1' AS "Qty"
+          1 AS "Qty"
           ,0,0,
           38.80 AS  "Pallet Charge Cost",NULL,NULL
           From DUAL
-          And ROWNUM = 1
+          
           
            UNION ALL
           
           --Facilitate ctn/pallet charges - 3 lines
-          Select TO_CHAR(TRUNC(CURRENT_DATE, 'DAY') -3),NULL,NULL,NULL,
+          Select F_GET_FIRST_OF_PREV_WEEK(7),NULL,NULL,NULL,
           NULL,NULL,NULL,NULL,NULL,NULL,
           NULL,
           'Extra Destory Pallet Charge' AS  "Description",
-          '1' AS "Qty"
+          1 AS "Qty"
           ,0,0,
           14.55 AS  "Extra Pallet Charge Cost",NULL,NULL
           From DUAL
-          And ROWNUM = 1
+          
           
            UNION ALL
           
           --Facilitate ctn/pallet charges - 3 lines
-          Select TO_CHAR(TRUNC(CURRENT_DATE, 'DAY') -3),NULL,NULL,NULL,
+          Select F_GET_FIRST_OF_PREV_WEEK(7),NULL,NULL,NULL,
           NULL,NULL,NULL,NULL,NULL,NULL,
           NULL,
           'Destory Carton Charge' AS  "Description",
-          '1' AS "Qty"
+          1 AS "Qty"
           ,0,0,
           2.43 AS  "Carton Charge Cost",NULL,NULL
-          From DUAL
-          And ROWNUM = 1;
+          From DUAL;
           }'; 
         End If;
  --exclude addresses Casselden Place and/or Lonsdale Street - using SH_ADDRESS and SH_SUBURB --- run a seperate query to count despatches per day and apply a flat rate charge once only
---Also need to build query to work out cartons based on the following rates $2.43 per carton & 38.80 per pallet thereafetr 14.55 per pallet
+--Also need to build query to work out cartons based on the following rates $2.43 per carton null80 per pallet thereafetr 14.55 per pallet
 --calc is 64 cartons per pallet eg 707 / 64 = 11.05 pallets
 --          billed at 1 x pallet @ 38.80
 --          10 x pallets @ 14.55
@@ -7826,6 +9928,233 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
   
     END J_EOM_CUSTOMER_FEES_SUP;
                   
+   
+    /*   J Run this once for AAS   */
+    /*   This gets all the Customer Specific Charges   */
+    /*   Temp Tables Used   */
+    /*   1. TMP_CUSTOMER_FEES   */
+    /*   Prism Rate Field Used   */
+    /*   A. RM_XX_FEE32   
+        Need to build into freight consolodation for daily flat rate deliveries
+        as well to build into carton fees
+    */
+    PROCEDURE J_EOM_CUSTOMER_FEES_AAS (
+        p_array_size IN PLS_INTEGER DEFAULT 100
+        ,startdate IN VARCHAR2-- := To_Date('1-Jun-2015') or format date as 01-Jun-15 -- use this when you want the date entered automatically
+        ,enddate IN VARCHAR2-- := To_Date('30-Jun-2015')
+        ,sCustomerCode IN VARCHAR2
+        ,p_filename in varchar2
+        ,sOp IN VARCHAR2
+      )
+      IS
+      TYPE ARRAY IS TABLE OF TMP_CUSTOMER_FEES%ROWTYPE;
+      l_data ARRAY;
+      v_out_tx          VARCHAR2(2000);
+      l_query         VARCHAR2(25000);
+      v_query           VARCHAR2(2000);
+      v_query2          VARCHAR2(32767);
+      nCheckpoint       NUMBER;
+      sCourierm         VARCHAR2(20) := 'COURIERM';
+      sCouriers         VARCHAR2(20) := 'COURIERS';
+      sCourier         VARCHAR2(20) := 'COURIER%';
+      sServ8             VARCHAR2(20) := 'SERV8';
+      sServ3             VARCHAR2(20) := 'SERV%';
+      l_output        utl_file.file_type;
+      l_theCursor     integer default dbms_sql.open_cursor;
+      l_columnValue   varchar2(4000);
+      l_status        integer;
+      l_colCnt        number := 0;
+      l_separator     varchar2(1);
+      l_descTbl       dbms_sql.desc_tab;
+      v_time_taken VARCHAR2(205);
+      sPath VARCHAR2(60) :=  'EOM_ADMIN_ORDERS';
+      l_start number default dbms_utility.get_time;
+      sFileSuffix VARCHAR2(60):= '.csv';
+      sFileTime VARCHAR2(56)  := TO_CHAR(SYSDATE,'YYYYMMDD HH24MISS');
+      filename VARCHAR2(260) := sCustomerCode || '-EOM-ADMIN-ORACLE-' || '-RunBy-' || sOp || '-RunOn-' || startdate || '-TO-' || enddate || '-RunAt-' || sFileTime || sFileSuffix;
+      
+      BEGIN
+      
+        nCheckpoint := 1;
+        DBMS_OUTPUT.PUT_LINE('Checkpoint 1 J_EOM_CUSTOMER_FEES_AAS about to run startdate: ' || startdate ||
+                            ' and enddate: ' || enddate || ' for:  ' || sCustomerCode);
+--        v_query := 'TRUNCATE TABLE TMP_CUSTOMER_FEES';
+--        EXECUTE IMMEDIATE v_query;
+  
+      nCheckpoint := 2;
+      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          --run specific formatting query for superpartners
+           l_query := q'{Select  f1.DESPDATE,f1.ORDERNUM,f1.DESPNOTE,f1.CUSTOMER,
+            f1.ATTENTIONTO,f1.ADDRESS,f1.ADDRESS2,f1.SUBURB,f1.STATE,f1.POSTCODE,
+            f1.ITEM,f1.DESCRIPTION,f1.QTY
+                 ,CASE   WHEN f1.FEETYPE like 'Stock' AND LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE THEN (Select f2.SELLEXCL From DEV_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND f2.FEETYPE = 'Pick Fee'  AND ROWNUM = 1 ) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
+                        ELSE 0
+                        END AS "Line Charge"
+                ,CASE   WHEN f1.FEETYPE like 'Stock' AND LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE THEN (Select f2.SELLEXCL From DEV_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND f2.FEETYPE = 'Handeling Fee is ' ) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
+                        ELSE 0
+                        END AS "Order Despatch Charge"
+                ,CASE   WHEN f1.FEETYPE like 'Stock' AND (LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE)  --AND  ((ADDRESS  NOT LIKE '%Casselden%' Or ADDRESS   NOT LIKE '%2 Lonsdale%')
+                          --OR (ADDRESS2   NOT LIKE '%Casselden%' Or ADDRESS2   NOT LIKE '%2 Lonsdale%')) 
+                        THEN (Select f2.SELLEXCL From DEV_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND (f2.FEETYPE like 'Freight Fee' OR f2.FEETYPE like 'Manual Freight Fee') AND ROWNUM = 1) --AND ((UPPER(ADDRESS) NOT LIKE '%CASSELDEN%' Or UPPER(ADDRESS) NOT LIKE '2 LONSDALE%') OR (UPPER(ADDRESS2) NOT LIKE '%CASSELDEN%' Or UPPER(ADDRESS2) NOT LIKE '2 LONSDALE%')) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
+                        ELSE 0
+                        END AS "Freight Charge",
+          REPLACE(IM_XX_QTY_PER_PACK,'Box of ','') As "QTY",
+          NULL 
+          
+          From DEV_ALL_FEES_F f1, IM
+          Where f1.FEETYPE = 'Stock'
+          AND f1.ITEM = IM_STOCK
+          
+          
+          
+          UNION ALL 
+          
+          
+       Select  f1.DESPDATE,f1.ORDERNUM,f1.DESPNOTE,f1.CUSTOMER,
+            f1.ATTENTIONTO,f1.ADDRESS,f1.ADDRESS2,f1.SUBURB,f1.STATE,f1.POSTCODE,
+            f1.ITEM,f1.DESCRIPTION,f1.QTY
+                 ,CASE   WHEN f1.FEETYPE like 'Pallet In Fee' --AND LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE 
+                        THEN f1.SELLEXCL --(Select f2.SELLEXCL From DEV_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND f2.FEETYPE = 'Pallet In Fee' ) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
+                        ELSE 0
+                        END AS "Pallet In Charge"
+                ,CASE   WHEN f1.FEETYPE like 'SLOWFEEPALLETS' --AND LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE 
+                        THEN f1.SELLEXCL --(Select f2.SELLEXCL From DEV_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND f2.FEETYPE = 'SLOWFEEPALLETS' ) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
+                        ELSE 0
+                        END AS "SLOWFEEPALLETS Charge"
+                ,CASE   WHEN f1.FEETYPE like 'FEEPALLETS' --AND (LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE)  --AND  ((ADDRESS  NOT LIKE '%Casselden%' Or ADDRESS   NOT LIKE '%2 Lonsdale%')
+                          --OR (ADDRESS2   NOT LIKE '%Casselden%' Or ADDRESS2   NOT LIKE '%2 Lonsdale%')) 
+                        THEN f1.SELLEXCL --(Select f2.SELLEXCL From DEV_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND (f2.FEETYPE like 'FEEPALLETS') ) --AND ((UPPER(ADDRESS) NOT LIKE '%CASSELDEN%' Or UPPER(ADDRESS) NOT LIKE '2 LONSDALE%') OR (UPPER(ADDRESS2) NOT LIKE '%CASSELDEN%' Or UPPER(ADDRESS2) NOT LIKE '2 LONSDALE%')) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
+                        WHEN f1.FEETYPE like 'FEESHELFS' 
+                         THEN f1.SELLEXCL
+                        ELSE 0
+                        END AS "STORAGE Charge",
+          REPLACE(IM_XX_QTY_PER_PACK,'Box of ','') As "QTY",
+          NULL 
+          
+          From DEV_ALL_FEES_F f1, IM
+          Where f1.FEETYPE IN  ('FEESHELFS','FEEPALLETS','SLOWFEEPALLETS','Pallet In Fee')
+          AND f1.ITEM = IM_STOCK
+          ;
+          
+          }'; 
+        Else
+          --run specific formatting query for superpartners
+          l_query := q'{Select  f1.DESPDATE,f1.ORDERNUM,f1.DESPNOTE,f1.CUSTOMER,
+            f1.ATTENTIONTO,f1.ADDRESS,f1.ADDRESS2,f1.SUBURB,f1.STATE,f1.POSTCODE,
+            f1.ITEM,f1.DESCRIPTION,f1.QTY
+                 ,CASE   WHEN f1.FEETYPE like 'Stock' AND LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE THEN (Select f2.SELLEXCL From DEV_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND f2.FEETYPE = 'Pick Fee'  AND ROWNUM = 1 ) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
+                        ELSE 0
+                        END AS "Line Charge"
+                ,CASE   WHEN f1.FEETYPE like 'Stock' AND LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE THEN (Select f2.SELLEXCL From DEV_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND f2.FEETYPE = 'Handeling Fee is ' ) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
+                        ELSE 0
+                        END AS "Order Despatch Charge"
+                ,CASE   WHEN f1.FEETYPE like 'Stock' AND (LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE)  --AND  ((ADDRESS  NOT LIKE '%Casselden%' Or ADDRESS   NOT LIKE '%2 Lonsdale%')
+                          --OR (ADDRESS2   NOT LIKE '%Casselden%' Or ADDRESS2   NOT LIKE '%2 Lonsdale%')) 
+                        THEN (Select f2.SELLEXCL From DEV_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND (f2.FEETYPE like 'Freight Fee' OR f2.FEETYPE like 'Manual Freight Fee') AND ROWNUM = 1) --AND ((UPPER(ADDRESS) NOT LIKE '%CASSELDEN%' Or UPPER(ADDRESS) NOT LIKE '2 LONSDALE%') OR (UPPER(ADDRESS2) NOT LIKE '%CASSELDEN%' Or UPPER(ADDRESS2) NOT LIKE '2 LONSDALE%')) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
+                        ELSE 0
+                        END AS "Freight Charge",
+          REPLACE(IM_XX_QTY_PER_PACK,'Box of ','') As "QTY",
+          NULL 
+          
+          From TMP_ALL_FEES_F f1, IM
+          Where f1.FEETYPE = 'Stock'
+          AND f1.ITEM = IM_STOCK
+          
+          
+          
+          UNION ALL 
+          
+          
+       Select  f1.DESPDATE,f1.ORDERNUM,f1.DESPNOTE,f1.CUSTOMER,
+            f1.ATTENTIONTO,f1.ADDRESS,f1.ADDRESS2,f1.SUBURB,f1.STATE,f1.POSTCODE,
+            f1.ITEM,f1.DESCRIPTION,f1.QTY
+                 ,CASE   WHEN f1.FEETYPE like 'Pallet In Fee' --AND LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE 
+                        THEN f1.SELLEXCL --(Select f2.SELLEXCL From DEV_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND f2.FEETYPE = 'Pallet In Fee' ) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
+                        ELSE 0
+                        END AS "Pallet In Charge"
+                ,CASE   WHEN f1.FEETYPE like 'SLOWFEEPALLETS' --AND LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE 
+                        THEN f1.SELLEXCL --(Select f2.SELLEXCL From DEV_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND f2.FEETYPE = 'SLOWFEEPALLETS' ) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
+                        ELSE 0
+                        END AS "SLOWFEEPALLETS Charge"
+                ,CASE   WHEN f1.FEETYPE like 'FEEPALLETS' --AND (LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE)  --AND  ((ADDRESS  NOT LIKE '%Casselden%' Or ADDRESS   NOT LIKE '%2 Lonsdale%')
+                          --OR (ADDRESS2   NOT LIKE '%Casselden%' Or ADDRESS2   NOT LIKE '%2 Lonsdale%')) 
+                        THEN f1.SELLEXCL --(Select f2.SELLEXCL From DEV_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND (f2.FEETYPE like 'FEEPALLETS') ) --AND ((UPPER(ADDRESS) NOT LIKE '%CASSELDEN%' Or UPPER(ADDRESS) NOT LIKE '2 LONSDALE%') OR (UPPER(ADDRESS2) NOT LIKE '%CASSELDEN%' Or UPPER(ADDRESS2) NOT LIKE '2 LONSDALE%')) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
+                        WHEN f1.FEETYPE like 'FEESHELFS' 
+                         THEN f1.SELLEXCL
+                        ELSE 0
+                        END AS "STORAGE Charge",
+          REPLACE(IM_XX_QTY_PER_PACK,'Box of ','') As "QTY",
+          NULL 
+          
+          From TMP_ALL_FEES_F f1, IM
+          Where f1.FEETYPE IN  ('FEESHELFS','FEEPALLETS','SLOWFEEPALLETS','Pallet In Fee')
+          AND f1.ITEM = IM_STOCK
+          ;
+          }'; 
+        End If;
+ --exclude addresses Casselden Place and/or Lonsdale Street - using SH_ADDRESS and SH_SUBURB --- run a seperate query to count despatches per day and apply a flat rate charge once only
+--Also need to build query to work out cartons based on the following rates $2.43 per carton null80 per pallet thereafetr 14.55 per pallet
+--calc is 64 cartons per pallet eg 707 / 64 = 11.05 pallets
+--          billed at 1 x pallet @ 38.80
+--          10 x pallets @ 14.55
+--   			  3 x Cartons @ 2.43         
+       l_output := utl_file.fopen( 'EOM_ADMIN_ORDERS', filename, 'w' );
+       execute immediate 'alter session set nls_date_format=''dd-mon-yyyy hh24:mi:ss''';
+
+       dbms_sql.parse(  l_theCursor,  l_query, dbms_sql.native );
+       dbms_sql.describe_columns( l_theCursor, l_colCnt, l_descTbl );
+
+       for i in 1 .. l_colCnt loop
+           utl_file.put( l_output, l_separator || '"' || l_descTbl(i).col_name || '"');
+           dbms_sql.define_column( l_theCursor, i, l_columnValue, 4000 );
+           l_separator := ',';
+       end loop;
+       utl_file.new_line( l_output );
+
+       l_status := dbms_sql.execute(l_theCursor);
+
+       while ( dbms_sql.fetch_rows(l_theCursor) > 0 ) loop
+           l_separator := '';
+           for i in 1 .. l_colCnt loop
+               dbms_sql.column_value( l_theCursor, i, l_columnValue );
+               utl_file.put( l_output, l_separator || l_columnValue );
+               l_separator := ',';
+           end loop;
+           utl_file.new_line( l_output );
+       end loop;
+       dbms_sql.close_cursor(l_theCursor);
+       utl_file.fclose( l_output );
+
+       execute immediate 'alter session set nls_date_format=''dd-MON-yy'' ';
+       
+      v_query2 :=  SQL%ROWCOUNT;
+    COMMIT;
+  
+    IF v_query2 > 0 THEN
+        v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
+        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'J_EOM_CUSTOMER_FEES_SUP','RM','DEV_CUSTOMER_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+        Else
+          EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'J_EOM_CUSTOMER_FEES_SUP','RM','TMP_CUSTOMER_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+        End If;
+        --DBMS_OUTPUT.PUT_LINE('J_EOM_CUSTOMER_FEES_VHA for the date range '
+       -- || startdate || ' -- ' || enddate || ' - ' || v_query2
+       -- || ' records inserted into table TMP_CUSTOMER_FEES in ' || round((dbms_utility.get_time-l_start)/100, 6)
+       -- || ' Seconds...for customer ' || sCustomerCode );
+      --Else
+        --DBMS_OUTPUT.PUT_LINE('J_EOM_CUSTOMER_FEES_VHA rates are not empty - but there was no data, still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) ||
+       -- ' Seconds...for customer ' || sCustomerCode);
+      END IF;
+    EXCEPTION
+      WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('J_EOM_CUSTOMER_FEES_SUP failed at checkpoint ' || nCheckpoint ||
+                            ' with error ' || SQLCODE || ' : ' || SQLERRM);
+  
+        RAISE;
+  
+    END J_EOM_CUSTOMER_FEES_AAS;
+   
+   
     /*   K1_PAL_DESP_FEES Run this once for each customer   */
     /*   This gets all the Pallet Desp Charges   */
     /*   Temp Tables Used   */
@@ -8319,7 +10648,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
        
         
       IF To_Number(regexp_substr(sCust_Rates,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) != 0 
-        AND sCustomerCode != 'BEYONDBLUE' OR sCustomerCode != 'TABCORP' Then
+        AND sCustomerCode != 'BEYONDBL' OR sCustomerCode != 'TABCORP' Then
       
        -- --DBMS_OUTPUT.PUT_LINE('K3_PAL_IN_FEES rates are $' || sCust_Rates || '. Prism rate field is RM_XX_FEE14.');
         
@@ -8502,7 +10831,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
         
         
       IF To_Number(regexp_substr(sCust_Rates,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) != 0 
-        AND sCustomerCode != 'BEYONDBLUE' OR sCustomerCode != 'TABCORP' Then
+        AND sCustomerCode != 'BEYONDBL' OR sCustomerCode != 'TABCORP' Then
       
        -- --DBMS_OUTPUT.PUT_LINE('K3_PAL_IN_FEES rates are $' || sCust_Rates || '. Prism rate field is RM_XX_FEE14.');
         
@@ -9499,7 +11828,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
        This merges all the Charges from each of the temp tables   
        Temp Tables Used   
        1. TMP_ALL_FEES   */
-    PROCEDURE Y_EOM_TMP_MERGE_ALL_FEES_FINAL(sCustomerCode IN VARCHAR2,sOp IN VARCHAR2) 
+    PROCEDURE Y_EOM_TMP_MERGE_ALL_FEES_FINAL(sCustomerCode IN VARCHAR2,sOp IN VARCHAR2,sAnalysis IN VARCHAR2) 
       IS
       TYPE ARRAY IS TABLE OF TMP_ALL_FEES_F%ROWTYPE;
       l_data ARRAY;
@@ -9662,8 +11991,8 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
 		--  SELECT F_EOM_PROCESS_RUN_CHECK(TO_DATE(end_date, 'DD-MON-YY'),'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL','') INTO v_query_logfile FROM DUAL;
 		--  SELECT F_EOM_PROCESS_RUN_CHECK(TO_DATE(end_date, 'DD-MON-YY'),'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL',sCust_start)INTO v_query_result2 FROM DUAL;
 		--If v_query_logfile = 'RUNBOTH' Then
-		F_EOM_TMP_ALL_FREIGHT_ALL(p_array_size_start,start_date,end_date,sOp);
-		F8_Z_EOM_RUN_FREIGHT(p_array_size_start,start_date,end_date,sCust_start,sFilterBy,sOp); 
+		F_EOM_TMP_ALL_FREIGHT_ALL(p_array_size_start,start_date,end_date,sOp,sAnalysis_Start);
+		F8_Z_EOM_RUN_FREIGHT(p_array_size_start,start_date,end_date,sCust_start,sFilterBy,sOp,sAnalysis_Start); 
 		--DBMS_OUTPUT.PUT_LINE('Running F_EOM_PROCESS_RUN_CHECK for ALL based on to date from EOM logs - v_query_logfile is ' || v_query_logfile || '- for end date being ' || TO_DATE(end_date, 'DD-MON-YY') || ' and process was F_EOM_TMP_ALL_FREIGHT_ALL' );
    
 		--ElsIf v_query_result2  = 'RUNCUST' Then
@@ -9683,7 +12012,10 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
 		--If v_query_logfile = 'RUNBOTH' Then
 		H4_EOM_ALL_STOR_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sOp);
 		H4_EOM_ALL_STOR(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
-		-- DBMS_OUTPUT.PUT_LINE('Running F_EOM_PROCESS_RUN_CHECK for ALL based on to date from EOM logs - v_query_logfile is ' || v_query_logfile || '- for end date being ' || TO_DATE(end_date, 'DD-MON-YY') || ' and process was H4_EOM_ALL_STOR_FEES' );
+		DBMS_OUTPUT.PUT_LINE('Running F_EOM_PROCESS_RUN_CHECK for ALL based on to date from EOM logs - v_query_logfile is ' || 
+    v_query_logfile || '- for end date being ' || TO_DATE(end_date, 'DD-MON-YY') || ' sCust_start was ' || sCust_start || ' and sAnalysis_Start was ' || sAnalysis_Start ||
+    ' and process was H4_EOM_ALL_STOR_FEES' );
+    -- DBMS_OUTPUT.PUT_LINE('Running F_EOM_PROCESS_RUN_CHECK for ALL based on to date from EOM logs - v_query_logfile is ' || v_query_logfile || '- for end date being ' || TO_DATE(end_date, 'DD-MON-YY') || ' and process was H4_EOM_ALL_STOR_FEES' );
 		--ElsIf v_query_result2 = 'RUNCUST' Then
 		-- IQ_EOM_REPORTING.H4_EOM_ALL_STOR(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
 		-- DBMS_OUTPUT.PUT_LINE('Running F_EOM_PROCESS_RUN_CHECK for CUST based on to date from EOM logs - v_query_result2 is ' || v_query_result2 || '-  for end date being ' || TO_DATE(end_date, 'DD-MON-YY') || ' and process was H4_EOM_ALL_STOR_FEES' );
@@ -9901,7 +12233,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
 		If ( sCust_start = 'VHAAUS' ) Then
 			nCheckpoint := 14;
 			J_EOM_CUSTOMER_FEES_VHA(p_array_size_start,start_date,end_date,sCust_start,sOp);
-		ElsIf ( sCust_start = 'BEYONDBLUE' ) Then
+		ElsIf ( sCust_start = 'BEYONDBL' ) Then
 			nCheckpoint := 15;
 			J_EOM_CUSTOMER_FEES_BB(p_array_size_start,start_date,end_date,sCust_start,sOp);
 		ElsIf ( sCust_start = 'WBC' ) Then
@@ -9934,13 +12266,16 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
 		End If;
 		EXECUTE IMMEDIATE v_query;
 		COMMIT;
-		Y_EOM_TMP_MERGE_ALL_FEES_FINAL(sCust_start,sOp);
+		Y_EOM_TMP_MERGE_ALL_FEES_FINAL(sCust_start,sOp,sAnalysis_Start);
 
 		nCheckpoint := 101;
 		----DBMS_OUTPUT.PUT_LINE('START Z TMP_ALL_FEES for ' || sFileName|| ' saved in ' || sPath );
-		If ( sCust_start = 'SUPERPART' ) Then
+		If ( sCust_start = 'V-SUPPAR' ) Then
 			nCheckpoint := 15;
 			J_EOM_CUSTOMER_FEES_SUP(p_array_size_start,start_date,end_date,sCust_start,sFileName,sOp);
+		elsIf ( sCust_start = 'N-AAS' ) Then
+			nCheckpoint := 15;
+			J_EOM_CUSTOMER_FEES_AAS(p_array_size_start,start_date,end_date,sCust_start,sFileName,sOp);
 		Else
 			Z1_TMP_ALL_FEES_TO_CSV(sFileName,sOp);
 		End If;
@@ -10075,9 +12410,11 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
        v_time_taken VARCHAR2(205);
         sPath VARCHAR2(60) :=  'EOM_ADMIN_ORDERS';
         l_start number default dbms_utility.get_time;
+        
    begin
+        --sFileName := sCust_start || '-EOM-ADMIN-ORACLE-' || '-RunBy-' || sOp || '-RunOn-' || start_date || '-TO-' || end_date || '-RunAt-' || sFileTime || sFileSuffix;
          If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
-          l_query  := 'select * from TMP_ALL_FEES_F';
+          l_query  := 'select * from DEV_ALL_FEES_F';
         Else
           l_query  := 'select * from TMP_ALL_FEES_F';
         End IF;
@@ -10207,7 +12544,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
       --AND i.IM_STOCK =  'SUP10121'
       AND e.NE_STRENGTH = 3
       AND e.NE_STATUS != 0 AND e.NE_STATUS != 5 
-      AND i.IM_CUST = gsc_cust_in --'SUPERPART%'
+      AND i.IM_CUST = gsc_cust_in --'V-SUPPAR%'
       ORDER BY i.IM_STOCK Asc;
      --GROUP BY IM_STOCK,IM_CUST,NI_TRAN_TYPE,NI_QUANTITY,NI_AVAIL_ACTUAL, NI_QUARANTINED, NI_STOCK,IM_DESC,NI_STRENGTH,NI_STATUS
      
@@ -10343,7 +12680,7 @@ BEGIN
        --   --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
         --END LOOP;
      FOR rec IN (SELECT RM_CUST FROM RM WHERE RM_XX_EOM_ADMIN = 'ADMIN' AND RM_CUST NOT IN (Select CUST FROM TMP_EOM_LOGS WHERE ORIGIN_PROCESS = 'Z_EOM_RUN_ALL' AND SubStr(LAST_SUC_FIN,0,9) = check_date ))
-     --('VERO','TYNDALL','CGU','LINK','CNH','PROMINA','COLONIALFS','IAG','SUPERPART','LUXOTTICA','BEYONDBLUE','COL_KMART','AMP','AMEX','AAS'))
+     --('VERO','TYNDALL','CGU','LINK','CNH','PROMINA','COLONIALFS','IAG','V-SUPPAR','LUXOTTICA','BEYONDBL','COL_KMART','AMP','AMEX','AAS'))
      LOOP
         i := i + 1;
         --DBMS_OUTPUT.PUT_line ('Running EOM # ' || i || ' cust is  ' || rec.RM_CUST);
@@ -10363,4 +12700,4 @@ BEGIN
   
 
 
-END IQ_EOM_REPORTING;
+END EOM_REPORTING;
