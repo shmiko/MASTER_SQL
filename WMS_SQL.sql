@@ -1507,3 +1507,164 @@ ORDER BY
 	
 	
  select convert(bit, 0) as Tag,  0.0 as ChargeableAmount,  Debtor.[ac no] as CustomerAcNo, debtor.names as CustomerName , DEBTOR.[DATAFLEX RECNUM ONE]  as arcustomerid, loc.location, sum(quantity) as TotalQtyInlocation, CEILING(SUM( quantity / CASE WHEN ISNULL(STKITEM.CATEGORY2,0) = 0 AND ISNULL(STKITEM.CATEGORY3,0) =  0  THEN  GRP.PIECESPERSKID WHEN ISNULL(STKITEM.CATEGORY3,0) = 0 THEN FAM.PIECESPERSKID ELSE CAT.PIECESPERSKID END ))  AS NoOfSkidsAtLocation from stklocln loc   left join stklochd as lochdr on lochdr.location = loc.[location]  and lochdr.ChargeforStorage = 1  left join papsize as StkItem on StkItem.[dataflex recnum one] = loc.[Papsize Recnum]   left outer join (Select [DATAFLEX RECNUM ONE], PIECESPERSKID from stkcateg where level= 1 AND PIECESPERSKID > 0) as grp on grp.[dataflex recnum one] = STKITEM.[category1]   left outer join (Select [DATAFLEX RECNUM ONE], PIECESPERSKID  from stkcateg where level= 2 AND PIECESPERSKID > 0) as fam on fam.[dataflex recnum one] = STKITEM.[category2]  left outer join (Select [DATAFLEX RECNUM ONE], PIECESPERSKID  from stkcateg where level= 3 AND PIECESPERSKID > 0) as cat on cat.[dataflex recnum one] = STKITEM.[category3] LEFT JOIN DEBTOR ON DEBTOR.[DATAFLEX RECNUM ONE] = STKITEM.[CREDITOR RECNUM]  LEFT JOIN mAT_STORBILL ON mAT_STORBILL.AR_CUSTOMERID = DEBTOR.[DATAFLEX RECNUM ONE] left join (SELECT     itm.[creditor recnum], itm.[inventory code], max(isnull(audit.[DATE], itm.[master date])) AS TransDate,    datediff(day, max(isnull(audit.[DATE], itm.[master date])), getdate()) as NoOfDaysInactive,  max(itm.[dataflex recnum one])  AS papsize_recnum  FROM           papsize AS itm  LEFT JOIN (SELECT     stk1.[papsize recnum], max(stk1.[dataflex recnum one]) AS recnum    FROM      stkhist AS stk1 LEFT JOIN    ((SELECT     stkhist.[papsize recnum], max(date) AS lastdt  FROM stkhist   WHERE      stkhist.[type] IN ('JC')  GROUP BY stkhist.[papsize recnum], stkhist.[dataflex recnum one])) AS stk ON   stk1.[papsize recnum] = stk.[papsize recnum] AND stk1.[date] = stk.lastdt   WHERE      stk1.[type] IN ('JC')   GROUP BY stk1.[papsize recnum]) AS stk3 ON stk3.[papsize recnum] = itm.[dataflex recnum one] LEFT JOIN     stkhist AS audit ON audit.[dataflex recnum one] = stk3.recnum AND audit.[papsize recnum] = itm.[dataflex recnum one]  WHERE     itm.chargeforstorage = 1 and  (itm.[STOCK TYPE] = 'F' AND (itm.[SHIP CLASS] = '' OR     ITM.[SHIP CLASS] IS NULL)) AND ITM.[COMPANY CODE] = '01' AND ITM.[PLANT CODE] = '0100' AND itm.[stock type] <> 'M'   GROUP BY itm.[CREDITOR RECNUM], ITM.[INVENTORY CODE]) AS subQry   ON SUBQRY.PAPSIZE_RECNUM = STKITEM.[DATAFLEX RECNUM ONE] where  LOC.QUANTITY > 0 AND  Stkitem.chargeforstorage = 1 and stkitem.[stock type] = 'F' and isnull(stkitem.[ship class],'') = ''   and lochdr.chargeforstorage  = 1  AND   LOCHDR.CHARGEFORSTORAGE = 1 AND DEBTOR.CHARGEFORSTORAGE = 1 AND SUBQRY.NOOFDAYSINACTIVE > MAT_STORBILL.DAYSFREESTORE  group by loc.location, debtor.[dataflex recnum one], debtor.[ac no], debtor.names 
+ 
+ 
+/****** Script for SelectTopNRows command from SSMS  ******/
+declare @asofdate as datetime
+set @asofdate = case when month(getdate()) <> month(dateadd(day, 1, getdate())) then getdate() else dateadd(day, day(getdate()) * -1, getdate()) end
+-- uncomment the below line and give a specific date or leave it as it is to use the first date of the month
+ -- set @asodate = '11/1/2010'
+ select
+	convert(bit, 0) as Tag,
+	0.0 as ChargeableAmount,
+	debtor.[ac no] As CustomerAcNo,
+	debtor.[names],
+	sum(bigqry.NoOfSkidsAtLocation) as ChargebleSkids ,
+	debtor.[dataflex recnum one] as ARCustomerId
+ from
+	debtor
+	Left Join
+	(select
+		DEBTOR.[DATAFLEX RECNUM ONE] as arcustomerid,
+		loc.location,
+		CEILING(SUM( quantity /
+			CASE
+				-- Check to see if cube quantity on item overrides group/family/category
+				WHEN stkitem.[cube quantity] <> 0 THEN stkitem.[cube quantity]
+				WHEN ISNULL(STKITEM.CATEGORY2,0) = 0
+					AND ISNULL(STKITEM.CATEGORY3,0) = 0 THEN GRP.PIECESPERSKID
+				WHEN ISNULL(STKITEM.CATEGORY3,0) = 0 THEN FAM.PIECESPERSKID
+				ELSE CAT.PIECESPERSKID
+			End
+		)) AS NoOfSkidsAtLocation
+		from
+			stklocln loc
+			left join stklochd as lochdr
+				on lochdr.location = loc.[location]
+				and lochdr.ChargeforStorage = 1
+			left join papsize as StkItem
+				on StkItem.[dataflex recnum one] = loc.[Papsize Recnum]
+			left outer join
+			(Select
+				[DATAFLEX RECNUM ONE],
+				PIECESPERSKID
+				from
+					stkcateg
+				where
+					(level = 1 And PIECESPERSKID > 0)
+			) as grp
+			on
+				grp.[dataflex recnum one] = STKITEM.[category1]
+			left outer join
+			(Select
+				[DATAFLEX RECNUM ONE],
+				PIECESPERSKID
+				from
+					stkcateg
+					where
+						(level = 2 And PIECESPERSKID > 0)
+			) as fam
+			on
+				fam.[dataflex recnum one] = STKITEM.[category2]
+			left outer join
+			(Select
+				[DATAFLEX RECNUM ONE],
+				PIECESPERSKID
+				from
+					stkcateg
+				where
+					(level = 3 And PIECESPERSKID > 0)
+			) as cat
+			on
+				cat.[dataflex recnum one] = STKITEM.[category3]
+		LEFT JOIN DEBTOR
+		ON
+			DEBTOR.[DATAFLEX RECNUM ONE] = STKITEM.[CREDITOR RECNUM]
+		LEFT JOIN mAT_STORBILL
+		ON
+			mAT_STORBILL.AR_CUSTOMERID = DEBTOR.[DATAFLEX RECNUM ONE]
+		left join
+		(SELECT
+			itm.[creditor recnum],
+			itm.[inventory code],
+			max(isnull(audit.[DATE], itm.[master date])) AS TransDate,
+			datediff(day,max(isnull(audit.[DATE],itm.[master date])),@asofdate ) as NoOfDaysInactive,
+			max(itm.[dataflex recnum one]) AS papsize_recnum
+			FROM
+				papsize AS itm
+				LEFT JOIN
+				(SELECT
+					stk1.[papsize recnum],
+					max(stk1.[dataflex recnum one]) AS recnum
+					FROM
+						stkhist AS stk1
+					LEFT JOIN
+					(SELECT
+						stkhist.[papsize recnum],
+						max(date) AS lastdt
+						FROM
+							stkhist
+						WHERE
+							stkhist.[type] IN ('JC')
+						GROUP BY
+							stkhist.[papsize recnum],
+							stkhist.[dataflex recnum one]
+					) AS stk
+					ON
+						stk1.[papsize recnum] = stk.[papsize recnum]
+						AND stk1.[date] = stk.lastdt
+					WHERE stk1.[type] IN ('JC')
+					GROUP BY
+						stk1.[papsize recnum]
+				) AS stk3
+ 				ON stk3.[papsize recnum] = itm.[dataflex recnum one]
+				LEFT JOIN
+					stkhist AS audit
+					ON
+						audit.[dataflex recnum one] = stk3.recnum
+						AND audit.[papsize recnum] = itm.[dataflex recnum one]
+						AND audit.date <=
+						case
+							-- If the last day of the month just use today
+							when month(getdate()) <> month(dateadd(day, 1, getdate())) then getdate()
+							-- Otherwise calculate last day of previous month
+							else dateadd(day, day(getdate()) * -1, getdate())
+						End
+					WHERE
+						(itm.chargeforstorage = 1)
+						and (itm.[STOCK TYPE] = 'F'
+							AND (itm.[SHIP CLASS] = ''
+								OR ITM.[SHIP CLASS] IS NULL
+							)
+						)
+						AND ITM.[COMPANY CODE] = '01'
+						AND ITM.[PLANT CODE] = '0100'
+						AND itm.[stock type] <> 'M'
+					GROUP BY
+						itm.[CREDITOR RECNUM], ITM.[INVENTORY CODE]
+			) AS subQry
+			ON
+				SUBQRY.PAPSIZE_RECNUM = STKITEM.[DATAFLEX RECNUM ONE]
+			where
+				(Loc.QUANTITY > 0)
+				AND Stkitem.chargeforstorage = 1
+				and stkitem.[stock type] = 'F'
+				and isnull(stkitem.[ship class],'') = ''
+				and lochdr.chargeforstorage = 1
+				AND MAT_STORBILL.DAYSFREESTORE > 0
+				AND LOCHDR.CHARGEFORSTORAGE = 1
+				AND DEBTOR.CHARGEFORSTORAGE = 1
+				AND SUBQRY.NOOFDAYSINACTIVE > MAT_STORBILL.DAYSFREESTORE
+				-- Filter out customers with specific rates
+			group by
+				loc.location,
+				debtor.[dataflex recnum one]
+	) as bigqry
+	on
+		bigqry.[arcustomerid] = debtor.[dataflex recnum one]
+ where
+	(bigqry.NoOfSkidsAtLocation > 0)
+ group by
+	debtor.[ac no],
+	debtor.[dataflex recnum one],
+	debtor.[names]
