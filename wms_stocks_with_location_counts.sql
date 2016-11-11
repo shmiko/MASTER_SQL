@@ -63,7 +63,7 @@ GROUP BY
 	DEBTOR.NAMES,
 	SUBQRY.CountOfStocks
 ORDER BY
-	CustomerName, --DEBTOR.[DATAFLEX RECNUM ONE],
-	LocationType--, STKLOCHD.[TYPE]	
+	CustomerName, 
+	LocationType
 	  --combined and working
 	  --need to change excel
