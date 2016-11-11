@@ -66,3 +66,4 @@ ORDER BY
 	CustomerName, --DEBTOR.[DATAFLEX RECNUM ONE],
 	LocationType--, STKLOCHD.[TYPE]	
 	  --combined and working
+	  need to change excel
