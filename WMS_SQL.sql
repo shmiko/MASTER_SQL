@@ -1695,3 +1695,31 @@ set @asofdate = case when month(getdate()) <> month(dateadd(day, 1, getdate())) 
 				DEBTOR.[DATAFLEX RECNUM ONE],
 				DEBTOR.[AC NO],
 				DEBTOR.NAMES
+				
+				
+				
+ SELECT Count(DISTINCT PAPSIZE.[INVENTORY CODE]) AS CountOfStocks, STKLOCLN.[LOCATION], DEBTOR.NAMES,
+                        CASE WHEN STKLOCHD.[TYPE] = 'PS' THEN 'E- Pallets'
+                          WHEN STKLOCHD.[TYPE] = 'SH' THEN 'F- Shelves'
+						  ELSE 'unknown'
+                          END AS "Note",NULL,NULL,NULL,NULL
+              FROM STKLOCLN
+				LEFT JOIN STKLOCHD ON STKLOCHD.LOCATION = STKLOCLN.LOCATION AND STKLOCHD.[ChargeForStorage] = 1
+				LEFT JOIN PAPSIZE ON PAPSIZE.[DATAFLEX RECNUM ONE] = STKLOCLN.[PAPSIZE RECNUM]
+				LEFT JOIN DEBTOR ON DEBTOR.[DATAFLEX RECNUM ONE] = PAPSIZE.[CREDITOR RECNUM]
+              WHERE --STKLOCLN.QUANTITY > 0
+				--AND 
+				PAPSIZE.ChargeForStorage = 1
+				AND ISNULL(PAPSIZE.[CREDITOR RECNUM],0) > 0
+				AND ISNULL(DEBTOR.[DATAFLEX RECNUM ONE],0) > 0
+				AND STKLOCHD.ChargeForStorage = 1
+				AND DEBTOR.ChargeForStorage = 1
+				AND STKLOCHD.ChargeForStorage = 1
+				AND DEBTOR.[DATAFLEX RECNUM ONE] = 10 --BUPA
+              GROUP BY 
+				--PAPSIZE.[INVENTORY CODE],
+				STKLOCLN.[LOCATION],
+				STKLOCHD.[Type],
+				DEBTOR.[DATAFLEX RECNUM ONE],
+				DEBTOR.[AC NO],
+				DEBTOR.NAMES
