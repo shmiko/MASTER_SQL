@@ -19,8 +19,9 @@ ISNULL(ShipToAddress.STATE_CODE,'') ShipToStateCode,
 ISNULL(ShipToCountry.COUNTRY_CODE3,'') ShipToCountry,
 ISNULL(ShipToAddress.ZIP_CODE,'') ShipToZipCode, 
 '' Rep,
-'' ReqDate,
-Ord.CREATED_DATE OrderDate, 
+Ord.[NEED_DATE] ReqDate,
+cast(Ord.CREATED_DATE as Date) OrderDate, 
+CAST(Ord.CREATED_DATE AS TIME(0)) OrderTime,
 '' InventoryCode,
 '' UOM,
 '' ID,
@@ -60,8 +61,10 @@ Sol.[LINE_ITEM_NO] SalesOrderLine,
 ''  ShipToCountry,
 ''  ShipToZipCode, 
 '' Rep,
-'' ReqDate,
-Ord.CREATED_DATE OrderDate, 
+Ord.[NEED_DATE] ReqDate,
+cast(Ord.CREATED_DATE as Date) OrderDate, 
+CAST(Ord.CREATED_DATE AS TIME(0)) OrderTime,
+--cast(Ord.CREATED_DATE as time) OrderTime, 
 ISNULL(Sol.INVENTORY_CODE,'') InventoryCode, 
 ISNULL(Sku.[PO UOM DESC],'') UOM,
 ISNULL(Sol.[REVISION_CODE],'') ID,
@@ -77,4 +80,4 @@ INNER JOIN SO_LINE_ITEM Sol ON Ord.SO_ID = SOl.SO_ID
 INNER JOIN DEBTOR Cust ON Cust.[DATAFLEX RECNUM ONE] = Ord.CUST_ID
 INNER JOIN PAPSIZE Sku ON Sku.[INVENTORY CODE] = Sol.INVENTORY_CODE
 
-ORDER BY Ord.CREATED_DATE Desc
+ORDER BY cast(Ord.CREATED_DATE as Date) Desc
