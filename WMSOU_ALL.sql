@@ -28,9 +28,9 @@ Ord.[STATUS_ID] Status,
 '' UOM,
 '' ID,
 '' OrdQty,
-'' BOQty 
+'' BOQty, 
 '' InvQty,
-Ord.[STATUS_ID] Status,
+Ord.[STATUS_ID] Status
 FROM SALES_ORDER Ord 
 INNER JOIN BATCH Inp ON Ord.BATCH_ID = Inp.BATCH_ID 
 INNER JOIN RECIPIENT OrderBy On OrderBy.RECIP_ID = Ord.ORDER_BY_ID 
@@ -75,9 +75,9 @@ ISNULL(Sol.INVENTORY_CODE,'') InventoryCode,
 ISNULL(Sku.[PO UOM DESC],'') UOM,
 ISNULL(Sol.[REVISION_CODE],'') ID,
 ISNULL(Sol.ORDER_QTY,0) OrdQty,
-ISNULL(Sol.BO_QTY,0) BOQty 
-'' InvQty,
-Sol.[STATUS_ID] Status,
+ISNULL(Sol.BO_QTY,0) BOQty, 
+null InvQty,
+Sol.[STATUS_ID] Status
 FROM SALES_ORDER Ord 
 INNER JOIN BATCH Inp ON Ord.BATCH_ID = Inp.BATCH_ID 
 INNER JOIN RECIPIENT OrderBy On OrderBy.RECIP_ID = Ord.ORDER_BY_ID 
