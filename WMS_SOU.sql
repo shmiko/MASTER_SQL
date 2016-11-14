@@ -1,4 +1,6 @@
 SELECT Ord.SO_ID HeaderLink, 
+ISNULL(Cust.[DATAFLEX RECNUM ONE],'') Customer,
+ISNULL(Cust.[AC NO],'') CustomerName,
 ISNULL(Ord.CUST_SO_ID,'') CustomerOrderID, 
 ISNULL(Inp.CUST_BATCH_ID ,'') CustomerBatchID, 
 ISNULL(OrderBy.CUST_RECIP_ID,'') OrderByCustomerRecipientID, 
@@ -56,6 +58,7 @@ INNER JOIN RECIPIENT BillTo On BillTo.RECIP_ID = Ord.BILL_TO_ID
 INNER JOIN FFADDRESS BillToAddress on BillToAddress.ADDRESS_ID = BillTo.DEF_ADDRESS_ID 
 INNER JOIN COUNTRY BillToCountry on BillToCountry.COUNTRY_ID = BillToAddress.COUNTRY_ID 
 INNER JOIN SO_LINE_ITEM Sol ON Ord.SO_ID = SOl.SO_ID 
+INNER JOIN DEBTOR Cust ON Cust.[DATAFLEX RECNUM ONE] = Ord.CUST_ID
 INNER JOIN FFPROJECT proj ON Ord.PROJ_ID = proj.PROJ_ID 
 WHERE --proj.PROJ_NAME = 'Fulfillment' 
 --AND 
