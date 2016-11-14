@@ -22,11 +22,15 @@ ISNULL(ShipToAddress.ZIP_CODE,'') ShipToZipCode,
 Ord.[NEED_DATE] ReqDate,
 cast(Ord.CREATED_DATE as Date) OrderDate, 
 CAST(Ord.CREATED_DATE AS TIME(0)) OrderTime,
+Ord.[CREATED_BY] AddedBy,
+Ord.[STATUS_ID] Status,
 '' InventoryCode,
 '' UOM,
 '' ID,
 '' OrdQty,
-'' BOQty
+'' BOQty 
+'' InvQty,
+Ord.[STATUS_ID] Status,
 FROM SALES_ORDER Ord 
 INNER JOIN BATCH Inp ON Ord.BATCH_ID = Inp.BATCH_ID 
 INNER JOIN RECIPIENT OrderBy On OrderBy.RECIP_ID = Ord.ORDER_BY_ID 
@@ -64,12 +68,16 @@ Sol.[LINE_ITEM_NO] SalesOrderLine,
 Ord.[NEED_DATE] ReqDate,
 cast(Ord.CREATED_DATE as Date) OrderDate, 
 CAST(Ord.CREATED_DATE AS TIME(0)) OrderTime,
+Ord.[CREATED_BY] AddedBy,
+Ord.[STATUS_ID] Status,
 --cast(Ord.CREATED_DATE as time) OrderTime, 
 ISNULL(Sol.INVENTORY_CODE,'') InventoryCode, 
 ISNULL(Sku.[PO UOM DESC],'') UOM,
 ISNULL(Sol.[REVISION_CODE],'') ID,
 ISNULL(Sol.ORDER_QTY,0) OrdQty,
 ISNULL(Sol.BO_QTY,0) BOQty 
+'' InvQty,
+Sol.[STATUS_ID] Status,
 FROM SALES_ORDER Ord 
 INNER JOIN BATCH Inp ON Ord.BATCH_ID = Inp.BATCH_ID 
 INNER JOIN RECIPIENT OrderBy On OrderBy.RECIP_ID = Ord.ORDER_BY_ID 
