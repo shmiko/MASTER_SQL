@@ -74,7 +74,7 @@ Ord.[STATUS_ID] Status,
 ISNULL(Sol.INVENTORY_CODE,'') InventoryCode, 
 ISNULL(Sku.[PO UOM DESC],'') UOM,
 ISNULL(Sol.[REVISION_CODE],'') ID,
-ISNULL(Sol.ORDER_QTY,0) OrdQty,
+ISNULL(Sol.[GROSS_QTY],0) OrdQty,
 ISNULL(Sol.BO_QTY,0) BOQty, 
 null InvQty,
 Sol.[STATUS_ID] Status
