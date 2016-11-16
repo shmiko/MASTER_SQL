@@ -1,3 +1,5 @@
+--CREATE VIEW EOM AS
+
 SELECT
                 CASE 
 				WHEN STKLOCHD.[TYPE] = 'BP' Then 'Pallet Storage Fee (' + CAST([dbo].[ufnGetLocnCountofStocks](STKLOCLN.[LOCATION]) AS VARCHAR) + ' x $' + CAST((Select Charges.charge from Charges where Charges.CustomerID = DEBTOR.[AC NO] AND Charges.chargeType = 'Pallet Storage Fee')/[dbo].[ufnGetLocnCountofStocks](STKLOCLN.[LOCATION]) AS VARCHAR) + ' ea)'
@@ -29,18 +31,12 @@ WHERE
                 AND PAPSIZE.ChargeForStorage = 1
                 AND ISNULL(PAPSIZE.[CREDITOR RECNUM],0) > 0
                 AND ISNULL(DEBTOR.[DATAFLEX RECNUM ONE],0) > 0
-                --AND PAPSIZE.[STOCK TYPE] = 'F'
-                --AND ISNULL(PAPSIZE.[SHIP CLASS],'') = ''
                 AND STKLOCHD.ChargeForStorage = 1
                 AND Mat_StorBill.DAYSFREESTORE > 0
                 AND STKLOCHD.ChargeForStorage = 1
                 AND DEBTOR.ChargeForStorage = 1
-                --AND SUBQRY.DaysInWarehouse > Mat_StorBill.DAYSFREESTORE
-                --AND DEBTOR.[DATAFLEX RECNUM ONE] = 10 --BUPA
+
 
 ORDER BY
-                CustomerName, --DEBTOR.[DATAFLEX RECNUM ONE],
-                LocationType;--, STKLOCHD.[TYPE]            
-                  --combined and working
---OUTPUT TO 'c:\\test\\Printstreamsales.csv'; 
- --INTO OUTFILE 'c:\\test\\Printstreamsales.csv' FIELDS TERMINATED BY ',' LINES TERMINATED BY 'n';
+                CustomerName,
+                LocationType;
