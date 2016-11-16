@@ -22,7 +22,7 @@ ON SO_LINE_ITEM.SO_ID = outRSV.[SO ID]
 
 AND SO_LINE_ITEM.LINE_ITEM_NO = outRSV.[LINE ITEM ID]
 
-WHERE CAST( outRSV.[PAPSIZE CODE] as varchar) =CAST( StkItem.[CODE] as varchar)
+WHERE CAST( outRSV.[PAPSIZE CODE] as varchar) = CAST( StkItem.[CODE] as varchar)
 
 AND [PICK DATE] <= GETDATE() )
 
@@ -123,3 +123,4 @@ AND [STATUS_ID] = 27)
 )
 
 , 0)) > 0
+Order By StkItem.[INVENTORY CODE] Desc
