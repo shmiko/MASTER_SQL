@@ -4909,6 +4909,8 @@ Select
     -- freight_count = 0;
 	
    -- RETURN freight_count;
+   
+   
   END IF;
   EXCEPTION
     WHEN OTHERS THEN
