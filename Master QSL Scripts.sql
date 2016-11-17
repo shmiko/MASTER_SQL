@@ -4908,7 +4908,7 @@ Select
      --DBMS_OUTPUT.PUT_LINE('No markup applied. Result is ' || v_out_tx ); 
     -- freight_count = 0;
 	
-   -- RETURN freight_count;
+   RETURN freight_count;
    
    
   END IF;
