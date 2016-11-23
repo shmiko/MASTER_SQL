@@ -12279,6 +12279,7 @@ create or replace PACKAGE BODY           "EOM_REPORTING" AS
 		Else
 			Z1_TMP_ALL_FEES_TO_CSV(sFileName,sOp);
 		End If;
+		
 		v_query2 :=  SQL%ROWCOUNT;
 		-- --DBMS_OUTPUT.PUT_LINE('Z EOM Successfully Ran EOM_RUN_ALL for ' || sCust_start|| ' in ' ||(round((dbms_utility.get_time-l_start)/100, 2) ||
 		--' Seconds...' );
