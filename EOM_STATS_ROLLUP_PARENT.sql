@@ -64,9 +64,7 @@ GROUP BY ROLLUP ( EOM_REPORT_PKG.f_GetWarehouse_from_SD(d.SD_LOCN),
 HAVING EOM_REPORT_PKG.f_GetWarehouse_from_SD(d.SD_LOCN) LIKE :warehouse
       OR EOM_REPORT_PKG.f_GetWarehouse_from_SD(d.SD_LOCN) LIKE '%'
                              --151 rows in 2.92sec
---ORDER BY 1,2 ASC
-
-
+--ORDER BY 1,2 AS
 
 UNION ALL
 
