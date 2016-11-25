@@ -294,4 +294,4 @@ Select  f1.DESPDATE,f1.ORDERNUM,f1.DESPNOTE,f1.CUSTOMER,
           AND f1.ITEM = IM_STOCK
           
           
-          
+          //test
