@@ -1863,21 +1863,21 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
         nCheckpoint := 2;
          
       
-            OPEN c1Dev;
+            OPEN c1;
             ----DBMS_OUTPUT.PUT_LINE(sShary || '.' );
             LOOP
-            FETCH c1Dev BULK COLLECT INTO l_data LIMIT p_array_size;
+            FETCH c1 BULK COLLECT INTO l_data LIMIT p_array_size;
     
             FORALL i IN 1..l_data.COUNT
             ----DBMS_OUTPUT.PUT_LINE(l_data(10) || '.' );
             INSERT INTO DEV_ALL_FREIGHT_F VALUES l_data(i);
             --USING sCust;
     
-            EXIT WHEN c1Dev%NOTFOUND;
+            EXIT WHEN c1%NOTFOUND;
     
             END LOOP;
             ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-            CLOSE c1Dev;
+            CLOSE c1;
            --FOR i IN l_data.FIRST .. l_data.LAST LOOP
             ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
           --END LOOP;
@@ -2590,7 +2590,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
             v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
             EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'H4_EOM_ALL_STOR','IL','DEV_STOR_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
             sFileName := sCustomerCode || '-H4_EOM_ALL_STOR-' || startdate || '-TO-' || enddate || '-RunOn-' || sFileTime ||  '.csv';
-            Z2_TMP_FEES_TO_CSV(sFileName,'DEV_STOR_FEES',sOp);
+            --Z2_TMP_FEES_TO_CSV(sFileName,'DEV_STOR_FEES',sOp);
             --DBMS_OUTPUT.PUT_LINE('Z2_TMP_FEES_TO_CSV for ' || sFileName || '.' );
             --uncomment above if you want to produce an exported file for all storage, about 5MB every time.
             --COMMIT;
@@ -2609,7 +2609,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
             v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
             EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'H4_EOM_ALL_STOR','IL','TMP_STOR_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
             sFileName := sCustomerCode || '-H4_EOM_ALL_STOR-' || startdate || '-TO-' || enddate || '-RunOn-' || sFileTime ||  '.csv';
-            Z2_TMP_FEES_TO_CSV(sFileName,'TMP_STOR_FEES',sOp);
+            --Z2_TMP_FEES_TO_CSV(sFileName,'TMP_STOR_FEES',sOp);
             --DBMS_OUTPUT.PUT_LINE('Z2_TMP_FEES_TO_CSV for ' || sFileName || '.' );
             --uncomment above if you want to produce an exported file for all storage, about 5MB every time.
             --COMMIT;
@@ -7795,15 +7795,155 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
   
       nCheckpoint := 2;
       If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
-        DBMS_OUTPUT.PUT_LINE('Checkpoint 2 J_EOM_CUSTOMER_FEES_SUP PRJ');
           --run specific formatting query for superpartners
-           l_query := q'{Select  f1.DESPDATE,f1.ORDERNUM,f1.DESPNOTE,f1.CUSTOMER,
+           l_query := q'{
+          --Monday or the first day of the week
+          Select NVL(TO_CHAR(TRUNC(CURRENT_DATE, 'DAY') -7),'') DespDate,NULL,NULL,NULL,
+            NULL,NULL,NULL,NULL,NULL,NULL,
+            NULL,
+           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,0,'DEV') > 0
+          Then 'Daily Van Freight'
+          ELSE NULL
+          END AS  "Description",
+          Case WHEN
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,0,'DEV') > 0 
+          Then
+          NVL(F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,0,'DEV'),'') 
+          END AS "Qty"
+         ,0,0,
+          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,0,'DEV') > 0 
+          Then 30.71
+          ELSE 0
+          END AS  "Freight Cost",NULL,NULL
+          From DEV_ALL_FEES_F f1
+          Where f1.FEETYPE = 'Freight Fee' 
+           AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%2 Lonsdale%')
+          OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%2 Lonsdale%'))
+          --Group by TRUNC(CURRENT_DATE, 'DAY') -6
+          AND f1.DESPDATE = TRUNC(CURRENT_DATE, 'DAY') -7
+          And ROWNUM = 1
+          
+          UNION ALL
+          
+          --Tuesday or the first day of the week
+          Select NVL(TO_CHAR(TRUNC(CURRENT_DATE, 'DAY') -6),'') DespDate,NULL,NULL,NULL,
+            NULL,NULL,NULL,NULL,NULL,NULL,
+            NULL,
+           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,1,'DEV') > 0
+          Then 'Daily Van Freight'
+          ELSE NULL
+          END AS  "Description",
+          Case WHEN
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,1,'DEV') > 0 
+          Then
+          NVL(F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,1,'DEV'),'') 
+          END AS "Qty"
+         ,0,0,
+          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,1,'DEV') > 0 
+          Then 30.71
+          ELSE 0
+          END AS  "Freight Cost",NULL,NULL
+          From DEV_ALL_FEES_F f1
+          Where f1.FEETYPE = 'Freight Fee' 
+           AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%2 Lonsdale%')
+          OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%2 Lonsdale%'))
+          AND f1.DESPDATE = TRUNC(CURRENT_DATE, 'DAY') -6
+          And ROWNUM = 1
+          
+          UNION ALL
+          
+          --Wednesday or the first day of the week
+          Select NVL(TO_CHAR(TRUNC(CURRENT_DATE, 'DAY') -5),'') DespDate,NULL,NULL,NULL,
+            NULL,NULL,NULL,NULL,NULL,NULL,
+            NULL,
+           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,2,'DEV') > 0
+          Then 'Daily Van Freight'
+          ELSE NULL
+          END AS  "Description",
+          Case WHEN
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,2,'DEV') > 0 
+          Then
+          NVL(F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,2,'DEV'),'') 
+          END AS "Qty"
+         ,0,0,
+          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,2,'DEV') > 0 
+          Then 30.71
+          ELSE 0
+          END AS  "Freight Cost",NULL,NULL
+          From DEV_ALL_FEES_F f1
+          Where f1.FEETYPE = 'Freight Fee' 
+           AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%2 Lonsdale%')
+          OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%2 Lonsdale%'))
+          AND f1.DESPDATE = TRUNC(CURRENT_DATE, 'DAY') -5
+          And ROWNUM = 1
+          
+          UNION ALL
+          
+          --Thursday or the first day of the week
+          Select NVL(TO_CHAR(TRUNC(CURRENT_DATE, 'DAY') -4),'') DespDate,NULL,NULL,NULL,
+            NULL,NULL,NULL,NULL,NULL,NULL,
+            NULL,
+           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,3,'DEV') > 0
+          Then 'Daily Van Freight'
+          ELSE NULL
+          END AS  "Description",
+          Case WHEN
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,3,'DEV') > 0 
+          Then
+          NVL(F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,3,'DEV'),'') 
+          END AS "Qty"
+         ,0,0,
+          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,3,'DEV') > 0 
+          Then 30.71
+          ELSE 0
+          END AS  "Freight Cost",NULL,NULL
+          From DEV_ALL_FEES_F f1
+          Where f1.FEETYPE = 'Freight Fee' 
+           AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%2 Lonsdale%')
+          OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%2 Lonsdale%'))
+          AND f1.DESPDATE = TRUNC(CURRENT_DATE, 'DAY') -4
+          And ROWNUM = 1
+          
+          UNION ALL
+          
+          --Friday or the first day of the week
+          Select NVL(TO_CHAR(TRUNC(CURRENT_DATE, 'DAY') -3),'') DespDate,NULL,NULL,NULL,
+            NULL,NULL,NULL,NULL,NULL,NULL,
+            NULL,
+           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,4,'DEV') > 0
+          Then 'Daily Van Freight'
+          ELSE NULL
+          END AS  "Description",
+          Case WHEN
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,4,'DEV') > 0 
+          Then
+          NVL(F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,4,'DEV'),'') 
+          END AS "Qty"
+         ,0,0,
+          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,4,'DEV') > 0 
+          Then 30.71
+          ELSE 0
+          END AS  "Freight Cost",NULL,NULL
+          From DEV_ALL_FEES_F f1
+          Where f1.FEETYPE = 'Freight Fee' 
+           AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%2 Lonsdale%')
+          OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%2 Lonsdale%'))
+          AND f1.DESPDATE = TRUNC(CURRENT_DATE, 'DAY') -3
+          And ROWNUM = 1
+          
+          
+         
+          
+          }'; 
+        Else
+          --run specific formatting query for superpartners
+          l_query := q'{Select  to_date(f1.DESPDATE,'dd/mm/yyyy'),f1.ORDERNUM,f1.DESPNOTE,f1.CUSTOMER,
             f1.ATTENTIONTO,f1.ADDRESS,f1.ADDRESS2,f1.SUBURB,f1.STATE,f1.POSTCODE,
             f1.ITEM,f1.DESCRIPTION,f1.QTY
-                 ,CASE   WHEN f1.FEETYPE like 'Stock' AND LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE THEN (Select f2.SELLEXCL From DEV_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND f2.FEETYPE = 'Pick Fee' AND ROWNUM = 1 ) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
+                 ,CASE   WHEN f1.FEETYPE like 'Stock' AND LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE THEN (Select f2.SELLEXCL From DEV_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND f2.FEETYPE = 'Pick Fee' ) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
                         ELSE 0
                         END AS "Line Charge"
-                ,CASE   WHEN f1.FEETYPE like 'Stock' AND LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE THEN (Select f2.SELLEXCL From DEV_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND f2.FEETYPE = 'Handeling Fee is '  AND ROWNUM = 1) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
+                ,CASE   WHEN f1.FEETYPE like 'Stock' AND LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE THEN (Select f2.SELLEXCL From DEV_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND f2.FEETYPE = 'Handeling Fee is ' ) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
                         ELSE 0
                         END AS "Order Despatch Charge"
                 ,CASE   WHEN f1.FEETYPE like 'Stock' AND (LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE)  AND  ((ADDRESS  NOT LIKE '%Casselden%' Or ADDRESS   NOT LIKE '%2 Lonsdale%')
@@ -7819,645 +7959,183 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           AND f1.ITEM = IM_STOCK
           
           UNION ALL
-          --Monday or the first day of the week
-          Select 
-          CASE  
-            WHEN F_DAY_NUM = 5 THEN TO_CHAR(CURRENT_DATE  - 11) 
-            WHEN F_DAY_NUM = 4 Then TO_CHAR(CURRENT_DATE  - 10)
-            WHEN F_DAY_NUM = 3 Then TO_CHAR(CURRENT_DATE  - 9)
-            WHEN F_DAY_NUM = 2 Then TO_CHAR(CURRENT_DATE  - 8)
-            WHEN F_DAY_NUM = 1 Then TO_CHAR(CURRENT_DATE  - 7)
-          ELSE TO_CHAR(CURRENT_DATE)
-          END AS DESP_DATE,
-          NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,
-          CASE 
-           WHEN F_DAY_NUM = 5 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -11,CURRENT_DATE -11,11,'DEV') > 0 Then 'Daily Van Freight for ' || TO_CHAR(CURRENT_DATE  - 11)
-           WHEN F_DAY_NUM = 4 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -10,CURRENT_DATE -10,10,'DEV') > 0 Then 'Daily Van Freight for ' || TO_CHAR(CURRENT_DATE  - 10)
-           WHEN F_DAY_NUM = 3 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -9,CURRENT_DATE -9,9,'DEV') > 0 Then 'Daily Van Freight for ' || TO_CHAR(CURRENT_DATE  - 9)
-           WHEN F_DAY_NUM = 2 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -8,CURRENT_DATE -8,8,'DEV') > 0 Then 'Daily Van Freight for ' || TO_CHAR(CURRENT_DATE  - 8)
-           WHEN F_DAY_NUM = 1 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -7,CURRENT_DATE -7,7,'DEV') > 0 Then 'Daily Van Freight for ' || TO_CHAR(CURRENT_DATE  - 7)
+         --Monday or the first day of the week
+          Select TO_DATE(F_GET_FIRST_OF_PREV_WEEK(7),'dd/mm/yyyy'),NULL,NULL,NULL,
+            NULL,NULL,NULL,NULL,NULL,NULL,
+            NULL,
+           CASE WHEN F_DAILY_FREIGHT_COUNT2(NULL,NULL,0,'DEV') > 0
+          Then 'Daily Van Freight'
           ELSE NULL
           END AS  "Description",
-          CASE 
-           WHEN F_DAY_NUM = 5 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -11,CURRENT_DATE -11,11,'DEV') > 0 Then F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -11,CURRENT_DATE -11,11,'DEV')
-           WHEN F_DAY_NUM = 4 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -10,CURRENT_DATE -10,10,'DEV') > 0 Then F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -10,CURRENT_DATE -10,10,'DEV')
-           WHEN F_DAY_NUM = 3 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -9,CURRENT_DATE -9,9,'DEV') > 0 Then F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -9,CURRENT_DATE -9,9,'DEV')
-           WHEN F_DAY_NUM = 2 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -8,CURRENT_DATE -8,8,'DEV') > 0 Then F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -8,CURRENT_DATE -8,8,'DEV')
-           WHEN F_DAY_NUM = 1 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -7,CURRENT_DATE -7,7,'DEV') > 0 Then F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -7,CURRENT_DATE -7,7,'DEV')
+          Case WHEN
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,0,'DEV') > 0 
+          Then
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,0,'DEV') 
           END AS "Qty"
-          ,0,0,
-          CASE 
-           WHEN F_DAY_NUM = 5 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -11,CURRENT_DATE -11,11,'DEV') > 0 Then 30.71
-           WHEN F_DAY_NUM = 4 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -10,CURRENT_DATE -10,10,'DEV') > 0 Then 30.71
-           WHEN F_DAY_NUM = 3 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -9,CURRENT_DATE -9,9,'DEV') > 0 Then 30.71
-           WHEN F_DAY_NUM = 2 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -8,CURRENT_DATE -8,8,'DEV') > 0 Then 30.71
-           WHEN F_DAY_NUM = 1 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -7,CURRENT_DATE -7,7,'DEV') > 0 Then 30.71
+         ,0,0,
+          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,0,'DEV') > 0 
+          Then 30.71
           ELSE 0
-          END AS  "Freight Charge Cost",
-          NULL,NULL
+          END AS  "Freight Charge Cost",NULL,NULL
           From DEV_ALL_FEES_F f1
           Where f1.FEETYPE = 'Freight Fee' 
-           AND (INSTR(ADDRESS, 'Casselden') > 0 
-           Or INSTR(ADDRESS, '2 Lonsdale') > 0
-          OR INSTR(ADDRESS2, 'Casselden')  > 0 Or INSTR(ADDRESS2, '2 Lonsdale')  > 0)
-          AND 
-          (CASE 
-            WHEN F_DAY_NUM = 5 THEN TO_CHAR(CURRENT_DATE  - 11) 
-            WHEN F_DAY_NUM = 4 Then TO_CHAR(CURRENT_DATE  - 10)
-            WHEN F_DAY_NUM = 3 Then TO_CHAR(CURRENT_DATE  - 9)
-            WHEN F_DAY_NUM = 2 Then TO_CHAR(CURRENT_DATE  - 8)
-            WHEN F_DAY_NUM = 1 Then TO_CHAR(CURRENT_DATE  - 7)
-            ELSE TO_CHAR(CURRENT_DATE) 
-          END) = TO_CHAR(f1.DESPDATE)
+           AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%2 Lonsdale%')
+          OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%2 Lonsdale%'))
+          --Group by TRUNC(CURRENT_DATE, 'DAY') -6
+          AND f1.DESPDATE = F_GET_FIRST_OF_PREV_WEEK(7)
           And ROWNUM = 1
-          
+          GROUP BY f1.DESPDATE
           UNION ALL
           
-          --Tuesday or the first day of the week
-          Select 
-          CASE  
-            WHEN F_DAY_NUM = 5 THEN TO_CHAR(CURRENT_DATE  - 10) 
-            WHEN F_DAY_NUM = 4 Then TO_CHAR(CURRENT_DATE  - 9)
-            WHEN F_DAY_NUM = 3 Then TO_CHAR(CURRENT_DATE  - 8)
-            WHEN F_DAY_NUM = 2 Then TO_CHAR(CURRENT_DATE  - 7)
-            WHEN F_DAY_NUM = 1 Then TO_CHAR(CURRENT_DATE  - 6)
-          ELSE TO_CHAR(CURRENT_DATE)
-          END AS DESP_DATE,
-          NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,
-          CASE 
-           WHEN F_DAY_NUM = 5 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -11,CURRENT_DATE -11,10,'DEV') > 0 Then 'Daily Van Freight for ' || TO_CHAR(CURRENT_DATE  - 10)
-           WHEN F_DAY_NUM = 4 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -10,CURRENT_DATE -10,9,'DEV') > 0 Then 'Daily Van Freight for ' || TO_CHAR(CURRENT_DATE  - 9)
-           WHEN F_DAY_NUM = 3 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -9,CURRENT_DATE -9,8,'DEV') > 0 Then 'Daily Van Freight for ' || TO_CHAR(CURRENT_DATE  - 8)
-           WHEN F_DAY_NUM = 2 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -8,CURRENT_DATE -8,7,'DEV') > 0 Then 'Daily Van Freight for ' || TO_CHAR(CURRENT_DATE  - 7)
-           WHEN F_DAY_NUM = 1 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -7,CURRENT_DATE -7,6,'DEV') > 0 Then 'Daily Van Freight for ' || TO_CHAR(CURRENT_DATE  - 6)
+          --Tuesday or the first day of the week to_date(CURRENT_DATE,'dd/mm/yyyy')
+          Select to_date(F_GET_FIRST_OF_PREV_WEEK(6),'dd/mm/yyyy'),NULL,NULL,NULL,
+            NULL,NULL,NULL,NULL,NULL,NULL,
+            NULL,
+           CASE WHEN F_DAILY_FREIGHT_COUNT2(NULL,NULL,1,'DEV') > 0
+          Then 'Daily Van Freight'
           ELSE NULL
           END AS  "Description",
-          CASE 
-           WHEN F_DAY_NUM = 5 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -11,CURRENT_DATE -11,10,'DEV') > 0 Then F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -11,CURRENT_DATE -11,10,'DEV')
-           WHEN F_DAY_NUM = 4 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -10,CURRENT_DATE -10,9,'DEV') > 0 Then F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -10,CURRENT_DATE -10,9,'DEV')
-           WHEN F_DAY_NUM = 3 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -9,CURRENT_DATE -9,8,'DEV') > 0 Then F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -9,CURRENT_DATE -9,8,'DEV')
-           WHEN F_DAY_NUM = 2 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -8,CURRENT_DATE -8,7,'DEV') > 0 Then F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -8,CURRENT_DATE -8,7,'DEV')
-           WHEN F_DAY_NUM = 1 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -7,CURRENT_DATE -7,6,'DEV') > 0 Then F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -7,CURRENT_DATE -7,6,'DEV')
+          Case WHEN
+          F_DAILY_FREIGHT_COUNT2(NULL,NULL,1,'DEV') > 0 
+          Then
+          F_DAILY_FREIGHT_COUNT2(NULL,NULL,1,'DEV') 
           END AS "Qty"
-          ,0,0,
-          CASE 
-           WHEN F_DAY_NUM = 5 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -11,CURRENT_DATE -11,10,'DEV') > 0 Then 30.71
-           WHEN F_DAY_NUM = 4 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -10,CURRENT_DATE -10,9,'DEV') > 0 Then 30.71
-           WHEN F_DAY_NUM = 3 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -9,CURRENT_DATE -9,8,'DEV') > 0 Then 30.71
-           WHEN F_DAY_NUM = 2 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -8,CURRENT_DATE -8,7,'DEV') > 0 Then 30.71
-           WHEN F_DAY_NUM = 1 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -7,CURRENT_DATE -7,6,'DEV') > 0 Then 30.71
+         ,0,0,
+          CASE WHEN F_DAILY_FREIGHT_COUNT2(NULL,NULL,1,'DEV') > 0 
+          Then 30.71
           ELSE 0
-          END AS  "Freight Charge Cost",
-          NULL,NULL
+          END AS  "Freight Charge Cost",NULL,NULL
           From DEV_ALL_FEES_F f1
           Where f1.FEETYPE = 'Freight Fee' 
-           AND (INSTR(ADDRESS, 'Casselden') > 0 
-           Or INSTR(ADDRESS, '2 Lonsdale') > 0
-          OR INSTR(ADDRESS2, 'Casselden')  > 0 Or INSTR(ADDRESS2, '2 Lonsdale')  > 0)
-          AND 
-          (CASE 
-            WHEN F_DAY_NUM = 5 THEN TO_CHAR(CURRENT_DATE  - 10) 
-            WHEN F_DAY_NUM = 4 Then TO_CHAR(CURRENT_DATE  - 9)
-            WHEN F_DAY_NUM = 3 Then TO_CHAR(CURRENT_DATE  - 8)
-            WHEN F_DAY_NUM = 2 Then TO_CHAR(CURRENT_DATE  - 7)
-            WHEN F_DAY_NUM = 1 Then TO_CHAR(CURRENT_DATE  - 6)
-            ELSE TO_CHAR(CURRENT_DATE) 
-          END) = TO_CHAR(f1.DESPDATE)
+           AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%2 Lonsdale%')
+          OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%2 Lonsdale%'))
+          AND f1.DESPDATE = F_GET_FIRST_OF_PREV_WEEK(6)
           And ROWNUM = 1
-          
+          GROUP BY f1.DESPDATE
           UNION ALL
           
           --Wednesday or the first day of the week
-          Select 
-          CASE  
-            WHEN F_DAY_NUM = 5 THEN TO_CHAR(CURRENT_DATE  - 9) 
-            WHEN F_DAY_NUM = 4 Then TO_CHAR(CURRENT_DATE  - 8)
-            WHEN F_DAY_NUM = 3 Then TO_CHAR(CURRENT_DATE  - 7)
-            WHEN F_DAY_NUM = 2 Then TO_CHAR(CURRENT_DATE  - 6)
-            WHEN F_DAY_NUM = 1 Then TO_CHAR(CURRENT_DATE  - 5)
-          ELSE TO_CHAR(CURRENT_DATE)
-          END AS DESP_DATE,
-          NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,
-          CASE 
-           WHEN F_DAY_NUM = 5 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -11,CURRENT_DATE -11,9,'DEV') > 0 Then 'Daily Van Freight for ' || TO_CHAR(CURRENT_DATE  - 9)
-           WHEN F_DAY_NUM = 4 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -10,CURRENT_DATE -10,8,'DEV') > 0 Then 'Daily Van Freight for ' || TO_CHAR(CURRENT_DATE  - 8)
-           WHEN F_DAY_NUM = 3 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -9,CURRENT_DATE -9,7,'DEV') > 0 Then 'Daily Van Freight for ' || TO_CHAR(CURRENT_DATE  - 7)
-           WHEN F_DAY_NUM = 2 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -8,CURRENT_DATE -8,6,'DEV') > 0 Then 'Daily Van Freight for ' || TO_CHAR(CURRENT_DATE  - 6)
-           WHEN F_DAY_NUM = 1 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -7,CURRENT_DATE -7,5,'DEV') > 0 Then 'Daily Van Freight for ' || TO_CHAR(CURRENT_DATE  - 5)
+          Select F_GET_FIRST_OF_PREV_WEEK(5),NULL,NULL,NULL,
+            NULL,NULL,NULL,NULL,NULL,NULL,
+            NULL,
+           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,2,'DEV') > 0
+          Then 'Daily Van Freight'
           ELSE NULL
           END AS  "Description",
-          CASE 
-           WHEN F_DAY_NUM = 5 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -11,CURRENT_DATE -11,9,'DEV') > 0 Then F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -11,CURRENT_DATE -11,9,'DEV')
-           WHEN F_DAY_NUM = 4 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -10,CURRENT_DATE -10,8,'DEV') > 0 Then F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -10,CURRENT_DATE -10,8,'DEV')
-           WHEN F_DAY_NUM = 3 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -9,CURRENT_DATE -9,7,'DEV') > 0 Then F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -9,CURRENT_DATE -9,7,'DEV')
-           WHEN F_DAY_NUM = 2 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -8,CURRENT_DATE -8,6,'DEV') > 0 Then F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -8,CURRENT_DATE -8,6,'DEV')
-           WHEN F_DAY_NUM = 1 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -7,CURRENT_DATE -7,5,'DEV') > 0 Then F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -7,CURRENT_DATE -7,5,'DEV')
+          Case WHEN
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,2,'DEV') > 0 
+          Then
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,2,'DEV') 
           END AS "Qty"
-          ,0,0,
-          CASE 
-           WHEN F_DAY_NUM = 5 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -11,CURRENT_DATE -11,9,'DEV') > 0 Then 30.71
-           WHEN F_DAY_NUM = 4 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -10,CURRENT_DATE -10,8,'DEV') > 0 Then 30.71
-           WHEN F_DAY_NUM = 3 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -9,CURRENT_DATE -9,7,'DEV') > 0 Then 30.71
-           WHEN F_DAY_NUM = 2 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -8,CURRENT_DATE -8,6,'DEV') > 0 Then 30.71
-           WHEN F_DAY_NUM = 1 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -7,CURRENT_DATE -7,5,'DEV') > 0 Then 30.71
+         ,0,0,
+          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,2,'DEV') > 0 
+          Then 30.71
           ELSE 0
-          END AS  "Freight Charge Cost",
-          NULL,NULL
+          END AS  "Freight Charge Cost",NULL,NULL
           From DEV_ALL_FEES_F f1
           Where f1.FEETYPE = 'Freight Fee' 
-           AND (INSTR(ADDRESS, 'Casselden') > 0 
-           Or INSTR(ADDRESS, '2 Lonsdale') > 0
-          OR INSTR(ADDRESS2, 'Casselden')  > 0 Or INSTR(ADDRESS2, '2 Lonsdale')  > 0)
-          AND 
-          (CASE 
-            WHEN F_DAY_NUM = 5 THEN TO_CHAR(CURRENT_DATE  - 9) 
-            WHEN F_DAY_NUM = 4 Then TO_CHAR(CURRENT_DATE  - 8)
-            WHEN F_DAY_NUM = 3 Then TO_CHAR(CURRENT_DATE  - 7)
-            WHEN F_DAY_NUM = 2 Then TO_CHAR(CURRENT_DATE  - 6)
-            WHEN F_DAY_NUM = 1 Then TO_CHAR(CURRENT_DATE  - 5)
-            ELSE TO_CHAR(CURRENT_DATE) 
-          END) = TO_CHAR(f1.DESPDATE)
+           AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%2 Lonsdale%')
+          OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%2 Lonsdale%'))
+          AND f1.DESPDATE = F_GET_FIRST_OF_PREV_WEEK(5)
           And ROWNUM = 1
-          
+          GROUP BY f1.DESPDATE
           UNION ALL
           
           --Thursday or the first day of the week
-          Select 
-          CASE  
-            WHEN F_DAY_NUM = 5 THEN TO_CHAR(CURRENT_DATE  - 8) 
-            WHEN F_DAY_NUM = 4 Then TO_CHAR(CURRENT_DATE  - 7)
-            WHEN F_DAY_NUM = 3 Then TO_CHAR(CURRENT_DATE  - 6)
-            WHEN F_DAY_NUM = 2 Then TO_CHAR(CURRENT_DATE  - 5)
-            WHEN F_DAY_NUM = 1 Then TO_CHAR(CURRENT_DATE  - 4)
-          ELSE TO_CHAR(CURRENT_DATE)
-          END AS DESP_DATE,
-          NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,
-          CASE 
-           WHEN F_DAY_NUM = 5 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -11,CURRENT_DATE -11,8,'DEV') > 0 Then 'Daily Van Freight for ' || TO_CHAR(CURRENT_DATE  - 8)
-           WHEN F_DAY_NUM = 4 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -10,CURRENT_DATE -10,7,'DEV') > 0 Then 'Daily Van Freight for ' || TO_CHAR(CURRENT_DATE  - 7)
-           WHEN F_DAY_NUM = 3 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -9,CURRENT_DATE -9,6,'DEV') > 0 Then 'Daily Van Freight for ' || TO_CHAR(CURRENT_DATE  - 6)
-           WHEN F_DAY_NUM = 2 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -8,CURRENT_DATE -8,5,'DEV') > 0 Then 'Daily Van Freight for ' || TO_CHAR(CURRENT_DATE  - 5)
-           WHEN F_DAY_NUM = 1 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -7,CURRENT_DATE -7,4,'DEV') > 0 Then 'Daily Van Freight for ' || TO_CHAR(CURRENT_DATE  - 4)
+          Select F_GET_FIRST_OF_PREV_WEEK(4),NULL,NULL,NULL,
+            NULL,NULL,NULL,NULL,NULL,NULL,
+            NULL,
+           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,3,'DEV') > 0
+          Then 'Daily Van Freight'
           ELSE NULL
           END AS  "Description",
-          CASE 
-           WHEN F_DAY_NUM = 5 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -11,CURRENT_DATE -11,8,'DEV') > 0 Then F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -11,CURRENT_DATE -11,8,'DEV')
-           WHEN F_DAY_NUM = 4 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -10,CURRENT_DATE -10,7,'DEV') > 0 Then F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -10,CURRENT_DATE -10,7,'DEV')
-           WHEN F_DAY_NUM = 3 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -9,CURRENT_DATE -9,6,'DEV') > 0 Then F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -9,CURRENT_DATE -9,6,'DEV')
-           WHEN F_DAY_NUM = 2 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -8,CURRENT_DATE -8,5,'DEV') > 0 Then F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -8,CURRENT_DATE -8,5,'DEV')
-           WHEN F_DAY_NUM = 1 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -7,CURRENT_DATE -7,4,'DEV') > 0 Then F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -7,CURRENT_DATE -7,4,'DEV')
+          Case WHEN
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,3,'DEV') > 0 
+          Then
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,3,'DEV') 
           END AS "Qty"
-          ,0,0,
-          CASE 
-           WHEN F_DAY_NUM = 5 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -11,CURRENT_DATE -11,8,'DEV') > 0 Then 30.71
-           WHEN F_DAY_NUM = 4 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -10,CURRENT_DATE -10,7,'DEV') > 0 Then 30.71
-           WHEN F_DAY_NUM = 3 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -9,CURRENT_DATE -9,6,'DEV') > 0 Then 30.71
-           WHEN F_DAY_NUM = 2 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -8,CURRENT_DATE -8,5,'DEV') > 0 Then 30.71
-           WHEN F_DAY_NUM = 1 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -7,CURRENT_DATE -7,4,'DEV') > 0 Then 30.71
+         ,0,0,
+          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,3,'DEV') > 0 
+          Then 30.71
           ELSE 0
-          END AS  "Freight Charge Cost",
-          NULL,NULL
+          END AS  "Freight Charge Cost",NULL,NULL
           From DEV_ALL_FEES_F f1
           Where f1.FEETYPE = 'Freight Fee' 
-           AND (INSTR(ADDRESS, 'Casselden') > 0 
-           Or INSTR(ADDRESS, '2 Lonsdale') > 0
-          OR INSTR(ADDRESS2, 'Casselden')  > 0 Or INSTR(ADDRESS2, '2 Lonsdale')  > 0)
-          AND 
-          (CASE 
-            WHEN F_DAY_NUM = 5 THEN TO_CHAR(CURRENT_DATE  - 8) 
-            WHEN F_DAY_NUM = 4 Then TO_CHAR(CURRENT_DATE  - 7)
-            WHEN F_DAY_NUM = 3 Then TO_CHAR(CURRENT_DATE  - 6)
-            WHEN F_DAY_NUM = 2 Then TO_CHAR(CURRENT_DATE  - 5)
-            WHEN F_DAY_NUM = 1 Then TO_CHAR(CURRENT_DATE  - 4)
-            ELSE TO_CHAR(CURRENT_DATE) 
-          END) = TO_CHAR(f1.DESPDATE)
+           AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%2 Lonsdale%')
+          OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%2 Lonsdale%'))
+          AND f1.DESPDATE = F_GET_FIRST_OF_PREV_WEEK(4)
           And ROWNUM = 1
-          
+          GROUP BY f1.DESPDATE
           UNION ALL
           
           --Friday or the first day of the week
-          Select 
-          CASE  
-           WHEN F_DAY_NUM = 5 THEN TO_CHAR(CURRENT_DATE  - 7) 
-            WHEN F_DAY_NUM = 4 Then TO_CHAR(CURRENT_DATE  - 6)
-            WHEN F_DAY_NUM = 3 Then TO_CHAR(CURRENT_DATE  - 5)
-            WHEN F_DAY_NUM = 2 Then TO_CHAR(CURRENT_DATE  - 4)
-            WHEN F_DAY_NUM = 1 Then TO_CHAR(CURRENT_DATE  - 3)
-          ELSE TO_CHAR(CURRENT_DATE)
-          END AS DESP_DATE,
-          NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,
-          CASE 
-           WHEN F_DAY_NUM = 5 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -11,CURRENT_DATE -11,7,'DEV') > 0 Then 'Daily Van Freight for ' || TO_CHAR(CURRENT_DATE  - 7)
-           WHEN F_DAY_NUM = 4 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -10,CURRENT_DATE -10,6,'DEV') > 0 Then 'Daily Van Freight for ' || TO_CHAR(CURRENT_DATE  - 6)
-           WHEN F_DAY_NUM = 3 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -9,CURRENT_DATE -9,5,'DEV') > 0 Then 'Daily Van Freight for ' || TO_CHAR(CURRENT_DATE  - 5)
-           WHEN F_DAY_NUM = 2 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -8,CURRENT_DATE -8,4,'DEV') > 0 Then 'Daily Van Freight for ' || TO_CHAR(CURRENT_DATE  - 4)
-           WHEN F_DAY_NUM = 1 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -7,CURRENT_DATE -7,3,'DEV') > 0 Then 'Daily Van Freight for ' || TO_CHAR(CURRENT_DATE  - 3)
+          Select F_GET_FIRST_OF_PREV_WEEK(3),NULL,NULL,NULL,
+            NULL,NULL,NULL,NULL,NULL,NULL,
+            NULL,
+            
+           CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,4,'DEV') > 0
+          Then 'Daily Van Freight'
           ELSE NULL
           END AS  "Description",
-          CASE 
-           WHEN F_DAY_NUM = 5 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -11,CURRENT_DATE -11,7,'DEV') > 0 Then F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -11,CURRENT_DATE -11,7,'DEV')
-           WHEN F_DAY_NUM = 4 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -10,CURRENT_DATE -10,6,'DEV') > 0 Then F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -10,CURRENT_DATE -10,6,'DEV')
-           WHEN F_DAY_NUM = 3 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -9,CURRENT_DATE -9,5,'DEV') > 0 Then F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -9,CURRENT_DATE -9,5,'DEV')
-           WHEN F_DAY_NUM = 2 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -8,CURRENT_DATE -8,4,'DEV') > 0 Then F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -8,CURRENT_DATE -8,4,'DEV')
-           WHEN F_DAY_NUM = 1 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -7,CURRENT_DATE -7,3,'DEV') > 0 Then F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -7,CURRENT_DATE -7,3,'DEV')
+          
+          Case WHEN
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,4,'DEV') > 0 
+          Then
+          F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,4,'DEV') 
           END AS "Qty"
-          ,0,0,
-          CASE 
-           WHEN F_DAY_NUM = 5 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -11,CURRENT_DATE -11,7,'DEV') > 0 Then 30.71
-           WHEN F_DAY_NUM = 4 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -10,CURRENT_DATE -10,6,'DEV') > 0 Then 30.71
-           WHEN F_DAY_NUM = 3 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -9,CURRENT_DATE -9,5,'DEV') > 0 Then 30.71
-           WHEN F_DAY_NUM = 2 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -8,CURRENT_DATE -8,4,'DEV') > 0 Then 30.71
-           WHEN F_DAY_NUM = 1 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -7,CURRENT_DATE -7,3,'DEV') > 0 Then 30.71
+          
+         ,0,0,
+         
+          CASE WHEN F_DAILY_FREIGHT_COUNT2(TRUNC(CURRENT_DATE, 'DAY') -6,TRUNC(CURRENT_DATE, 'DAY') -6,4,'DEV') > 0 
+          Then 30.71
           ELSE 0
           END AS  "Freight Charge Cost",
+          
           NULL,NULL
           From DEV_ALL_FEES_F f1
           Where f1.FEETYPE = 'Freight Fee' 
-           AND (INSTR(ADDRESS, 'Casselden') > 0 
-           Or INSTR(ADDRESS, '2 Lonsdale') > 0
-          OR INSTR(ADDRESS2, 'Casselden')  > 0 Or INSTR(ADDRESS2, '2 Lonsdale')  > 0)
-          AND 
-          (CASE 
-            WHEN F_DAY_NUM = 5 THEN TO_CHAR(CURRENT_DATE  - 7) 
-            WHEN F_DAY_NUM = 4 Then TO_CHAR(CURRENT_DATE  - 6)
-            WHEN F_DAY_NUM = 3 Then TO_CHAR(CURRENT_DATE  - 5)
-            WHEN F_DAY_NUM = 2 Then TO_CHAR(CURRENT_DATE  - 4)
-            WHEN F_DAY_NUM = 1 Then TO_CHAR(CURRENT_DATE  - 3)
-            ELSE TO_CHAR(CURRENT_DATE) 
-          END) = TO_CHAR(f1.DESPDATE)
+           AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%2 Lonsdale%')
+          OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%2 Lonsdale%'))
+          AND f1.DESPDATE = F_GET_FIRST_OF_PREV_WEEK(3)
           And ROWNUM = 1
-          
+          GROUP BY f1.DESPDATE
           UNION ALL
           
           --Facilitate ctn/pallet charges - 3 lines
-          Select TO_CHAR(TRUNC(CURRENT_DATE, 'DAY') -3),NULL,NULL,NULL,
-          NULL,NULL,NULL,NULL,NULL,NULL,
-          NULL,
-          'Destroy Pallet Charge' AS  "Description",
+          Select F_GET_FIRST_OF_PREV_WEEK(7),NULL,NULL,NULL,
+            NULL,NULL,NULL,NULL,NULL,NULL,
+            NULL,
+          'Destory Pallet Charge' AS  "Description",
           1 AS "Qty"
           ,0,0,
           38.80 AS  "Pallet Charge Cost",NULL,NULL
           From DUAL
-          Where ROWNUM = 1
+          
           
            UNION ALL
           
           --Facilitate ctn/pallet charges - 3 lines
-          Select TO_CHAR(TRUNC(CURRENT_DATE, 'DAY') -3),NULL,NULL,NULL,
+          Select F_GET_FIRST_OF_PREV_WEEK(7),NULL,NULL,NULL,
           NULL,NULL,NULL,NULL,NULL,NULL,
           NULL,
-          'Extra Destroy Pallet Charge' AS  "Description",
+          'Extra Destory Pallet Charge' AS  "Description",
           1 AS "Qty"
           ,0,0,
           14.55 AS  "Extra Pallet Charge Cost",NULL,NULL
           From DUAL
-          Where ROWNUM = 1
+          
           
            UNION ALL
           
           --Facilitate ctn/pallet charges - 3 lines
-          Select TO_CHAR(TRUNC(CURRENT_DATE, 'DAY') -3),NULL,NULL,NULL,
+          Select F_GET_FIRST_OF_PREV_WEEK(7),NULL,NULL,NULL,
           NULL,NULL,NULL,NULL,NULL,NULL,
           NULL,
-          'Destroy Carton Charge' AS  "Description",
+          'Destory Carton Charge' AS  "Description",
           1 AS "Qty"
           ,0,0,
           2.43 AS  "Carton Charge Cost",NULL,NULL
           From DUAL
-          Where ROWNUM = 1
-          
-          }'; 
-        Else
-          DBMS_OUTPUT.PUT_LINE('Checkpoint 2 J_EOM_CUSTOMER_FEES_SUP NOT PRJ');
-          --run specific formatting query for superpartners
-          l_query := q'{Select  f1.DESPDATE,f1.ORDERNUM,f1.DESPNOTE,f1.CUSTOMER,
-            f1.ATTENTIONTO,f1.ADDRESS,f1.ADDRESS2,f1.SUBURB,f1.STATE,f1.POSTCODE,
-            f1.ITEM,f1.DESCRIPTION,f1.QTY
-                 ,CASE   WHEN f1.FEETYPE like 'Stock' AND LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE THEN (Select f2.SELLEXCL From TMP_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND f2.FEETYPE = 'Pick Fee' AND ROWNUM = 1 ) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
-                        ELSE 0
-                        END AS "Line Charge"
-                ,CASE   WHEN f1.FEETYPE like 'Stock' AND LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE THEN (Select f2.SELLEXCL From TMP_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND f2.FEETYPE = 'Handeling Fee is '  AND ROWNUM = 1) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
-                        ELSE 0
-                        END AS "Order Despatch Charge"
-                ,CASE   WHEN f1.FEETYPE like 'Stock' AND (LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE)  AND  ((ADDRESS  NOT LIKE '%Casselden%' Or ADDRESS   NOT LIKE '%2 Lonsdale%')
-                          OR (ADDRESS2   NOT LIKE '%Casselden%' Or ADDRESS2   NOT LIKE '%2 Lonsdale%')) 
-                        THEN (Select f2.SELLEXCL From TMP_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND (f2.FEETYPE like 'Freight Fee' OR f2.FEETYPE like 'Manual Freight Fee') AND ROWNUM = 1) --AND ((UPPER(ADDRESS) NOT LIKE '%CASSELDEN%' Or UPPER(ADDRESS) NOT LIKE '2 LONSDALE%') OR (UPPER(ADDRESS2) NOT LIKE '%CASSELDEN%' Or UPPER(ADDRESS2) NOT LIKE '2 LONSDALE%')) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
-                        ELSE 0
-                        END AS "Freight Charge",
-          REPLACE(IM_XX_QTY_PER_PACK,'Box of ','') As "QTY",
-          NULL 
-          
-          From TMP_ALL_FEES_F f1, IM
-          Where f1.FEETYPE = 'Stock'
-          AND f1.ITEM = IM_STOCK
-          
-          UNION ALL
-          --Monday or the first day of the week
-          Select 
-          CASE  
-            WHEN F_DAY_NUM = 5 THEN TO_CHAR(CURRENT_DATE  - 11) 
-            WHEN F_DAY_NUM = 4 Then TO_CHAR(CURRENT_DATE  - 10)
-            WHEN F_DAY_NUM = 3 Then TO_CHAR(CURRENT_DATE  - 9)
-            WHEN F_DAY_NUM = 2 Then TO_CHAR(CURRENT_DATE  - 8)
-            WHEN F_DAY_NUM = 1 Then TO_CHAR(CURRENT_DATE  - 7)
-          ELSE TO_CHAR(CURRENT_DATE)
-          END AS DESP_DATE,
-          NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,
-          CASE 
-           WHEN F_DAY_NUM = 5 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -11,CURRENT_DATE -11,11,'TMP') > 0 Then 'Daily Van Freight for ' || TO_CHAR(CURRENT_DATE  - 11)
-           WHEN F_DAY_NUM = 4 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -10,CURRENT_DATE -10,10,'TMP') > 0 Then 'Daily Van Freight for ' || TO_CHAR(CURRENT_DATE  - 10)
-           WHEN F_DAY_NUM = 3 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -9,CURRENT_DATE -9,9,'TMP') > 0 Then 'Daily Van Freight for ' || TO_CHAR(CURRENT_DATE  - 9)
-           WHEN F_DAY_NUM = 2 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -8,CURRENT_DATE -8,8,'TMP') > 0 Then 'Daily Van Freight for ' || TO_CHAR(CURRENT_DATE  - 8)
-           WHEN F_DAY_NUM = 1 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -7,CURRENT_DATE -7,7,'TMP') > 0 Then 'Daily Van Freight for ' || TO_CHAR(CURRENT_DATE  - 7)
-          ELSE NULL
-          END AS  "Description",
-          CASE 
-           WHEN F_DAY_NUM = 5 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -11,CURRENT_DATE -11,11,'TMP') > 0 Then F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -11,CURRENT_DATE -11,11,'TMP')
-           WHEN F_DAY_NUM = 4 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -10,CURRENT_DATE -10,10,'TMP') > 0 Then F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -10,CURRENT_DATE -10,10,'TMP')
-           WHEN F_DAY_NUM = 3 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -9,CURRENT_DATE -9,9,'TMP') > 0 Then F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -9,CURRENT_DATE -9,9,'TMP')
-           WHEN F_DAY_NUM = 2 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -8,CURRENT_DATE -8,8,'TMP') > 0 Then F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -8,CURRENT_DATE -8,8,'TMP')
-           WHEN F_DAY_NUM = 1 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -7,CURRENT_DATE -7,7,'TMP') > 0 Then F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -7,CURRENT_DATE -7,7,'TMP')
-          END AS "Qty"
-          ,0,0,
-          CASE 
-           WHEN F_DAY_NUM = 5 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -11,CURRENT_DATE -11,11,'TMP') > 0 Then 30.71
-           WHEN F_DAY_NUM = 4 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -10,CURRENT_DATE -10,10,'TMP') > 0 Then 30.71
-           WHEN F_DAY_NUM = 3 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -9,CURRENT_DATE -9,9,'TMP') > 0 Then 30.71
-           WHEN F_DAY_NUM = 2 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -8,CURRENT_DATE -8,8,'TMP') > 0 Then 30.71
-           WHEN F_DAY_NUM = 1 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -7,CURRENT_DATE -7,7,'TMP') > 0 Then 30.71
-          ELSE 0
-          END AS  "Freight Charge Cost",
-          NULL,NULL
-          From TMP_ALL_FEES_F f1
-          Where f1.FEETYPE = 'Freight Fee' 
-           AND (INSTR(ADDRESS, 'Casselden') > 0 
-           Or INSTR(ADDRESS, '2 Lonsdale') > 0
-          OR INSTR(ADDRESS2, 'Casselden')  > 0 Or INSTR(ADDRESS2, '2 Lonsdale')  > 0)
-          AND 
-          (CASE 
-            WHEN F_DAY_NUM = 5 THEN TO_CHAR(CURRENT_DATE  - 11) 
-            WHEN F_DAY_NUM = 4 Then TO_CHAR(CURRENT_DATE  - 10)
-            WHEN F_DAY_NUM = 3 Then TO_CHAR(CURRENT_DATE  - 9)
-            WHEN F_DAY_NUM = 2 Then TO_CHAR(CURRENT_DATE  - 8)
-            WHEN F_DAY_NUM = 1 Then TO_CHAR(CURRENT_DATE  - 7)
-            ELSE TO_CHAR(CURRENT_DATE) 
-          END) = TO_CHAR(f1.DESPDATE)
-          And ROWNUM = 1
-          
-          UNION ALL
-          
-          --Tuesday or the first day of the week
-          Select 
-          CASE  
-            WHEN F_DAY_NUM = 5 THEN TO_CHAR(CURRENT_DATE  - 10) 
-            WHEN F_DAY_NUM = 4 Then TO_CHAR(CURRENT_DATE  - 9)
-            WHEN F_DAY_NUM = 3 Then TO_CHAR(CURRENT_DATE  - 8)
-            WHEN F_DAY_NUM = 2 Then TO_CHAR(CURRENT_DATE  - 7)
-            WHEN F_DAY_NUM = 1 Then TO_CHAR(CURRENT_DATE  - 6)
-          ELSE TO_CHAR(CURRENT_DATE)
-          END AS DESP_DATE,
-          NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,
-          CASE 
-           WHEN F_DAY_NUM = 5 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -11,CURRENT_DATE -11,10,'TMP') > 0 Then 'Daily Van Freight for ' || TO_CHAR(CURRENT_DATE  - 10)
-           WHEN F_DAY_NUM = 4 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -10,CURRENT_DATE -10,9,'TMP') > 0 Then 'Daily Van Freight for ' || TO_CHAR(CURRENT_DATE  - 9)
-           WHEN F_DAY_NUM = 3 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -9,CURRENT_DATE -9,8,'TMP') > 0 Then 'Daily Van Freight for ' || TO_CHAR(CURRENT_DATE  - 8)
-           WHEN F_DAY_NUM = 2 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -8,CURRENT_DATE -8,7,'TMP') > 0 Then 'Daily Van Freight for ' || TO_CHAR(CURRENT_DATE  - 7)
-           WHEN F_DAY_NUM = 1 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -7,CURRENT_DATE -7,6,'TMP') > 0 Then 'Daily Van Freight for ' || TO_CHAR(CURRENT_DATE  - 6)
-          ELSE NULL
-          END AS  "Description",
-          CASE 
-           WHEN F_DAY_NUM = 5 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -11,CURRENT_DATE -11,10,'TMP') > 0 Then F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -11,CURRENT_DATE -11,10,'TMP')
-           WHEN F_DAY_NUM = 4 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -10,CURRENT_DATE -10,9,'TMP') > 0 Then F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -10,CURRENT_DATE -10,9,'TMP')
-           WHEN F_DAY_NUM = 3 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -9,CURRENT_DATE -9,8,'TMP') > 0 Then F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -9,CURRENT_DATE -9,8,'TMP')
-           WHEN F_DAY_NUM = 2 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -8,CURRENT_DATE -8,7,'TMP') > 0 Then F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -8,CURRENT_DATE -8,7,'TMP')
-           WHEN F_DAY_NUM = 1 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -7,CURRENT_DATE -7,6,'TMP') > 0 Then F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -7,CURRENT_DATE -7,6,'TMP')
-          END AS "Qty"
-          ,0,0,
-          CASE 
-           WHEN F_DAY_NUM = 5 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -11,CURRENT_DATE -11,10,'TMP') > 0 Then 30.71
-           WHEN F_DAY_NUM = 4 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -10,CURRENT_DATE -10,9,'TMP') > 0 Then 30.71
-           WHEN F_DAY_NUM = 3 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -9,CURRENT_DATE -9,8,'TMP') > 0 Then 30.71
-           WHEN F_DAY_NUM = 2 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -8,CURRENT_DATE -8,7,'TMP') > 0 Then 30.71
-           WHEN F_DAY_NUM = 1 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -7,CURRENT_DATE -7,6,'TMP') > 0 Then 30.71
-          ELSE 0
-          END AS  "Freight Charge Cost",
-          NULL,NULL
-          From TMP_ALL_FEES_F f1
-          Where f1.FEETYPE = 'Freight Fee' 
-           AND (INSTR(ADDRESS, 'Casselden') > 0 
-           Or INSTR(ADDRESS, '2 Lonsdale') > 0
-          OR INSTR(ADDRESS2, 'Casselden')  > 0 Or INSTR(ADDRESS2, '2 Lonsdale')  > 0)
-          AND 
-          (CASE 
-            WHEN F_DAY_NUM = 5 THEN TO_CHAR(CURRENT_DATE  - 10) 
-            WHEN F_DAY_NUM = 4 Then TO_CHAR(CURRENT_DATE  - 9)
-            WHEN F_DAY_NUM = 3 Then TO_CHAR(CURRENT_DATE  - 8)
-            WHEN F_DAY_NUM = 2 Then TO_CHAR(CURRENT_DATE  - 7)
-            WHEN F_DAY_NUM = 1 Then TO_CHAR(CURRENT_DATE  - 6)
-            ELSE TO_CHAR(CURRENT_DATE) 
-          END) = TO_CHAR(f1.DESPDATE)
-          And ROWNUM = 1
-          
-          UNION ALL
-          
-          --Wednesday or the first day of the week
-          Select 
-          CASE  
-            WHEN F_DAY_NUM = 5 THEN TO_CHAR(CURRENT_DATE  - 9) 
-            WHEN F_DAY_NUM = 4 Then TO_CHAR(CURRENT_DATE  - 8)
-            WHEN F_DAY_NUM = 3 Then TO_CHAR(CURRENT_DATE  - 7)
-            WHEN F_DAY_NUM = 2 Then TO_CHAR(CURRENT_DATE  - 6)
-            WHEN F_DAY_NUM = 1 Then TO_CHAR(CURRENT_DATE  - 5)
-          ELSE TO_CHAR(CURRENT_DATE)
-          END AS DESP_DATE,
-          NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,
-          CASE 
-           WHEN F_DAY_NUM = 5 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -11,CURRENT_DATE -11,9,'TMP') > 0 Then 'Daily Van Freight for ' || TO_CHAR(CURRENT_DATE  - 9)
-           WHEN F_DAY_NUM = 4 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -10,CURRENT_DATE -10,8,'TMP') > 0 Then 'Daily Van Freight for ' || TO_CHAR(CURRENT_DATE  - 8)
-           WHEN F_DAY_NUM = 3 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -9,CURRENT_DATE -9,7,'TMP') > 0 Then 'Daily Van Freight for ' || TO_CHAR(CURRENT_DATE  - 7)
-           WHEN F_DAY_NUM = 2 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -8,CURRENT_DATE -8,6,'TMP') > 0 Then 'Daily Van Freight for ' || TO_CHAR(CURRENT_DATE  - 6)
-           WHEN F_DAY_NUM = 1 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -7,CURRENT_DATE -7,5,'TMP') > 0 Then 'Daily Van Freight for ' || TO_CHAR(CURRENT_DATE  - 5)
-          ELSE NULL
-          END AS  "Description",
-          CASE 
-           WHEN F_DAY_NUM = 5 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -11,CURRENT_DATE -11,9,'TMP') > 0 Then F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -11,CURRENT_DATE -11,9,'TMP')
-           WHEN F_DAY_NUM = 4 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -10,CURRENT_DATE -10,8,'TMP') > 0 Then F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -10,CURRENT_DATE -10,8,'TMP')
-           WHEN F_DAY_NUM = 3 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -9,CURRENT_DATE -9,7,'TMP') > 0 Then F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -9,CURRENT_DATE -9,7,'TMP')
-           WHEN F_DAY_NUM = 2 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -8,CURRENT_DATE -8,6,'TMP') > 0 Then F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -8,CURRENT_DATE -8,6,'TMP')
-           WHEN F_DAY_NUM = 1 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -7,CURRENT_DATE -7,5,'TMP') > 0 Then F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -7,CURRENT_DATE -7,5,'TMP')
-          END AS "Qty"
-          ,0,0,
-          CASE 
-           WHEN F_DAY_NUM = 5 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -11,CURRENT_DATE -11,9,'TMP') > 0 Then 30.71
-           WHEN F_DAY_NUM = 4 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -10,CURRENT_DATE -10,8,'TMP') > 0 Then 30.71
-           WHEN F_DAY_NUM = 3 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -9,CURRENT_DATE -9,7,'TMP') > 0 Then 30.71
-           WHEN F_DAY_NUM = 2 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -8,CURRENT_DATE -8,6,'TMP') > 0 Then 30.71
-           WHEN F_DAY_NUM = 1 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -7,CURRENT_DATE -7,5,'TMP') > 0 Then 30.71
-          ELSE 0
-          END AS  "Freight Charge Cost",
-          NULL,NULL
-          From TMP_ALL_FEES_F f1
-          Where f1.FEETYPE = 'Freight Fee' 
-           AND (INSTR(ADDRESS, 'Casselden') > 0 
-           Or INSTR(ADDRESS, '2 Lonsdale') > 0
-          OR INSTR(ADDRESS2, 'Casselden')  > 0 Or INSTR(ADDRESS2, '2 Lonsdale')  > 0)
-          AND 
-          (CASE 
-            WHEN F_DAY_NUM = 5 THEN TO_CHAR(CURRENT_DATE  - 9) 
-            WHEN F_DAY_NUM = 4 Then TO_CHAR(CURRENT_DATE  - 8)
-            WHEN F_DAY_NUM = 3 Then TO_CHAR(CURRENT_DATE  - 7)
-            WHEN F_DAY_NUM = 2 Then TO_CHAR(CURRENT_DATE  - 6)
-            WHEN F_DAY_NUM = 1 Then TO_CHAR(CURRENT_DATE  - 5)
-            ELSE TO_CHAR(CURRENT_DATE) 
-          END) = TO_CHAR(f1.DESPDATE)
-          And ROWNUM = 1
-          
-          UNION ALL
-          
-          --Thursday or the first day of the week
-          Select 
-          CASE  
-            WHEN F_DAY_NUM = 5 THEN TO_CHAR(CURRENT_DATE  - 8) 
-            WHEN F_DAY_NUM = 4 Then TO_CHAR(CURRENT_DATE  - 7)
-            WHEN F_DAY_NUM = 3 Then TO_CHAR(CURRENT_DATE  - 6)
-            WHEN F_DAY_NUM = 2 Then TO_CHAR(CURRENT_DATE  - 5)
-            WHEN F_DAY_NUM = 1 Then TO_CHAR(CURRENT_DATE  - 4)
-          ELSE TO_CHAR(CURRENT_DATE)
-          END AS DESP_DATE,
-          NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,
-          CASE 
-           WHEN F_DAY_NUM = 5 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -11,CURRENT_DATE -11,8,'TMP') > 0 Then 'Daily Van Freight for ' || TO_CHAR(CURRENT_DATE  - 8)
-           WHEN F_DAY_NUM = 4 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -10,CURRENT_DATE -10,7,'TMP') > 0 Then 'Daily Van Freight for ' || TO_CHAR(CURRENT_DATE  - 7)
-           WHEN F_DAY_NUM = 3 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -9,CURRENT_DATE -9,6,'TMP') > 0 Then 'Daily Van Freight for ' || TO_CHAR(CURRENT_DATE  - 6)
-           WHEN F_DAY_NUM = 2 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -8,CURRENT_DATE -8,5,'TMP') > 0 Then 'Daily Van Freight for ' || TO_CHAR(CURRENT_DATE  - 5)
-           WHEN F_DAY_NUM = 1 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -7,CURRENT_DATE -7,4,'TMP') > 0 Then 'Daily Van Freight for ' || TO_CHAR(CURRENT_DATE  - 4)
-          ELSE NULL
-          END AS  "Description",
-          CASE 
-           WHEN F_DAY_NUM = 5 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -11,CURRENT_DATE -11,8,'TMP') > 0 Then F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -11,CURRENT_DATE -11,8,'TMP')
-           WHEN F_DAY_NUM = 4 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -10,CURRENT_DATE -10,7,'TMP') > 0 Then F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -10,CURRENT_DATE -10,7,'TMP')
-           WHEN F_DAY_NUM = 3 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -9,CURRENT_DATE -9,6,'TMP') > 0 Then F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -9,CURRENT_DATE -9,6,'TMP')
-           WHEN F_DAY_NUM = 2 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -8,CURRENT_DATE -8,5,'TMP') > 0 Then F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -8,CURRENT_DATE -8,5,'TMP')
-           WHEN F_DAY_NUM = 1 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -7,CURRENT_DATE -7,4,'TMP') > 0 Then F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -7,CURRENT_DATE -7,4,'TMP')
-          END AS "Qty"
-          ,0,0,
-          CASE 
-           WHEN F_DAY_NUM = 5 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -11,CURRENT_DATE -11,8,'TMP') > 0 Then 30.71
-           WHEN F_DAY_NUM = 4 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -10,CURRENT_DATE -10,7,'TMP') > 0 Then 30.71
-           WHEN F_DAY_NUM = 3 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -9,CURRENT_DATE -9,6,'TMP') > 0 Then 30.71
-           WHEN F_DAY_NUM = 2 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -8,CURRENT_DATE -8,5,'TMP') > 0 Then 30.71
-           WHEN F_DAY_NUM = 1 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -7,CURRENT_DATE -7,4,'TMP') > 0 Then 30.71
-          ELSE 0
-          END AS  "Freight Charge Cost",
-          NULL,NULL
-          From TMP_ALL_FEES_F f1
-          Where f1.FEETYPE = 'Freight Fee' 
-           AND (INSTR(ADDRESS, 'Casselden') > 0 
-           Or INSTR(ADDRESS, '2 Lonsdale') > 0
-          OR INSTR(ADDRESS2, 'Casselden')  > 0 Or INSTR(ADDRESS2, '2 Lonsdale')  > 0)
-          AND 
-          (CASE 
-            WHEN F_DAY_NUM = 5 THEN TO_CHAR(CURRENT_DATE  - 8) 
-            WHEN F_DAY_NUM = 4 Then TO_CHAR(CURRENT_DATE  - 7)
-            WHEN F_DAY_NUM = 3 Then TO_CHAR(CURRENT_DATE  - 6)
-            WHEN F_DAY_NUM = 2 Then TO_CHAR(CURRENT_DATE  - 5)
-            WHEN F_DAY_NUM = 1 Then TO_CHAR(CURRENT_DATE  - 4)
-            ELSE TO_CHAR(CURRENT_DATE) 
-          END) = TO_CHAR(f1.DESPDATE)
-          And ROWNUM = 1
-          
-          UNION ALL
-          
-          --Friday or the first day of the week
-          Select 
-          CASE  
-           WHEN F_DAY_NUM = 5 THEN TO_CHAR(CURRENT_DATE  - 7) 
-            WHEN F_DAY_NUM = 4 Then TO_CHAR(CURRENT_DATE  - 6)
-            WHEN F_DAY_NUM = 3 Then TO_CHAR(CURRENT_DATE  - 5)
-            WHEN F_DAY_NUM = 2 Then TO_CHAR(CURRENT_DATE  - 4)
-            WHEN F_DAY_NUM = 1 Then TO_CHAR(CURRENT_DATE  - 3)
-          ELSE TO_CHAR(CURRENT_DATE)
-          END AS DESP_DATE,
-          NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,
-          CASE 
-           WHEN F_DAY_NUM = 5 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -11,CURRENT_DATE -11,7,'TMP') > 0 Then 'Daily Van Freight for ' || TO_CHAR(CURRENT_DATE  - 7)
-           WHEN F_DAY_NUM = 4 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -10,CURRENT_DATE -10,6,'TMP') > 0 Then 'Daily Van Freight for ' || TO_CHAR(CURRENT_DATE  - 6)
-           WHEN F_DAY_NUM = 3 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -9,CURRENT_DATE -9,5,'TMP') > 0 Then 'Daily Van Freight for ' || TO_CHAR(CURRENT_DATE  - 5)
-           WHEN F_DAY_NUM = 2 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -8,CURRENT_DATE -8,4,'TMP') > 0 Then 'Daily Van Freight for ' || TO_CHAR(CURRENT_DATE  - 4)
-           WHEN F_DAY_NUM = 1 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -7,CURRENT_DATE -7,3,'TMP') > 0 Then 'Daily Van Freight for ' || TO_CHAR(CURRENT_DATE  - 3)
-          ELSE NULL
-          END AS  "Description",
-          CASE 
-           WHEN F_DAY_NUM = 5 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -11,CURRENT_DATE -11,7,'TMP') > 0 Then F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -11,CURRENT_DATE -11,7,'TMP')
-           WHEN F_DAY_NUM = 4 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -10,CURRENT_DATE -10,6,'TMP') > 0 Then F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -10,CURRENT_DATE -10,6,'TMP')
-           WHEN F_DAY_NUM = 3 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -9,CURRENT_DATE -9,5,'TMP') > 0 Then F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -9,CURRENT_DATE -9,5,'TMP')
-           WHEN F_DAY_NUM = 2 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -8,CURRENT_DATE -8,4,'TMP') > 0 Then F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -8,CURRENT_DATE -8,4,'TMP')
-           WHEN F_DAY_NUM = 1 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -7,CURRENT_DATE -7,3,'TMP') > 0 Then F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -7,CURRENT_DATE -7,3,'TMP')
-          END AS "Qty"
-          ,0,0,
-          CASE 
-           WHEN F_DAY_NUM = 5 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -11,CURRENT_DATE -11,7,'TMP') > 0 Then 30.71
-           WHEN F_DAY_NUM = 4 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -10,CURRENT_DATE -10,6,'TMP') > 0 Then 30.71
-           WHEN F_DAY_NUM = 3 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -9,CURRENT_DATE -9,5,'TMP') > 0 Then 30.71
-           WHEN F_DAY_NUM = 2 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -8,CURRENT_DATE -8,4,'TMP') > 0 Then 30.71
-           WHEN F_DAY_NUM = 1 AND F_DAILY_FREIGHT_COUNT2(CURRENT_DATE -7,CURRENT_DATE -7,3,'TMP') > 0 Then 30.71
-          ELSE 0
-          END AS  "Freight Charge Cost",
-          NULL,NULL
-          From TMP_ALL_FEES_F f1
-          Where f1.FEETYPE = 'Freight Fee' 
-           AND (INSTR(ADDRESS, 'Casselden') > 0 
-           Or INSTR(ADDRESS, '2 Lonsdale') > 0
-          OR INSTR(ADDRESS2, 'Casselden')  > 0 Or INSTR(ADDRESS2, '2 Lonsdale')  > 0)
-          AND 
-          (CASE 
-            WHEN F_DAY_NUM = 5 THEN TO_CHAR(CURRENT_DATE  - 7) 
-            WHEN F_DAY_NUM = 4 Then TO_CHAR(CURRENT_DATE  - 6)
-            WHEN F_DAY_NUM = 3 Then TO_CHAR(CURRENT_DATE  - 5)
-            WHEN F_DAY_NUM = 2 Then TO_CHAR(CURRENT_DATE  - 4)
-            WHEN F_DAY_NUM = 1 Then TO_CHAR(CURRENT_DATE  - 3)
-            ELSE TO_CHAR(CURRENT_DATE) 
-          END) = TO_CHAR(f1.DESPDATE)
-          And ROWNUM = 1
-          
-          UNION ALL
-          
-          --Facilitate ctn/pallet charges - 3 lines
-          Select TO_CHAR(TRUNC(CURRENT_DATE, 'DAY') -3),NULL,NULL,NULL,
-          NULL,NULL,NULL,NULL,NULL,NULL,
-          NULL,
-          'Destroy Pallet Charge' AS  "Description",
-          1 AS "Qty"
-          ,0,0,
-          38.80 AS  "Pallet Charge Cost",NULL,NULL
-          From DUAL
-          Where ROWNUM = 1
-          
-           UNION ALL
-          
-          --Facilitate ctn/pallet charges - 3 lines
-          Select TO_CHAR(TRUNC(CURRENT_DATE, 'DAY') -3),NULL,NULL,NULL,
-          NULL,NULL,NULL,NULL,NULL,NULL,
-          NULL,
-          'Extra Destroy Pallet Charge' AS  "Description",
-          1 AS "Qty"
-          ,0,0,
-          14.55 AS  "Extra Pallet Charge Cost",NULL,NULL
-          From DUAL
-          Where ROWNUM = 1
-          
-           UNION ALL
-          
-          --Facilitate ctn/pallet charges - 3 lines
-          Select TO_CHAR(TRUNC(CURRENT_DATE, 'DAY') -3),NULL,NULL,NULL,
-          NULL,NULL,NULL,NULL,NULL,NULL,
-          NULL,
-          'Destroy Carton Charge' AS  "Description",
-          1 AS "Qty"
-          ,0,0,
-          2.43 AS  "Carton Charge Cost",NULL,NULL
-          From DUAL
-          Where ROWNUM = 1
           }'; 
         End If;
  --exclude addresses Casselden Place and/or Lonsdale Street - using SH_ADDRESS and SH_SUBURB --- run a seperate query to count despatches per day and apply a flat rate charge once only
@@ -8492,14 +8170,13 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
        end loop;
        dbms_sql.close_cursor(l_theCursor);
        utl_file.fclose( l_output );
-       
+
        execute immediate 'alter session set nls_date_format=''dd-MON-yy'' ';
        
       v_query2 :=  SQL%ROWCOUNT;
     COMMIT;
   
     IF v_query2 > 0 THEN
-        DBMS_OUTPUT.PUT_LINE('END J_EOM_CUSTOMER_FEES_SUP PRJ, v_query2 ' || v_query2);
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
         If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
           EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'J_EOM_CUSTOMER_FEES_SUP','RM','DEV_CUSTOMER_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
@@ -8513,9 +8190,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
       --Else
         --DBMS_OUTPUT.PUT_LINE('J_EOM_CUSTOMER_FEES_VHA rates are not empty - but there was no data, still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) ||
        -- ' Seconds...for customer ' || sCustomerCode);
-    ELSE
-       DBMS_OUTPUT.PUT_LINE('END FAILED J_EOM_CUSTOMER_FEES_SUP PRJ, v_query2 ' || v_query2);
-    END IF;
+      END IF;
     EXCEPTION
       WHEN OTHERS THEN
         DBMS_OUTPUT.PUT_LINE('J_EOM_CUSTOMER_FEES_SUP failed at checkpoint ' || nCheckpoint ||
@@ -8586,11 +8261,12 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
                  ,CASE   WHEN f1.FEETYPE like 'Stock' AND LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE THEN (Select f2.SELLEXCL From DEV_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND f2.FEETYPE = 'Pick Fee'  AND ROWNUM = 1 ) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
                         ELSE 0
                         END AS "Line Charge"
-                ,CASE   WHEN f1.FEETYPE like 'Stock' AND LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE THEN (Select f2.SELLEXCL From DEV_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND f2.FEETYPE = 'Handeling Fee is ' AND ROWNUM = 1) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
+                ,CASE   WHEN f1.FEETYPE like 'Stock' AND LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE THEN (Select f2.SELLEXCL From DEV_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND f2.FEETYPE = 'Handeling Fee is ' ) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
                         ELSE 0
                         END AS "Order Despatch Charge"
-                ,CASE   WHEN f1.FEETYPE like 'Stock' AND (LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE)  
-                        THEN (Select f2.SELLEXCL From DEV_ALL_FEES_F f2 Where f2.DESPNOTE = f1.DESPNOTE AND (f2.FEETYPE like 'Freight Fee' OR f2.FEETYPE like 'Manual Freight Fee') AND ROWNUM = 1) --AND ((UPPER(ADDRESS) NOT LIKE '%CASSELDEN%' Or UPPER(ADDRESS) NOT LIKE '2 LONSDALE%') OR (UPPER(ADDRESS2) NOT LIKE '%CASSELDEN%' Or UPPER(ADDRESS2) NOT LIKE '2 LONSDALE%')) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
+                ,CASE   WHEN f1.FEETYPE like 'Stock' AND (LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE)  --AND  ((ADDRESS  NOT LIKE '%Casselden%' Or ADDRESS   NOT LIKE '%2 Lonsdale%')
+                          --OR (ADDRESS2   NOT LIKE '%Casselden%' Or ADDRESS2   NOT LIKE '%2 Lonsdale%')) 
+                        THEN (Select f2.SELLEXCL From DEV_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND (f2.FEETYPE like 'Freight Fee' OR f2.FEETYPE like 'Manual Freight Fee') AND ROWNUM = 1) --AND ((UPPER(ADDRESS) NOT LIKE '%CASSELDEN%' Or UPPER(ADDRESS) NOT LIKE '2 LONSDALE%') OR (UPPER(ADDRESS2) NOT LIKE '%CASSELDEN%' Or UPPER(ADDRESS2) NOT LIKE '2 LONSDALE%')) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
                         ELSE 0
                         END AS "Freight Charge",
           REPLACE(IM_XX_QTY_PER_PACK,'Box of ','') As "QTY",
@@ -8640,7 +8316,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
                  ,CASE   WHEN f1.FEETYPE like 'Stock' AND LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE THEN (Select f2.SELLEXCL From DEV_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND f2.FEETYPE = 'Pick Fee'  AND ROWNUM = 1 ) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
                         ELSE 0
                         END AS "Line Charge"
-                ,CASE   WHEN f1.FEETYPE like 'Stock' AND LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE THEN (Select f2.SELLEXCL From DEV_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND f2.FEETYPE = 'Handeling Fee is ' AND ROWNUM = 1) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
+                ,CASE   WHEN f1.FEETYPE like 'Stock' AND LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE THEN (Select f2.SELLEXCL From DEV_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND f2.FEETYPE = 'Handeling Fee is ' ) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
                         ELSE 0
                         END AS "Order Despatch Charge"
                 ,CASE   WHEN f1.FEETYPE like 'Stock' AND (LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE)  --AND  ((ADDRESS  NOT LIKE '%Casselden%' Or ADDRESS   NOT LIKE '%2 Lonsdale%')
@@ -10519,15 +10195,19 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
 			v_query  := 'TRUNCATE TABLE Tmp_Group_Cust';
 		End If;
 		EXECUTE IMMEDIATE v_query;
-		
+    
+    --If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+    --DBMS_OUTPUT.PUT_LINE('1st Need to run Tmp_Group_Cust for' || someVariable || ' as table is empty.' );
+    --End If;
 		--Select (F_EOM_CHECK_LOG(v_tmp_date ,'Tmp_Group_Cust','A_EOM_GROUP_CUST')) INTO v_query_logfile From Dual;--v_query := q'{Select EOM_REPORT_PKG_TEST.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
 		--If UPPER(v_query_logfile) != UPPER(v_tmp_date) Then
+    
     If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
       If F_IS_TABLE_EEMPTY('Dev_Group_Cust') <= 0 Then
-        --DBMS_OUTPUT.PUT_LINE('1st Need to run Tmp_Group_Cust for all customers as table is empty.' );
+        DBMS_OUTPUT.PUT_LINE('1st Need to run Tmp_Group_Cust for all customers as table is empty.' );
         A_EOM_GROUP_CUST(sOp);
-        --Else
-        --DBMS_OUTPUT.PUT_LINE('1st No Need to run Tmp_Group_Cust for all customers as table is full of data - saved another 5 seconds.' );
+      Else
+        DBMS_OUTPUT.PUT_LINE('1st No Need to run Tmp_Group_Cust for all customers as table is full of data - saved another 5 seconds.' );
       End If;
     Else
       If F_IS_TABLE_EEMPTY('Tmp_Group_Cust') <= 0 Then
@@ -10544,7 +10224,8 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
     If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
       Select (F_EOM_CHECK_LOG(v_tmp_date ,'DEV_ADMIN_DATA_PICK_LINECOUNTS','B_EOM_START_RUN_ONCE_DATA',sOp)) INTO v_query_logfile From Dual;--v_query := q'{Select EOM_REPORT_PKG_TEST.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
       If F_IS_TABLE_EEMPTY('DEV_ADMIN_DATA_PICK_LINECOUNTS') <= 0 Then
-        --DBMS_OUTPUT.PUT_LINE('2nd Need to RUN_ONCE TMP_ADMIN_DATA_PICK_LINECOUNTS as B_EOM_START_RUN_ONCE_DATA for all customers as table is empty. result was ' || UPPER(v_query_logfile) || ' and end date was ' ||  UPPER(v_tmp_date) );
+        		
+        DBMS_OUTPUT.PUT_LINE('2nd Need to RUN_ONCE TMP_ADMIN_DATA_PICK_LINECOUNTS as B_EOM_START_RUN_ONCE_DATA for all customers as table is empty. result was ' || UPPER(v_query_logfile) || ' and end date was ' ||  UPPER(v_tmp_date) );
         B_EOM_START_RUN_ONCE_DATA(start_date,end_date,sAnalysis_Start,sCust_start,0,sOp);
       ELSIf UPPER(v_query_logfile) != UPPER(v_tmp_date) Then
         -- If vRtnVal != TO_CHAR(SYSDATE, 'DD-MON-YY') Then
@@ -10573,7 +10254,10 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
 		--If UPPER(v_query_logfile) != UPPER(v_tmp_date) OR F_IS_TABLE_EEMPTY('Tmp_Locn_Cnt_By_Cust') <= 0 Then
 		--DBMS_OUTPUT.PUT_LINE('3rd Need to RUN_ONCE Tmp_Locn_Cnt_By_Cust as C_EOM_START_ALL_TEMP_STOR_DATA for all customers as table is empty.result was ' || UPPER(v_query_logfile) || ' and end date was ' ||  UPPER(v_tmp_date) );
 		--EOM_REPORT_PKG_TEST.C_EOM_START_CUST_TEMP_DATA(sAnalysis_Start,sCust_start);
-		C_EOM_START_ALL_TEMP_STOR_DATA(sAnalysis_Start,sCust_start,sOp);
+    If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      DBMS_OUTPUT.PUT_LINE('Running C_EOM_START_ALL_TEMP_STOR_DATA , date from is  ' || start_date || ' and to date is ' || end_date || ' and customer is ' || sCust_start  || '.');
+    End If;
+    C_EOM_START_ALL_TEMP_STOR_DATA(sAnalysis_Start,sCust_start,sOp);
 		-- Else
 		--DBMS_OUTPUT.PUT_LINE('3rd No Need to RUN_ONCE Tmp_Locn_Cnt_By_Cust as C_EOM_START_ALL_TEMP_STOR_DATA for all customers as table is full of data - saved another 65 seconds. Last Date match was ' || UPPER(v_query_logfile) || ' and end date was ' ||  UPPER(v_tmp_date) );
 		--End If;
@@ -10608,6 +10292,9 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
 		-- SELECT F_EOM_PROCESS_RUN_CHECK(TO_DATE(end_date, 'DD-MON-YY'),'TMP_STOR_ALL_FEES','H4_EOM_ALL_STOR_FEES','') INTO v_query_logfile FROM DUAL;
 		-- SELECT F_EOM_PROCESS_RUN_CHECK(TO_DATE(end_date, 'DD-MON-YY'),'TMP_STOR_ALL_FEES','H4_EOM_ALL_STOR_FEES',sCust_start)INTO v_query_result2 FROM DUAL;
 		--If v_query_logfile = 'RUNBOTH' Then
+    If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      DBMS_OUTPUT.PUT_LINE('Running H4_EOM_ALL_STOR_FEES , date from is  ' || start_date || ' and to date is ' || end_date || ' and customer is ' || sCust_start  || '.');
+    End If;
 		H4_EOM_ALL_STOR_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sOp);
 		H4_EOM_ALL_STOR(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
 		DBMS_OUTPUT.PUT_LINE('Running F_EOM_PROCESS_RUN_CHECK for ALL based on to date from EOM logs - v_query_logfile is ' || 
@@ -10621,6 +10308,9 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
 		-- End If;
         
 		nCheckpoint := 71; --E0_ALL_ORD_FEES
+    If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      DBMS_OUTPUT.PUT_LINE('Running E0_ALL_ORD_FEES , date from is  ' || start_date || ' and to date is ' || end_date || ' and customer is ' || sCust_start  || '.');
+    End If;    
 		E0_ALL_ORD_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
       
 		/*IQ_EOM_REPORTING.E1_PHONE_ORD_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start);
@@ -10630,14 +10320,26 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
 		  IQ_EOM_REPORTING.E3_FAX_ORD_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start);
 		*/  
 		nCheckpoint := 74;
+    If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      DBMS_OUTPUT.PUT_LINE('Running E4_STD_ORD_FEES , date from is  ' || start_date || ' and to date is ' || end_date || ' and customer is ' || sCust_start  || '.');
+    End If;     
 		E4_STD_ORD_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
 
 		nCheckpoint := 75;
+    If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      DBMS_OUTPUT.PUT_LINE('Running E5_DESTOY_ORD_FEES , date from is  ' || start_date || ' and to date is ' || end_date || ' and customer is ' || sCust_start  || '.');
+    End If;  
 		E5_DESTOY_ORD_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
 
 		nCheckpoint := 81;
+    If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      DBMS_OUTPUT.PUT_LINE('Running G1_SHRINKWRAP_FEES , date from is  ' || start_date || ' and to date is ' || end_date || ' and customer is ' || sCust_start  || '.');
+    End If;
 		G1_SHRINKWRAP_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
 		nCheckpoint := 82;
+     If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      DBMS_OUTPUT.PUT_LINE('Running G2_STOCK_FEES , date from is  ' || start_date || ' and to date is ' || end_date || ' and customer is ' || sCust_start  || '.');
+    End If;   
 		G2_STOCK_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
 		--nCheckpoint := 83;
 		--IQ_EOM_REPORTING.G3_PACKING_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
@@ -10645,6 +10347,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
       
 		nCheckpoint := 84;
     If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+  
       Select (F_EOM_CHECK_CUST_LOG(sCust_start ,'DEV_HANDLING_FEES','G4_HANDLING_FEES_F',sOp)) INTO v_query_result2 From Dual;
       Select (F_EOM_CHECK_LOG(v_tmp_date ,'DEV_HANDLING_FEES','G4_HANDLING_FEES_F',sOp)) INTO v_query_logfile From Dual;
     Else
@@ -10653,6 +10356,9 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
     End If;
     If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
       If F_IS_TABLE_EEMPTY('DEV_HANDLING_FEES') <= 0 Then
+       If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        DBMS_OUTPUT.PUT_LINE('Running DEV_HANDLING_FEES , date from is  ' || start_date || ' and to date is ' || end_date || ' and customer is ' || sCust_start  || '.');
+      End If;  
         --DBMS_OUTPUT.PUT_LINE('7th Need to RUN_ONCE G4_HANDLING_FEES_F for all customers as table is empty. result was ' || UPPER(v_query_result2) 
         --|| ' and this cust was ' ||  UPPER(sCust_start)
         --|| ' and to date was ' ||  UPPER(v_query_logfile)
@@ -10740,6 +10446,11 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
         -- || ' and to date was ' ||  UPPER(v_query_logfile)
         -- || ' and this date was ' ||  UPPER(v_tmp_date)
         --  );
+        
+      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        DBMS_OUTPUT.PUT_LINE('Running G5_PICK_FEES_F , date from is  ' || start_date || ' and to date is ' || end_date || ' and customer is ' || sCust_start  || '.');
+      End If;  
+        
         G5_PICK_FEES_F(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
       ELSIf UPPER(v_query_result2) != UPPER(sCust_start) 
       AND UPPER(v_query_result2) IS NOT NULL 
@@ -10815,15 +10526,30 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
     End If;
     
 		nCheckpoint := 9;
+      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        DBMS_OUTPUT.PUT_LINE('Running I_EOM_MISC_FEES , date from is  ' || start_date || ' and to date is ' || end_date || ' and customer is ' || sCust_start  || '.');
+      End If;  
 		I_EOM_MISC_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
 
 		nCheckpoint := 10;
+    If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      DBMS_OUTPUT.PUT_LINE('Running K1_PAL_DESP_FEES , date from is  ' || start_date || ' and to date is ' || end_date || ' and customer is ' || sCust_start  || '.');
+    End If;  
 		K1_PAL_DESP_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
 		nCheckpoint := 11;
+		If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      DBMS_OUTPUT.PUT_LINE('Running K2_CTN_IN_FEES , date from is  ' || start_date || ' and to date is ' || end_date || ' and customer is ' || sCust_start  || '.');
+    End If;  
 		K2_CTN_IN_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
 		nCheckpoint := 12;
+		If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      DBMS_OUTPUT.PUT_LINE('Running K3_PAL_IN_FEES , date from is  ' || start_date || ' and to date is ' || end_date || ' and customer is ' || sCust_start  || '.');
+    End If;  
 		K3_PAL_IN_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
 		nCheckpoint := 13;
+		If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      DBMS_OUTPUT.PUT_LINE('Running K4_CTN_DESP_FEES , date from is  ' || start_date || ' and to date is ' || end_date || ' and customer is ' || sCust_start  || '.');
+    End If;  
 		K4_CTN_DESP_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
 
 
@@ -10868,10 +10594,13 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
 		nCheckpoint := 101;
 		----DBMS_OUTPUT.PUT_LINE('START Z TMP_ALL_FEES for ' || sFileName|| ' saved in ' || sPath );
 		If ( sCust_start = 'V-SUPPAR' ) Then
-			nCheckpoint := 15;
-			J_EOM_CUSTOMER_FEES_SUP(p_array_size_start,start_date,end_date,sCust_start,sFileName,sOp);
+			nCheckpoint := 151;
+			If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        DBMS_OUTPUT.PUT_LINE('Running J_EOM_CUSTOMER_FEES_SUP , date from is  ' || start_date || ' and to date is ' || end_date || ' and customer is ' || sCust_start  || '.');
+      End If;  
+		J_EOM_CUSTOMER_FEES_SUP(p_array_size_start,start_date,end_date,sCust_start,sFileName,sOp);
 		elsIf ( sCust_start = 'N-AAS' ) Then
-			nCheckpoint := 15;
+			nCheckpoint := 152;
 			J_EOM_CUSTOMER_FEES_AAS(p_array_size_start,start_date,end_date,sCust_start,sFileName,sOp);
     Else
 			Z1_TMP_ALL_FEES_TO_CSV(sFileName,sOp);
