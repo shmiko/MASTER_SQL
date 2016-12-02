@@ -850,10 +850,10 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','TMP_FREIGHT','TMP_ALL_FREIGHT_ALL',v_time_taken,SYSTIMESTAMP,NULL);--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
         End If;
         --EXECUTE IMMEDIATE v_query USING startdate,enddate,v_time_taken;
-        --DBMS_OUTPUT.PUT_LINE('F_EOM_TMP_ALL_FREIGHT_ALL for the date range '
-        --|| startdate || ' -- ' || enddate || ' - ' || v_query2
-        --|| ' records inserted into table TMP_ALL_FREIGHT_ALL in ' || round((dbms_utility.get_time-l_start)/100, 6)
-        --|| ' Seconds...for all customers, log file has been updated ' );
+        DBMS_OUTPUT.PUT_LINE('F_EOM_TMP_ALL_FREIGHT_ALL for the date range '
+        || startdate || ' -- ' || enddate || ' - ' || v_query2
+        || ' records inserted into table TMP_ALL_FREIGHT_ALL in ' || round((dbms_utility.get_time-l_start)/100, 6)
+        || ' Seconds...for all customers, log file has been updated ' );
       --Else
         --DBMS_OUTPUT.PUT_LINE('F_EOM_TMP_ALL_FREIGHT_ALL rates are not empty - but there was no data, still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) ||
        -- ' Seconds...for all customers ');
@@ -10968,10 +10968,10 @@ BEGIN
  
  
   PROCEDURE EOM_AUTO_RUN_ALL (
-      p_array_size_start IN PLS_INTEGER DEFAULT 100
-      ,start_date IN VARCHAR2-- := To_Date('1-Jun-2015') or format date as 01-Jun-15 -- use this when you want the date entered automatically
-      ,end_date IN VARCHAR2-- := To_Date('30-Jun-2015')
-      ,check_date IN VARCHAR2-- := To_Date('30-Jun-15')
+       p_array_size_start IN PLS_INTEGER DEFAULT 100
+      ,start_date IN VARCHAR2-- DEFAULT F_GET_FIRST_OF_PREV_MONTH -- or format date as 01-Jun-15 -- use this when you want the date entered automatically
+      ,end_date IN VARCHAR2-- DEFAULT F_GET_LAST_OF_PREV_MONTH
+      ,check_date IN VARCHAR2-- DEFAULT To_Date(CURRENT_DATE)
       ,sCust_start IN VARCHAR2
       ,sAnalysis_Start IN RM.RM_ANAL%TYPE
       ,sFilterBy IN VARCHAR2
@@ -10981,6 +10981,13 @@ BEGIN
   CURSOR EOM_CUSTS IS
   SELECT RM_CUST FROM RM WHERE RM_XX_EOM_ADMIN = 'ADMIN' AND RM_CUST IN ('MDA','CABS','HOMTIM','VHAAUS');
   i   NUMBER := 0;
+  --start_date VARCHAR2(20)    := To_Date(F_GET_FIRST_OF_PREV_MONTH);-- := To_Date('1-Jun-2015') or format date as 01-Jun-15 -- use this when you want the date entered automatically
+  --end_date VARCHAR2(20)  := To_Date(F_GET_LAST_OF_PREV_MONTH); -- := To_Date('30-Jun-2015')
+  --check_date := To_Date(CURRENT_DATE);
+--      ,sCust_start IN VARCHAR2
+  --sAnalysis_Start VARCHAR2(20);
+  --sFilterBy VARCHAR2(20);
+--      ,
   nCheckpoint NUMBER;
   
   BEGIN
@@ -11005,11 +11012,11 @@ BEGIN
        --  FOR i IN l_data.FIRST .. l_data.LAST LOOP
        --   --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
         --END LOOP;
-     FOR rec IN (SELECT RM_CUST FROM RM WHERE RM_XX_EOM_ADMIN = 'ADMIN' AND RM_CUST NOT IN (Select CUST FROM TMP_EOM_LOGS WHERE ORIGIN_PROCESS = 'Z_EOM_RUN_ALL' AND SubStr(LAST_SUC_FIN,0,9) = check_date ))
+     FOR rec IN (SELECT RM_CUST FROM RM WHERE RM_XX_EOM_ADMIN = 'ADMIN' AND RM_CUST NOT IN (Select CUST FROM TMP_EOM_LOGS WHERE ORIGIN_PROCESS = 'Z_EOM_RUN_ALL' AND SubStr(LAST_SUC_FIN,0,9) BETWEEN TO_DATE(CHECK_DATE) - 1  AND TO_DATE(CHECK_DATE) AND CUST IS NOT NULL GROUP BY CUST))
      --('VERO','TYNDALL','CGU','LINK','CNH','PROMINA','COLONIALFS','IAG','V-SUPPAR','LUXOTTICA','BEYONDBL','COL_KMART','AMP','AMEX','AAS'))
      LOOP
         i := i + 1;
-        --DBMS_OUTPUT.PUT_line ('Running EOM # ' || i || ' cust is  ' || rec.RM_CUST);
+        DBMS_OUTPUT.PUT_line ('Running EOM # ' || i || ' cust is  ' || rec.RM_CUST || ' and dates are start ' || start_date  || ' and from ' || end_date || ' .');
         --Now run Z3_EOM_RUN_ALL
         If F_SLOW_DOWN(60) = TRUE THEN
           Z3_EOM_RUN_ALL(p_array_size_start,start_date,end_date,rec.RM_CUST,sAnalysis_Start,sFilterBy,sOp);
@@ -11024,4 +11031,6 @@ BEGIN
         RAISE;
   END EOM_AUTO_RUN_ALL;
   
+
+
 END IQ_EOM_REPORTING;
