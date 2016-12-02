@@ -1,4 +1,4 @@
-create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
+create or replace PACKAGE BODY           "IQ_EOM_REPORTING_BU" AS
     /*   A Group all customer down 3 tiers - this makes getting all children and grandchildren simples   */
     /*   Temp Tables Used   */
     /*   1. Tmp_Group_Cust   */
@@ -10592,7 +10592,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
 		Y_EOM_TMP_MERGE_ALL_FEES_FINAL(sCust_start,sOp);
 
 		nCheckpoint := 101;
-		----DBMS_OUTPUT.PUT_LINE('START Z TMP_ALL_FEES for ' || sFileName|| ' saved in ' || sPath );
+		----DBMS_OUTPUT.PUT_LINE('START Z TMP_ALL_FEES for ' || sFileName|| ' saved in ' || sPath );DEV_ALL_FEES
 		If ( sCust_start = 'V-SUPPAR' ) Then
 			nCheckpoint := 151;
 			If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
@@ -10738,7 +10738,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
         l_start number default dbms_utility.get_time;
    begin
          If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
-          l_query  := 'select * from TMP_ALL_FEES_F';
+          l_query  := 'select * from DEV_ALL_FEES_F';
         Else
           l_query  := 'select * from TMP_ALL_FEES_F';
         End IF;
@@ -11012,7 +11012,7 @@ BEGIN
        --  FOR i IN l_data.FIRST .. l_data.LAST LOOP
        --   --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
         --END LOOP;
-     FOR rec IN (SELECT RM_CUST FROM RM WHERE RM_XX_EOM_ADMIN = 'ADMIN' AND RM_CUST NOT IN (Select CUST FROM TMP_EOM_LOGS WHERE ORIGIN_PROCESS = 'Z_EOM_RUN_ALL' AND SubStr(LAST_SUC_FIN,0,9) BETWEEN TO_DATE(CHECK_DATE) - 1  AND TO_DATE(CHECK_DATE) AND CUST IS NOT NULL GROUP BY CUST))
+     FOR rec IN (SELECT RM_CUST FROM RM WHERE RM_XX_EOM_ADMIN = 'ADMIN' AND RM_CUST NOT IN (Select CUST FROM TMP_EOM_LOGS WHERE ORIGIN_PROCESS = 'Z_EOM_RUN_ALL' AND SubStr(LAST_SUC_FIN,0,9) = '01/DEC/16'  or SubStr(LAST_SUC_FIN,0,9) = '02/DEC/16'))
      --('VERO','TYNDALL','CGU','LINK','CNH','PROMINA','COLONIALFS','IAG','V-SUPPAR','LUXOTTICA','BEYONDBL','COL_KMART','AMP','AMEX','AAS'))
      LOOP
         i := i + 1;
@@ -11033,4 +11033,4 @@ BEGIN
   
 
 
-END IQ_EOM_REPORTING;
+END IQ_EOM_REPORTING_BU;
