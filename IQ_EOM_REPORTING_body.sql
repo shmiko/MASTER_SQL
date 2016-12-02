@@ -1,4 +1,4 @@
-create or replace PACKAGE BODY           "IQ_EOM_REPORTING_BU" AS
+create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
     /*   A Group all customer down 3 tiers - this makes getting all children and grandchildren simples   */
     /*   Temp Tables Used   */
     /*   1. Tmp_Group_Cust   */
@@ -11033,4 +11033,4 @@ BEGIN
   
 
 
-END IQ_EOM_REPORTING_BU;
+END IQ_EOM_REPORTING;
