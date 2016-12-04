@@ -156,6 +156,8 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
     /*   4. Tmp_Batch_Price_SL_Stock   */
     /*   Runs in about 240 seconds    */
     /*   Tested and Working 17/7/15   */
+    /* This procedure doesn't need analysis for any 
+    intercompany as it gets all data for all custs*/
     PROCEDURE B_EOM_START_RUN_ONCE_DATA
       (
        start_date IN VARCHAR2
@@ -343,33 +345,63 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
   
     BEGIN
      nCheckpoint := 15;
-     If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
-      v_query := q'{INSERT INTO Dev_Locn_Cnt_By_Cust
+     If ((sOp = 'PRJ' or sOp = 'PRJ_TEST') AND (sAnalysis IS NOT NULL)) Then
+        v_query := q'{INSERT INTO Dev_Locn_Cnt_By_Cust
               SELECT Count(DISTINCT NI_STOCK) AS CountOfStocks, IL_LOCN, r.sGroupCust,
                         CASE WHEN Upper(substr(IL_NOTE_2,0,1)) = 'Y' THEN 'E- Pallets'
                           ELSE 'F- Shelves'
-                          END AS "Note",NULL,NULL,NULL,NULL
+                          END AS "Note",r.ANAL,NULL,NULL,NULL
               FROM IL INNER JOIN NI  ON IL_LOCN = NI_LOCN
               INNER JOIN IM ON IM_STOCK = NI_STOCK
               LEFT JOIN Dev_Group_Cust r ON r.sCust = IM_CUST
               WHERE IM_ACTIVE = 1
               AND NI_AVAIL_ACTUAL >= 1
               AND NI_STATUS <> 3
-              GROUP BY r.sGroupCust,IL_LOCN, IM_CUST,IL_NOTE_2}';
-    Else
+              AND r.ANAL = sAnalysis
+              GROUP BY r.sGroupCust,IL_LOCN, IM_CUST,IL_NOTE_2,r.ANAL}';
+    ElsIf ((sOp = 'PRJ' or sOp = 'PRJ_TEST') AND (sAnalysis = NULL)) Then
+        v_query := q'{INSERT INTO Dev_Locn_Cnt_By_Cust
+              SELECT Count(DISTINCT NI_STOCK) AS CountOfStocks, IL_LOCN, r.sGroupCust,
+                        CASE WHEN Upper(substr(IL_NOTE_2,0,1)) = 'Y' THEN 'E- Pallets'
+                          ELSE 'F- Shelves'
+                          END AS "Note",r.ANAL,NULL,NULL,NULL
+              FROM IL INNER JOIN NI  ON IL_LOCN = NI_LOCN
+              INNER JOIN IM ON IM_STOCK = NI_STOCK
+              LEFT JOIN Dev_Group_Cust r ON r.sCust = IM_CUST
+              WHERE IM_ACTIVE = 1
+              AND NI_AVAIL_ACTUAL >= 1
+              AND NI_STATUS <> 3
+              GROUP BY r.sGroupCust,IL_LOCN, IM_CUST,IL_NOTE_2,r.ANAL}';
+    ElsIf ((sOp != 'PRJ' or sOp != 'PRJ_TEST') AND (sAnalysis = NULL)) Then
       
        v_query := q'{INSERT INTO Tmp_Locn_Cnt_By_Cust
               SELECT Count(DISTINCT NI_STOCK) AS CountOfStocks, IL_LOCN, r.sGroupCust,
                         CASE WHEN Upper(substr(IL_NOTE_2,0,1)) = 'Y' THEN 'E- Pallets'
                           ELSE 'F- Shelves'
-                          END AS "Note",NULL,NULL,NULL,NULL
+                          END AS "Note",r.ANAL,NULL,NULL,NULL
               FROM IL INNER JOIN NI  ON IL_LOCN = NI_LOCN
               INNER JOIN IM ON IM_STOCK = NI_STOCK
               LEFT JOIN Tmp_Group_Cust r ON r.sCust = IM_CUST
               WHERE IM_ACTIVE = 1
               AND NI_AVAIL_ACTUAL >= 1
               AND NI_STATUS <> 3
-              GROUP BY r.sGroupCust,IL_LOCN, IM_CUST,IL_NOTE_2}';
+              GROUP BY r.sGroupCust,IL_LOCN, IM_CUST,IL_NOTE_2,r.ANAL}';
+    Else
+      --use analysis 
+       v_query := q'{INSERT INTO Tmp_Locn_Cnt_By_Cust
+              SELECT Count(DISTINCT NI_STOCK) AS CountOfStocks, IL_LOCN, r.sGroupCust,
+                        CASE WHEN Upper(substr(IL_NOTE_2,0,1)) = 'Y' THEN 'E- Pallets'
+                          ELSE 'F- Shelves'
+                          END AS "Note",r.ANAL,NULL,NULL,NULL
+              FROM IL INNER JOIN NI  ON IL_LOCN = NI_LOCN
+              INNER JOIN IM ON IM_STOCK = NI_STOCK
+              LEFT JOIN Tmp_Group_Cust r ON r.sCust = IM_CUST
+              WHERE IM_ACTIVE = 1
+              AND NI_AVAIL_ACTUAL >= 1
+              AND NI_STATUS <> 3
+              AND r.ANAL = sAnalysis
+              GROUP BY r.sGroupCust,IL_LOCN, IM_CUST,IL_NOTE_2,r.ANAL}';
+    
     End If;
       --If F_IS_TABLE_EEMPTY('Tmp_Locn_Cnt_By_Cust') <= 0 Then
         EXECUTE IMMEDIATE v_query;-- USING p_IM_ACTIVE,p_NI_AVAIL_ACTUAL,p_NI_STATUS;
@@ -2049,6 +2081,138 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
       nbreakpoint   NUMBER;
       sFileName VARCHAR2(560);
       sFileTime VARCHAR2(56)  := TO_CHAR(SYSDATE,'YYYYMMDD HH24MISS');
+      
+       CURSOR cAnal
+      IS
+    /* EOM Storage Fees */
+      select IM_CUST AS "Customer",
+      r.sGroupCust AS "Parent",
+      IM_XX_COST_CENTRE01     AS "CostCentre",
+      NULL               AS "Order",
+      NULL               AS "OrderwareNum",
+      NULL               AS "CustomerRef",
+      NULL         AS "Pickslip",
+      NULL                      AS "DespatchNote",
+      NULL               AS "DespatchNote",
+      NULL             AS "OrderDate",
+      CASE /*Fee Type*/
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW'
+          THEN 'FEEPALLETS'
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW'
+          THEN 'SLOWFEEPALLETS'
+        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW'
+          THEN 'FEESHELFS'
+        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW'
+          THEN 'SLOWFEESHELFS'
+        ELSE 'UNKNOWN'
+        END AS "FeeType",
+      IM_STOCK AS "Item",
+      CASE /*explanation of charge*/
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES' 
+          THEN 'Pallet Space Utilisation Fee (per month) is split across ' || tmp.NCOUNTOFSTOCKS || ' stock(s)'
+        ELSE 'Shelf SPace Utilisation Fee (per month) is split across ' ||	tmp.NCOUNTOFSTOCKS  || ' stock(s)'
+        END AS "Description",
+      CASE   
+        WHEN l1.IL_NOTE_2 IS NOT NULL THEN  1
+        ELSE 0
+        END                     AS "Qty",
+      IM_LEVEL_UNIT AS "UOI", 
+      CASE
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES'  AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --pallet for fast moving
+          f_get_fee('RM_XX_FEE11',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --shelf for fast moving
+          f_get_fee('RM_XX_FEE12',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) !=0 THEN --pallet for slow moving if slow rate exists
+         f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',r.sGroupCust) !=0 THEN --shelf for slow moving if slow rate exists
+          f_get_fee('RM_XX_FEE30',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) =0 THEN --pallet for slow moving if slow rate DOESN't exist, revert to normal charge
+         f_get_fee('RM_XX_FEE11',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',r.sGroupCust) =0 THEN --shelf for slow moving if slow rate DOESN't exist
+          f_get_fee('RM_XX_FEE12',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        ELSE 999
+        END AS "UnitPrice",
+      CASE
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES'  AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --pallet for fast moving
+          f_get_fee('RM_XX_FEE11',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --shelf for fast moving
+          f_get_fee('RM_XX_FEE12',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) !=0 THEN --pallet for slow moving if slow rate exists
+         f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',r.sGroupCust) !=0 THEN --shelf for slow moving if slow rate exists
+          f_get_fee('RM_XX_FEE30',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) =0 THEN --pallet for slow moving if slow rate DOESN't exist, revert to normal charge
+         f_get_fee('RM_XX_FEE11',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',r.sGroupCust) =0 THEN --shelf for slow moving if slow rate DOESN't exist
+          f_get_fee('RM_XX_FEE12',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        ELSE 999
+        END AS "OWUnitPrice",
+      CASE
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES'  AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --pallet for fast moving
+          f_get_fee('RM_XX_FEE11',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --shelf for fast moving
+          f_get_fee('RM_XX_FEE12',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) !=0 THEN --pallet for slow moving if slow rate exists
+         f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',r.sGroupCust) !=0 THEN --shelf for slow moving if slow rate exists
+          f_get_fee('RM_XX_FEE30',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) =0 THEN --pallet for slow moving if slow rate DOESN't exist, revert to normal charge
+         f_get_fee('RM_XX_FEE11',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',r.sGroupCust) =0 THEN --shelf for slow moving if slow rate DOESN't exist
+          f_get_fee('RM_XX_FEE12',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        ELSE 999
+        END AS "DExcl",
+      CASE 
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES'  AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --pallet for fast moving
+          (f_get_fee('RM_XX_FEE11',r.sGroupCust) / tmp.NCOUNTOFSTOCKS) * 1.1
+        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --shelf for fast moving
+          (f_get_fee('RM_XX_FEE12',r.sGroupCust) / tmp.NCOUNTOFSTOCKS) * 1.1
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) !=0 THEN --pallet for slow moving if slow rate exists
+          (f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) / tmp.NCOUNTOFSTOCKS) * 1.1
+        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',r.sGroupCust) !=0 THEN --shelf for slow moving if slow rate exists
+          (f_get_fee('RM_XX_FEE30',r.sGroupCust) / tmp.NCOUNTOFSTOCKS) * 1.1
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) =0 THEN --pallet for slow moving if slow rate DOESN't exist, revert to normal charge
+          (f_get_fee('RM_XX_FEE11',r.sGroupCust) / tmp.NCOUNTOFSTOCKS) * 1.1
+        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',r.sGroupCust) =0 THEN --shelf for slow moving if slow rate DOESN't exist
+          (f_get_fee('RM_XX_FEE12',r.sGroupCust) / tmp.NCOUNTOFSTOCKS) * 1.1
+        ELSE 999
+        END AS "DIncl",
+      TO_NUMBER(IM_REPORTING_PRICE),
+      IM_STD_COST AS "PreMarkUpPrice",
+			  IM_LAST_COST           AS "COSTPRICE",
+      NULL             AS "Address",
+      NULL              AS "Address2",
+      NULL                AS "Suburb",
+      NULL               AS "State",
+      NULL           AS "Postcode",
+      NULL              AS "DeliverTo",
+      NULL              AS "AttentionTo" ,
+      0              AS "Weight",
+      0            AS "Packages",
+      0         AS "OrderSource",
+      l1.IL_NOTE_2 AS "Pallet/Space", 
+      l1.IL_LOCN AS "Locn",
+      tmp.NCOUNTOFSTOCKS AS CountCustStocks,
+      NULL AS Email,
+      IM_BRAND AS Brand,
+      IM_OWNED_By AS    OwnedBy,
+      IM_PROFILE AS    sProfile,
+      NULL AS    WaiveFee,
+      NULL As   Cost,
+      NULL AS PaymentType,NULL,NULL,NULL,NULL
+  
+    FROM NI n1 INNER JOIN IM ON IM_STOCK = n1.NI_STOCK --AND IM_CUST = sCustomerCode
+    INNER JOIN IL l1 ON l1.IL_LOCN = n1.NI_LOCN
+    INNER JOIN Tmp_Locn_Cnt_By_Cust tmp ON tmp.SLOCN = l1.IL_LOCN
+    LEFT JOIN Tmp_Group_Cust r ON r.ANAL = sAnalysis
+    WHERE  IM_ACTIVE = 1
+    AND n1.NI_AVAIL_ACTUAL >= '1'
+    AND n1.NI_STATUS <> 0
+    --AND tmp.SCUST = sCustomerCode
+    AND r.ANAL = sAnalysis
+    GROUP BY l1.IL_LOCN,IM_CUST,IM_BRAND,IM_OWNED_By,IM_PROFILE,l1.IL_NOTE_2,n1.NI_LOCN,n1.NI_STOCK,
+    tmp.NCOUNTOFSTOCKS,IM_REPORTING_PRICE,r.sGroupCust,IM_LEVEL_UNIT,IM_XX_COST_CENTRE01,IM_STOCK,IM_STD_COST,IM_LAST_COST;
+      
       CURSOR c
       IS
     /* EOM Storage Fees */
@@ -2309,6 +2473,137 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
     AND tmp.SCUST = sCustomerCode
     GROUP BY l1.IL_LOCN,IM_CUST,IM_BRAND,IM_OWNED_By,IM_PROFILE,l1.IL_NOTE_2,n1.NI_LOCN,n1.NI_STOCK,
     tmp.NCOUNTOFSTOCKS,IM_REPORTING_PRICE,r.sGroupCust,IM_LEVEL_UNIT,IM_XX_COST_CENTRE01,IM_STOCK,IM_STD_COST,IM_LAST_COST;
+    
+     CURSOR cDEVAnal
+      IS
+    /* EOM Storage Fees */
+      select IM_CUST AS "Customer",
+      r.sGroupCust AS "Parent",
+      IM_XX_COST_CENTRE01     AS "CostCentre",
+      NULL               AS "Order",
+      NULL               AS "OrderwareNum",
+      NULL               AS "CustomerRef",
+      NULL         AS "Pickslip",
+      NULL                      AS "DespatchNote",
+      NULL               AS "DespatchNote",
+      NULL             AS "OrderDate",
+      CASE /*Fee Type*/
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW'
+          THEN 'FEEPALLETS'
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW'
+          THEN 'SLOWFEEPALLETS'
+        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW'
+          THEN 'FEESHELFS'
+        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW'
+          THEN 'SLOWFEESHELFS'
+        ELSE 'UNKNOWN'
+        END AS "FeeType",
+      IM_STOCK AS "Item",
+      CASE /*explanation of charge*/
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES' 
+          THEN 'Pallet Space Utilisation Fee (per month) is split across ' || tmp.NCOUNTOFSTOCKS || ' stock(s)'
+        ELSE 'Shelf SPace Utilisation Fee (per month) is split across ' ||	tmp.NCOUNTOFSTOCKS  || ' stock(s)'
+        END AS "Description",
+      CASE   
+        WHEN l1.IL_NOTE_2 IS NOT NULL THEN  1
+        ELSE 0
+        END                     AS "Qty",
+      IM_LEVEL_UNIT AS "UOI", 
+      CASE
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES'  AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --pallet for fast moving
+          f_get_fee('RM_XX_FEE11',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --shelf for fast moving
+          f_get_fee('RM_XX_FEE12',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) !=0 THEN --pallet for slow moving if slow rate exists
+         f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',r.sGroupCust) !=0 THEN --shelf for slow moving if slow rate exists
+          f_get_fee('RM_XX_FEE30',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) =0 THEN --pallet for slow moving if slow rate DOESN't exist, revert to normal charge
+         f_get_fee('RM_XX_FEE11',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',r.sGroupCust) =0 THEN --shelf for slow moving if slow rate DOESN't exist
+          f_get_fee('RM_XX_FEE12',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        ELSE 999
+        END AS "UnitPrice",
+      CASE
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES'  AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --pallet for fast moving
+          f_get_fee('RM_XX_FEE11',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --shelf for fast moving
+          f_get_fee('RM_XX_FEE12',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) !=0 THEN --pallet for slow moving if slow rate exists
+         f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',r.sGroupCust) !=0 THEN --shelf for slow moving if slow rate exists
+          f_get_fee('RM_XX_FEE30',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) =0 THEN --pallet for slow moving if slow rate DOESN't exist, revert to normal charge
+         f_get_fee('RM_XX_FEE11',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',r.sGroupCust) =0 THEN --shelf for slow moving if slow rate DOESN't exist
+          f_get_fee('RM_XX_FEE12',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        ELSE 999
+        END AS "OWUnitPrice",
+      CASE
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES'  AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --pallet for fast moving
+          f_get_fee('RM_XX_FEE11',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --shelf for fast moving
+          f_get_fee('RM_XX_FEE12',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) !=0 THEN --pallet for slow moving if slow rate exists
+         f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',r.sGroupCust) !=0 THEN --shelf for slow moving if slow rate exists
+          f_get_fee('RM_XX_FEE30',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) =0 THEN --pallet for slow moving if slow rate DOESN't exist, revert to normal charge
+         f_get_fee('RM_XX_FEE11',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',r.sGroupCust) =0 THEN --shelf for slow moving if slow rate DOESN't exist
+          f_get_fee('RM_XX_FEE12',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+        ELSE 999
+        END AS "DExcl",
+      CASE 
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES'  AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --pallet for fast moving
+          (f_get_fee('RM_XX_FEE11',r.sGroupCust) / tmp.NCOUNTOFSTOCKS) * 1.1
+        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --shelf for fast moving
+          (f_get_fee('RM_XX_FEE12',r.sGroupCust) / tmp.NCOUNTOFSTOCKS) * 1.1
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) !=0 THEN --pallet for slow moving if slow rate exists
+          (f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) / tmp.NCOUNTOFSTOCKS) * 1.1
+        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',r.sGroupCust) !=0 THEN --shelf for slow moving if slow rate exists
+          (f_get_fee('RM_XX_FEE30',r.sGroupCust) / tmp.NCOUNTOFSTOCKS) * 1.1
+        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',r.sGroupCust) =0 THEN --pallet for slow moving if slow rate DOESN't exist, revert to normal charge
+          (f_get_fee('RM_XX_FEE11',r.sGroupCust) / tmp.NCOUNTOFSTOCKS) * 1.1
+        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',r.sGroupCust) =0 THEN --shelf for slow moving if slow rate DOESN't exist
+          (f_get_fee('RM_XX_FEE12',r.sGroupCust) / tmp.NCOUNTOFSTOCKS) * 1.1
+        ELSE 999
+        END AS "DIncl",
+      TO_NUMBER(IM_REPORTING_PRICE),
+      IM_STD_COST AS "PreMarkUpPrice",
+			  IM_LAST_COST           AS "COSTPRICE",
+      NULL             AS "Address",
+      NULL              AS "Address2",
+      NULL                AS "Suburb",
+      NULL               AS "State",
+      NULL           AS "Postcode",
+      NULL              AS "DeliverTo",
+      NULL              AS "AttentionTo" ,
+      0              AS "Weight",
+      0            AS "Packages",
+      0         AS "OrderSource",
+      l1.IL_NOTE_2 AS "Pallet/Space", 
+      l1.IL_LOCN AS "Locn",
+      tmp.NCOUNTOFSTOCKS AS CountCustStocks,
+      NULL AS Email,
+      IM_BRAND AS Brand,
+      IM_OWNED_By AS    OwnedBy,
+      IM_PROFILE AS    sProfile,
+      NULL AS    WaiveFee,
+      NULL As   Cost,
+      NULL AS PaymentType,NULL,NULL,NULL,NULL
+  
+    FROM NI n1 INNER JOIN IM ON IM_STOCK = n1.NI_STOCK --AND IM_CUST = sCustomerCode
+    INNER JOIN IL l1 ON l1.IL_LOCN = n1.NI_LOCN
+    INNER JOIN Dev_Locn_Cnt_By_Cust tmp ON tmp.SLOCN = l1.IL_LOCN
+    LEFT JOIN Dev_Group_Cust r ON r.ANAL = sAnalysis
+    WHERE  IM_ACTIVE = 1
+    AND n1.NI_AVAIL_ACTUAL >= '1'
+    AND n1.NI_STATUS <> 0
+    --AND tmp.SCUST = sCustomerCode
+    AND r.ANAL = sAnalysis
+    GROUP BY l1.IL_LOCN,IM_CUST,IM_BRAND,IM_OWNED_By,IM_PROFILE,l1.IL_NOTE_2,n1.NI_LOCN,n1.NI_STOCK,
+    tmp.NCOUNTOFSTOCKS,IM_REPORTING_PRICE,r.sGroupCust,IM_LEVEL_UNIT,IM_XX_COST_CENTRE01,IM_STOCK,IM_STD_COST,IM_LAST_COST;
   
     QueryTable VARCHAR2(600) := q'{SELECT To_Number(regexp_substr(RM_XX_FEE11,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = :sCustomerCode}';
     sCust_Rates RM.RM_XX_FEE11%TYPE;
@@ -2324,7 +2619,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
             
     
     nCheckpoint := 2;      
-    If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+    If ((sOp = 'PRJ' or sOp = 'PRJ_TEST') AND (sAnalysis IS NULL)) Then
           v_query := 'TRUNCATE TABLE DEV_STOR_ALL_FEES';
           EXECUTE IMMEDIATE v_query;
           
@@ -2346,7 +2641,29 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
         -- FOR i IN l_data.FIRST .. l_data.LAST LOOP
           ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
         --END LOOP;
-    Else
+    ElsIf ((sOp = 'PRJ' or sOp = 'PRJ_TEST') AND (sAnalysis IS NOT NULL)) Then
+          v_query := 'TRUNCATE TABLE DEV_STOR_ALL_FEES';
+          EXECUTE IMMEDIATE v_query;
+          
+          OPEN cDEVAnal;
+          ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
+          LOOP
+          FETCH cDEVAnal BULK COLLECT INTO l_data LIMIT p_array_size;
+
+          FORALL i IN 1..l_data.COUNT
+          ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+          INSERT INTO DEV_STOR_ALL_FEES VALUES l_data(i);
+          --USING sCust;
+
+          EXIT WHEN cDEVAnal%NOTFOUND;
+
+          END LOOP;
+         -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+          CLOSE cDEVAnal;
+        -- FOR i IN l_data.FIRST .. l_data.LAST LOOP
+          ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+        --END LOOP;
+    ElsIf ((sOp != 'PRJ' or sOp != 'PRJ_TEST') AND (sAnalysis IS NOT NULL)) Then
         v_query := 'TRUNCATE TABLE TMP_STOR_ALL_FEES';
         EXECUTE IMMEDIATE v_query;
         
@@ -2365,6 +2682,28 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           END LOOP;
          -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
           CLOSE c;
+        -- FOR i IN l_data.FIRST .. l_data.LAST LOOP
+          ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+        --END LOOP;
+    Else
+        v_query := 'TRUNCATE TABLE TMP_STOR_ALL_FEES';
+        EXECUTE IMMEDIATE v_query;
+        
+        OPEN cAnal;
+          ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
+          LOOP
+          FETCH cAnal BULK COLLECT INTO l_data LIMIT p_array_size;
+
+          FORALL i IN 1..l_data.COUNT
+          ----DBMS_OUTPUT.PUT_LINE(i || '.' );
+          INSERT INTO TMP_STOR_ALL_FEES VALUES l_data(i);
+          --USING sCust;
+
+          EXIT WHEN cAnal%NOTFOUND;
+
+          END LOOP;
+         -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
+          CLOSE cAnal;
         -- FOR i IN l_data.FIRST .. l_data.LAST LOOP
           ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
         --END LOOP;
@@ -8183,10 +8522,10 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
         Else
           EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'J_EOM_CUSTOMER_FEES_SUP','RM','TMP_CUSTOMER_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
         End If;
-        --DBMS_OUTPUT.PUT_LINE('J_EOM_CUSTOMER_FEES_VHA for the date range '
-       -- || startdate || ' -- ' || enddate || ' - ' || v_query2
-       -- || ' records inserted into table TMP_CUSTOMER_FEES in ' || round((dbms_utility.get_time-l_start)/100, 6)
-       -- || ' Seconds...for customer ' || sCustomerCode );
+        DBMS_OUTPUT.PUT_LINE('J_EOM_CUSTOMER_FEES_VHA for the date range '
+        || startdate || ' -- ' || enddate || ' - ' || v_query2
+        || ' records inserted into table TMP_CUSTOMER_FEES in ' || round((dbms_utility.get_time-l_start)/100, 6)
+        || ' Seconds...for customer ' || sCustomerCode );
       --Else
         --DBMS_OUTPUT.PUT_LINE('J_EOM_CUSTOMER_FEES_VHA rates are not empty - but there was no data, still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) ||
        -- ' Seconds...for customer ' || sCustomerCode);
@@ -10592,7 +10931,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
 		Y_EOM_TMP_MERGE_ALL_FEES_FINAL(sCust_start,sOp);
 
 		nCheckpoint := 101;
-		----DBMS_OUTPUT.PUT_LINE('START Z TMP_ALL_FEES for ' || sFileName|| ' saved in ' || sPath );DEV_ALL_FEES
+		----DBMS_OUTPUT.PUT_LINE('START Z TMP_ALL_FEES for ' || sFileName|| ' saved in ' || sPath );
 		If ( sCust_start = 'V-SUPPAR' ) Then
 			nCheckpoint := 151;
 			If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
@@ -10738,7 +11077,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
         l_start number default dbms_utility.get_time;
    begin
          If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
-          l_query  := 'select * from DEV_ALL_FEES_F';
+          l_query  := 'select * from TMP_ALL_FEES_F';
         Else
           l_query  := 'select * from TMP_ALL_FEES_F';
         End IF;
@@ -11012,7 +11351,7 @@ BEGIN
        --  FOR i IN l_data.FIRST .. l_data.LAST LOOP
        --   --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
         --END LOOP;
-     FOR rec IN (SELECT RM_CUST FROM RM WHERE RM_XX_EOM_ADMIN = 'ADMIN' AND RM_CUST NOT IN (Select CUST FROM TMP_EOM_LOGS WHERE ORIGIN_PROCESS = 'Z_EOM_RUN_ALL' AND SubStr(LAST_SUC_FIN,0,9) = '01/DEC/16'  or SubStr(LAST_SUC_FIN,0,9) = '02/DEC/16'))
+     FOR rec IN (SELECT RM_CUST FROM RM WHERE RM_XX_EOM_ADMIN = 'ADMIN' AND RM_CUST NOT IN (Select CUST FROM TMP_EOM_LOGS WHERE ORIGIN_PROCESS = 'Z_EOM_RUN_ALL' AND SubStr(LAST_SUC_FIN,0,9) BETWEEN TO_DATE(CHECK_DATE) - 1  AND TO_DATE(CHECK_DATE) AND CUST IS NOT NULL GROUP BY CUST))
      --('VERO','TYNDALL','CGU','LINK','CNH','PROMINA','COLONIALFS','IAG','V-SUPPAR','LUXOTTICA','BEYONDBL','COL_KMART','AMP','AMEX','AAS'))
      LOOP
         i := i + 1;
