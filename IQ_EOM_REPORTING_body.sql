@@ -162,9 +162,9 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
       (
        start_date IN VARCHAR2
        ,end_date IN VARCHAR2
-       ,sAnalysis IN RM.RM_ANAL%TYPE
-       ,sCust IN VARCHAR2
-       ,PreData IN RM.RM_ACTIVE%TYPE := 0
+      -- ,sAnalysis IN RM.RM_ANAL%TYPE
+       --,sCust IN VARCHAR2
+       --,PreData IN RM.RM_ACTIVE%TYPE := 0
        ,sOp IN VARCHAR2
        --,gdf_desp_freight_cur OUT sys_refcursor
        )
@@ -345,7 +345,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
   
     BEGIN
      nCheckpoint := 15;
-     If ((sOp = 'PRJ' or sOp = 'PRJ_TEST') AND (sAnalysis IS NOT NULL)) Then
+     If ((sOp = 'PRJ' or sOp = 'PRJ_TEST') AND (sAnalysis != NULL)) Then
         v_query := q'{INSERT INTO Dev_Locn_Cnt_By_Cust
               SELECT Count(DISTINCT NI_STOCK) AS CountOfStocks, IL_LOCN, r.sGroupCust,
                         CASE WHEN Upper(substr(IL_NOTE_2,0,1)) = 'Y' THEN 'E- Pallets'
@@ -357,8 +357,9 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
               WHERE IM_ACTIVE = 1
               AND NI_AVAIL_ACTUAL >= 1
               AND NI_STATUS <> 3
-              AND r.ANAL = sAnalysis
+              AND r.ANAL = :sAnalysis
               GROUP BY r.sGroupCust,IL_LOCN, IM_CUST,IL_NOTE_2,r.ANAL}';
+        EXECUTE IMMEDIATE v_query USING sAnalysis;
     ElsIf ((sOp = 'PRJ' or sOp = 'PRJ_TEST') AND (sAnalysis = NULL)) Then
         v_query := q'{INSERT INTO Dev_Locn_Cnt_By_Cust
               SELECT Count(DISTINCT NI_STOCK) AS CountOfStocks, IL_LOCN, r.sGroupCust,
@@ -372,6 +373,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
               AND NI_AVAIL_ACTUAL >= 1
               AND NI_STATUS <> 3
               GROUP BY r.sGroupCust,IL_LOCN, IM_CUST,IL_NOTE_2,r.ANAL}';
+        EXECUTE IMMEDIATE v_query;-- USING sAnalysis;
     ElsIf ((sOp != 'PRJ' or sOp != 'PRJ_TEST') AND (sAnalysis = NULL)) Then
       
        v_query := q'{INSERT INTO Tmp_Locn_Cnt_By_Cust
@@ -386,6 +388,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
               AND NI_AVAIL_ACTUAL >= 1
               AND NI_STATUS <> 3
               GROUP BY r.sGroupCust,IL_LOCN, IM_CUST,IL_NOTE_2,r.ANAL}';
+        EXECUTE IMMEDIATE v_query;-- USING sAnalysis;
     Else
       --use analysis 
        v_query := q'{INSERT INTO Tmp_Locn_Cnt_By_Cust
@@ -399,12 +402,12 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
               WHERE IM_ACTIVE = 1
               AND NI_AVAIL_ACTUAL >= 1
               AND NI_STATUS <> 3
-              AND r.ANAL = sAnalysis
+              AND r.ANAL = :sAnalysis
               GROUP BY r.sGroupCust,IL_LOCN, IM_CUST,IL_NOTE_2,r.ANAL}';
-    
+      EXECUTE IMMEDIATE v_query USING sAnalysis;
     End If;
       --If F_IS_TABLE_EEMPTY('Tmp_Locn_Cnt_By_Cust') <= 0 Then
-        EXECUTE IMMEDIATE v_query;-- USING p_IM_ACTIVE,p_NI_AVAIL_ACTUAL,p_NI_STATUS;
+        --EXECUTE IMMEDIATE v_query;-- USING p_IM_ACTIVE,p_NI_AVAIL_ACTUAL,p_NI_STATUS;
       --Else
         --DBMS_OUTPUT.PUT_LINE('C_EOM_START_ALL_TEMP_STOR_DATA table is not empty still took ' || (round((dbms_utility.get_time-l_start)/100, 6)));
       --End If;
@@ -2929,7 +2932,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
             v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
             EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'H4_EOM_ALL_STOR','IL','DEV_STOR_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
             sFileName := sCustomerCode || '-H4_EOM_ALL_STOR-' || startdate || '-TO-' || enddate || '-RunOn-' || sFileTime ||  '.csv';
-            --Z2_TMP_FEES_TO_CSV(sFileName,'DEV_STOR_FEES',sOp);
+            Z2_TMP_FEES_TO_CSV(sFileName,'DEV_STOR_FEES',sOp);
             --DBMS_OUTPUT.PUT_LINE('Z2_TMP_FEES_TO_CSV for ' || sFileName || '.' );
             --uncomment above if you want to produce an exported file for all storage, about 5MB every time.
             --COMMIT;
@@ -10565,11 +10568,11 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
       If F_IS_TABLE_EEMPTY('DEV_ADMIN_DATA_PICK_LINECOUNTS') <= 0 Then
         		
         DBMS_OUTPUT.PUT_LINE('2nd Need to RUN_ONCE TMP_ADMIN_DATA_PICK_LINECOUNTS as B_EOM_START_RUN_ONCE_DATA for all customers as table is empty. result was ' || UPPER(v_query_logfile) || ' and end date was ' ||  UPPER(v_tmp_date) );
-        B_EOM_START_RUN_ONCE_DATA(start_date,end_date,sAnalysis_Start,sCust_start,0,sOp);
+        B_EOM_START_RUN_ONCE_DATA(start_date,end_date,sOp);
       ELSIf UPPER(v_query_logfile) != UPPER(v_tmp_date) Then
         -- If vRtnVal != TO_CHAR(SYSDATE, 'DD-MON-YY') Then
         --DBMS_OUTPUT.PUT_LINE('2nd Need to RUN_ONCE TMP_ADMIN_DATA_PICK_LINECOUNTS as B_EOM_START_RUN_ONCE_DATA for all customers as table is empty. result was ' || UPPER(v_query_logfile) || ' and end date was ' ||  UPPER(v_tmp_date) );
-        B_EOM_START_RUN_ONCE_DATA(start_date,end_date,sAnalysis_Start,sCust_start,0,sOp);
+        B_EOM_START_RUN_ONCE_DATA(start_date,end_date,sOp);
         --Else
         --DBMS_OUTPUT.PUT_LINE('2nd No Need to RUN_ONCE TMP_ADMIN_DATA_PICK_LINECOUNTS as B_EOM_START_RUN_ONCE_DATA for all customers as table is full of data - saved another 45 seconds. Last Date match was ' || UPPER(v_query_logfile) || ' and end date was ' ||  UPPER(v_tmp_date) );
       End If;
@@ -10577,11 +10580,11 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
       Select (F_EOM_CHECK_LOG(v_tmp_date ,'TMP_ADMIN_DATA_PICK_LINECOUNTS','B_EOM_START_RUN_ONCE_DATA',sOp)) INTO v_query_logfile From Dual;--v_query := q'{Select EOM_REPORT_PKG_TEST.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
       If F_IS_TABLE_EEMPTY('TMP_ADMIN_DATA_PICK_LINECOUNTS') <= 0 Then
         --DBMS_OUTPUT.PUT_LINE('2nd Need to RUN_ONCE TMP_ADMIN_DATA_PICK_LINECOUNTS as B_EOM_START_RUN_ONCE_DATA for all customers as table is empty. result was ' || UPPER(v_query_logfile) || ' and end date was ' ||  UPPER(v_tmp_date) );
-        B_EOM_START_RUN_ONCE_DATA(start_date,end_date,sAnalysis_Start,sCust_start,0,sOp);
+        B_EOM_START_RUN_ONCE_DATA(start_date,end_date,sOp);
       ELSIf UPPER(v_query_logfile) != UPPER(v_tmp_date) Then
         -- If vRtnVal != TO_CHAR(SYSDATE, 'DD-MON-YY') Then
         --DBMS_OUTPUT.PUT_LINE('2nd Need to RUN_ONCE TMP_ADMIN_DATA_PICK_LINECOUNTS as B_EOM_START_RUN_ONCE_DATA for all customers as table is empty. result was ' || UPPER(v_query_logfile) || ' and end date was ' ||  UPPER(v_tmp_date) );
-        B_EOM_START_RUN_ONCE_DATA(start_date,end_date,sAnalysis_Start,sCust_start,0,sOp);
+        B_EOM_START_RUN_ONCE_DATA(start_date,end_date,sOp);
         --Else
         --DBMS_OUTPUT.PUT_LINE('2nd No Need to RUN_ONCE TMP_ADMIN_DATA_PICK_LINECOUNTS as B_EOM_START_RUN_ONCE_DATA for all customers as table is full of data - saved another 45 seconds. Last Date match was ' || UPPER(v_query_logfile) || ' and end date was ' ||  UPPER(v_tmp_date) );
       End If;
