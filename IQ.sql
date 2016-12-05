@@ -33,3 +33,20 @@ From TMP_ALL_FEES_F
 Where ORDERNUM = '   1969424' AND DESPNOTE = '   2287094';
 --AND FEETYPE = 'Stock'
 --Order By FEETYPE;
+
+
+select
+   object_name, 
+   object_type, 
+   last_ddl_time
+from
+   dba_objects
+where object_type = 'TABLE'
+and
+  object_name Like '%Dev%';
+
+SELECT LAST_DDL_TIME, TIMESTAMP
+FROM USER_OBJECTS
+WHERE OBJECT_TYPE = 'PROCEDURE'
+AND OBJECT_NAME = 'MY_PROC';  
+  
