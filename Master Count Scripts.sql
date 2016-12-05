@@ -83,3 +83,17 @@ AND RM_CUST   IN ( '21ACROW','21ELILILLY', '21IOOF', '21JELDWEN', '21QBEINSUR')
 GROUP BY SD_ORDER, SH_CUST, RM_PARENT, SH_STATUS, SD_STATUS , SD_LINE
 ORDER BY SD_ORDER, SD_LINE
 
+select
+   object_name, 
+   object_type, 
+   last_ddl_time
+from
+   dba_objects
+where object_type = 'TABLE'
+and
+  object_name Like '%Dev%';
+
+SELECT LAST_DDL_TIME, TIMESTAMP
+FROM USER_OBJECTS
+WHERE OBJECT_TYPE = 'PROCEDURE'
+AND OBJECT_NAME = 'MY_PROC';  
