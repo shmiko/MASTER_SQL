@@ -1354,9 +1354,10 @@ create unique index destinations_pk on destinations(name);
 
 
 --Update next invoice number
-SELECT RC_NEXT_INV_NUM FROM pwin177.RC
-UPDATE pwin177.RC
-SET RC_NEXT_INV_NUM = '354556'
+SELECT IU_UNIT FROM pwin175
+UPDATE IU
+SET IU_EXT_REF = 'SW/250'
+WHERE IU_UNIT = 'SW/250'
 
 
 
