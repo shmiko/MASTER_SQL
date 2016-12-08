@@ -2137,7 +2137,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
         END AS "UnitPrice",
       CASE
         WHEN UPPER(l1.IL_NOTE_2) = 'YES'  AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --pallet for fast moving
-          f_get_fee('RM_XX_FEE11',r.sGroupCust) / tmp.NCOUNTOFSTOCKS
+          f_get_fee('RM_XX_FEE11',sCustomerCode) / tmp.NCOUNTOFSTOCKS
         WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --shelf for fast moving
           f_get_fee('RM_XX_FEE12',sCustomerCode) / tmp.NCOUNTOFSTOCKS
         WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',sCustomerCode) !=0 THEN --pallet for slow moving if slow rate exists
@@ -2204,16 +2204,26 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
       NULL As   Cost,
       NULL AS PaymentType,NULL,NULL,NULL,NULL
   
-    FROM NI n1 INNER JOIN IM ON IM_STOCK = n1.NI_STOCK --AND IM_CUST = sCustomerCode
-    INNER JOIN IL l1 ON l1.IL_LOCN = n1.NI_LOCN
-    INNER JOIN Tmp_Locn_Cnt_By_Cust tmp ON tmp.SLOCN = l1.IL_LOCN
-    LEFT JOIN Tmp_Group_Cust r ON r.ANAL = sAnalysis
-    WHERE  IM_ACTIVE = 1
-    AND n1.NI_AVAIL_ACTUAL >= '1'
-    AND n1.NI_STATUS <> 0
+    FROM  NA n1 INNER JOIN IL l1 ON l1.IL_UID = n1.NA_EXT_KEY
+      INNER JOIN NE e ON e.NE_ACCOUNT = n1.NA_ACCOUNT
+      INNER JOIN IM  ON  IM_STOCK = n1.NA_STOCK
+
+  
+  
+    --FROM NI n1 INNER JOIN  IM ON IM_STOCK = n1.NI_STOCK --AND IM_CUST = sCustomerCode
+    --LEFT OUTER JOIN IL l1 ON l1.IL_LOCN = n1.NI_LOCN
+    INNER JOIN  Dev_Locn_Cnt_By_Cust tmp ON tmp.SLOCN = l1.IL_LOCN 
+    INNER JOIN  Dev_Group_Cust r ON r.sCust = IM_CUST
+    WHERE n1.NA_EXT_TYPE = 1210067
+    AND e.NE_AVAIL_ACTUAL >= '1'
+    AND l1.IL_IN_LOCN NOT IN ('OBSOLETEMEL','OBSOLETESYD','PASTHISTORY', 'CANBERRA')
+    AND e.NE_STATUS =  1
+    AND e.NE_STRENGTH = 3
+
     --AND tmp.SCUST = sCustomerCode
+   -- AND l1.IL_LOCN = 'S5B13-10'
     AND r.ANAL = sAnalysis
-    GROUP BY l1.IL_LOCN,IM_CUST,IM_BRAND,IM_OWNED_By,IM_PROFILE,l1.IL_NOTE_2,n1.NI_LOCN,n1.NI_STOCK,
+    GROUP BY l1.IL_LOCN,IM_CUST,IM_BRAND,IM_OWNED_By,IM_PROFILE,l1.IL_NOTE_2,l1.IL_LOCN,n1.NA_STOCK,
     tmp.NCOUNTOFSTOCKS,IM_REPORTING_PRICE,r.sGroupCust,IM_LEVEL_UNIT,IM_XX_COST_CENTRE01,IM_STOCK,IM_STD_COST,IM_LAST_COST;
       
       CURSOR c
@@ -2335,15 +2345,26 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
       NULL As   Cost,
       NULL AS PaymentType,NULL,NULL,NULL,NULL
   
-    FROM NI n1 INNER JOIN IM ON IM_STOCK = n1.NI_STOCK AND IM_CUST = sCustomerCode
-    INNER JOIN IL l1 ON l1.IL_LOCN = n1.NI_LOCN
-    INNER JOIN Tmp_Locn_Cnt_By_Cust tmp ON tmp.SLOCN = l1.IL_LOCN
-    LEFT JOIN Tmp_Group_Cust r ON r.sCust = sCustomerCode
-    WHERE  IM_ACTIVE = 1
-    AND n1.NI_AVAIL_ACTUAL >= '1'
-    AND n1.NI_STATUS <> 0
+     FROM  NA n1 INNER JOIN IL l1 ON l1.IL_UID = n1.NA_EXT_KEY
+      INNER JOIN NE e ON e.NE_ACCOUNT = n1.NA_ACCOUNT
+      INNER JOIN IM  ON  IM_STOCK = n1.NA_STOCK
+
+  
+  
+    --FROM NI n1 INNER JOIN  IM ON IM_STOCK = n1.NI_STOCK --AND IM_CUST = sCustomerCode
+    --LEFT OUTER JOIN IL l1 ON l1.IL_LOCN = n1.NI_LOCN
+    INNER JOIN  Dev_Locn_Cnt_By_Cust tmp ON tmp.SLOCN = l1.IL_LOCN 
+    INNER JOIN  Dev_Group_Cust r ON r.sCust = IM_CUST
+    WHERE n1.NA_EXT_TYPE = 1210067
+    AND e.NE_AVAIL_ACTUAL >= '1'
+    AND l1.IL_IN_LOCN NOT IN ('OBSOLETEMEL','OBSOLETESYD','PASTHISTORY', 'CANBERRA')
+    AND e.NE_STATUS =  1
+    AND e.NE_STRENGTH = 3
+
     AND tmp.SCUST = sCustomerCode
-    GROUP BY l1.IL_LOCN,IM_CUST,IM_BRAND,IM_OWNED_By,IM_PROFILE,l1.IL_NOTE_2,n1.NI_LOCN,n1.NI_STOCK,
+   -- AND l1.IL_LOCN = 'S5B13-10'
+   -- AND r.ANAL = sAnalysis
+    GROUP BY l1.IL_LOCN,IM_CUST,IM_BRAND,IM_OWNED_By,IM_PROFILE,l1.IL_NOTE_2,l1.IL_LOCN,n1.NA_STOCK,
     tmp.NCOUNTOFSTOCKS,IM_REPORTING_PRICE,r.sGroupCust,IM_LEVEL_UNIT,IM_XX_COST_CENTRE01,IM_STOCK,IM_STD_COST,IM_LAST_COST;
 
     
@@ -2466,15 +2487,26 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
       NULL As   Cost,
       NULL AS PaymentType,NULL,NULL,NULL,NULL
   
-    FROM NI n1 INNER JOIN IM ON IM_STOCK = n1.NI_STOCK AND IM_CUST = sCustomerCode
-    INNER JOIN IL l1 ON l1.IL_LOCN = n1.NI_LOCN
-    INNER JOIN Dev_Locn_Cnt_By_Cust tmp ON tmp.SLOCN = l1.IL_LOCN
-    LEFT JOIN Dev_Group_Cust r ON r.sCust = sCustomerCode
-    WHERE  IM_ACTIVE = 1
-    AND n1.NI_AVAIL_ACTUAL >= '1'
-    AND n1.NI_STATUS <> 0
+    FROM  NA n1 INNER JOIN IL l1 ON l1.IL_UID = n1.NA_EXT_KEY
+      INNER JOIN NE e ON e.NE_ACCOUNT = n1.NA_ACCOUNT
+      INNER JOIN IM  ON  IM_STOCK = n1.NA_STOCK
+
+  
+  
+    --FROM NI n1 INNER JOIN  IM ON IM_STOCK = n1.NI_STOCK --AND IM_CUST = sCustomerCode
+    --LEFT OUTER JOIN IL l1 ON l1.IL_LOCN = n1.NI_LOCN
+    INNER JOIN  Dev_Locn_Cnt_By_Cust tmp ON tmp.SLOCN = l1.IL_LOCN 
+    INNER JOIN  Dev_Group_Cust r ON r.sCust = IM_CUST
+    WHERE n1.NA_EXT_TYPE = 1210067
+    AND e.NE_AVAIL_ACTUAL >= '1'
+    AND l1.IL_IN_LOCN NOT IN ('OBSOLETEMEL','OBSOLETESYD','PASTHISTORY', 'CANBERRA')
+    AND e.NE_STATUS =  1
+    AND e.NE_STRENGTH = 3
+
     AND tmp.SCUST = sCustomerCode
-    GROUP BY l1.IL_LOCN,IM_CUST,IM_BRAND,IM_OWNED_By,IM_PROFILE,l1.IL_NOTE_2,n1.NI_LOCN,n1.NI_STOCK,
+   -- AND l1.IL_LOCN = 'S5B13-10'
+    --AND r.ANAL = sAnalysis
+    GROUP BY l1.IL_LOCN,IM_CUST,IM_BRAND,IM_OWNED_By,IM_PROFILE,l1.IL_NOTE_2,l1.IL_LOCN,n1.NA_STOCK,
     tmp.NCOUNTOFSTOCKS,IM_REPORTING_PRICE,r.sGroupCust,IM_LEVEL_UNIT,IM_XX_COST_CENTRE01,IM_STOCK,IM_STD_COST,IM_LAST_COST;
     
      CURSOR cDEVAnal
@@ -2596,16 +2628,26 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
       NULL As   Cost,
       NULL AS PaymentType,NULL,NULL,NULL,NULL
   
-    FROM NI n1 INNER JOIN IM ON IM_STOCK = n1.NI_STOCK --AND IM_CUST = sCustomerCode
-    INNER JOIN IL l1 ON l1.IL_LOCN = n1.NI_LOCN
-    INNER JOIN Dev_Locn_Cnt_By_Cust tmp ON tmp.SLOCN = l1.IL_LOCN
-    LEFT JOIN Dev_Group_Cust r ON r.ANAL = sAnalysis
-    WHERE  IM_ACTIVE = 1
-    AND n1.NI_AVAIL_ACTUAL >= '1'
-    AND n1.NI_STATUS <> 0
+   FROM  NA n1 INNER JOIN IL l1 ON l1.IL_UID = n1.NA_EXT_KEY
+      INNER JOIN NE e ON e.NE_ACCOUNT = n1.NA_ACCOUNT
+      INNER JOIN IM  ON  IM_STOCK = n1.NA_STOCK
+
+  
+  
+    --FROM NI n1 INNER JOIN  IM ON IM_STOCK = n1.NI_STOCK --AND IM_CUST = sCustomerCode
+    --LEFT OUTER JOIN IL l1 ON l1.IL_LOCN = n1.NI_LOCN
+    INNER JOIN  Dev_Locn_Cnt_By_Cust tmp ON tmp.SLOCN = l1.IL_LOCN 
+    INNER JOIN  Dev_Group_Cust r ON r.sCust = IM_CUST
+    WHERE n1.NA_EXT_TYPE = 1210067
+    AND e.NE_AVAIL_ACTUAL >= '1'
+    AND l1.IL_IN_LOCN NOT IN ('OBSOLETEMEL','OBSOLETESYD','PASTHISTORY', 'CANBERRA')
+    AND e.NE_STATUS =  1
+    AND e.NE_STRENGTH = 3
+
     --AND tmp.SCUST = sCustomerCode
+   -- AND l1.IL_LOCN = 'S5B13-10'
     AND r.ANAL = sAnalysis
-    GROUP BY l1.IL_LOCN,IM_CUST,IM_BRAND,IM_OWNED_By,IM_PROFILE,l1.IL_NOTE_2,n1.NI_LOCN,n1.NI_STOCK,
+    GROUP BY l1.IL_LOCN,IM_CUST,IM_BRAND,IM_OWNED_By,IM_PROFILE,l1.IL_NOTE_2,l1.IL_LOCN,n1.NA_STOCK,
     tmp.NCOUNTOFSTOCKS,IM_REPORTING_PRICE,r.sGroupCust,IM_LEVEL_UNIT,IM_XX_COST_CENTRE01,IM_STOCK,IM_STD_COST,IM_LAST_COST;
   
     QueryTable VARCHAR2(600) := q'{SELECT To_Number(regexp_substr(RM_XX_FEE11,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = :sCustomerCode}';
@@ -2793,8 +2835,8 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           CURSOR c
           IS
           select *
-          FROM DEV_STOR_ALL_FEES t
-          WHERE  t.Customer = sCustomerCode OR t.parent = sCustomerCode;
+          FROM DEV_STOR_ALL_FEES t;
+         -- WHERE  t.Customer = sCustomerCode OR t.parent = sCustomerCode;
           
           CURSOR c1
           IS
