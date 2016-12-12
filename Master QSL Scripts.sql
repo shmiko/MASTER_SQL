@@ -5170,3 +5170,13 @@ select F_GET_FIRST_OF_PREV_WEEK(7) AS "Last Monday",
           ,0,0,
           2.43 AS  "Carton Charge Cost",NULL,NULL
           From DUAL;
+		  
+		  
+		  
+		  Select * From QD LEFT OUTER JOIN QQ ON QQ_JOB_NUM = QD_JOB_NUM
+INNER JOIN IM ON IM_STOCK = QD_FIN_GOOD
+Where 
+QD_FIN_GOOD LIKE 'OFW%' 
+--AND 
+QD_CUST LIKE 'V-OFWWOR'
+;
