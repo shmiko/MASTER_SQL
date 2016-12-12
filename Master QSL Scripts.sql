@@ -4681,6 +4681,8 @@ Select
       Where FEETYPE = 'Stock' 
       AND ((ADDRESS NOT LIKE '%Casselden%' Or ADDRESS NOT LIKE '%Lonsdale%')
       OR (ADDRESS2 NOT LIKE '%Casselden%' Or ADDRESS2 NOT LIKE '%Lonsdale%'))
+	  
+	  ..
       GROUP BY EXTRACT(DAY FROM TO_DATE(DESPDATE)),DESPDATE;
       
 select country, 
