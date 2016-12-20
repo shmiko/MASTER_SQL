@@ -5,7 +5,14 @@ SELECT @FromShipDate = '09/01/2016'
 SELECT @ToShipDate = '12/16/2016'  --Note:  Make this +1 days from your last ship date
 SET @JavelinNumber = 'W1693170'
 
-(SELECT SALES_ORDER.BILL_TO_ID as CustomerId, SALES_ORDER.CUST_ID as ParentId, DEBTOR.NAMES as Parent, SO_LINE_ITEM.COST_CENTER as CostCentre,
+
+
+(SELECT DEBTOR.[DATAFLEX RECNUM ONE] as ID,
+DEBTOR.[AC NO] as Customer,
+SALES_ORDER.BILL_TO_ID as CustomerId, 
+SALES_ORDER.CUST_ID as ParentId, 
+DEBTOR.NAMES as Parent, 
+SO_LINE_ITEM.COST_CENTER as CostCentre,
 SALES_ORDER.SO_ID as OrderNum, SALES_ORDER.CUST_SO_ID as OrderWareNum, SO_LINE_ITEM.PO_NO as CustRef, SO_LINE_ITEM.PICK_ID as PickSlip,
 OrderShipTo.ShippingComment as DespNote,
 (SELECT TOP (1) SHIP_DATE FROM [LiveData].[dbo].PACKAGE WHERE PICK_ID=SO_LINE_ITEM.PICK_ID) as DespDate, 'Item' as FeeType, 
@@ -31,7 +38,7 @@ AND SALES_ORDER.CUST_SO_ID = @JavelinNumber)
 UNION 
 
 
-(SELECT SALES_ORDER.BILL_TO_ID as CustomerId, SALES_ORDER.CUST_ID as ParentId, DEBTOR.NAMES as Parent, '' as CostCentre,
+(SELECT DEBTOR.[DATAFLEX RECNUM ONE] as ID,DEBTOR.[AC NO] as Customer,SALES_ORDER.BILL_TO_ID as CustomerId, SALES_ORDER.CUST_ID as ParentId, DEBTOR.NAMES as Parent, '' as CostCentre,
 SALES_ORDER.SO_ID as OrderNum, SALES_ORDER.CUST_SO_ID as OrderWareNum, '' as CustRef, '' as PickSlip,
 '' as DespNote, FF_TRANS.TIME_START as DespDate, 'PriceList' as FeeType, 
 FF_TRANS.TIMELINE_ID as Item, FF_TIMELINE.TIMELINE as Description, FF_TRANS.ACT_QTY as Qty,
@@ -49,7 +56,7 @@ AND SALES_ORDER.CUST_SO_ID = @JavelinNumber)
 
 UNION
 
-(SELECT SALES_ORDER.BILL_TO_ID as CustomerId, SALES_ORDER.CUST_ID as ParentId, DEBTOR.NAMES as Parent, '' as CostCentre,
+(SELECT DEBTOR.[DATAFLEX RECNUM ONE] as ID,DEBTOR.[AC NO] as Customer,SALES_ORDER.BILL_TO_ID as CustomerId, SALES_ORDER.CUST_ID as ParentId, DEBTOR.NAMES as Parent, '' as CostCentre,
 SALES_ORDER.SO_ID as OrderNum, SALES_ORDER.CUST_SO_ID as OrderWareNum, '' as CustRef, PACKAGE.PICK_ID as PickSlip,
 '' as DespNote, PACKAGE.SHIP_DATE as DespDate, 'Shipping' as FeeType, 
 '' as Item, SHIPPING_MODE.SHIP_MODE_DESC as Description, '1' as Qty,
