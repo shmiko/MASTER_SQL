@@ -2,10 +2,12 @@ DECLARE @FromShipDate as date
 DECLARE @ToShipDate as date
 DECLARE @JavelinNumber as varchar(10)
 DECLARE @JavelinLetter as varchar(10)
+DECLARE @OWNumber as VARCHAR(10)
 SELECT @FromShipDate = '09/01/2016'   
-SELECT @ToShipDate = '12/16/2016'  --Note:  Make this +1 days from your last ship date
+SELECT @ToShipDate = '12/16/2016'			--Note:  Make this +1 days from your last ship date
 SET @JavelinLetter = 'W'
-SET @JavelinNumber = @JavelinLetter + '%'
+--SET @JavelinNumber = @JavelinLetter + '%' -- Note: Use this to get all Javelin Orders
+SET @OWNumber = 'W1693170'					-- Note: Use this to get a single javelin Order
 
 /* Items */
 SELECT
@@ -59,7 +61,8 @@ WHERE ISNULL(SO_LINE_ITEM.PICK_ID, '0') >		0
 	AND ISNULL(SO_LINE_ITEM.ITEM_NO,0)	<>		0 
 	AND (SO_LINE_ITEM.CREATED_DATE		>=		@FromShipDate 
 	AND SO_LINE_ITEM.CREATED_DATE		<=		@ToShipDate)
-	AND SALES_ORDER.CUST_SO_ID			LIKE	@JavelinNumber
+	AND (SALES_ORDER.CUST_SO_ID			LIKE	@JavelinNumber
+	OR  SALES_ORDER.CUST_SO_ID			=		@OWNumber)
 
 UNION 
 
@@ -97,9 +100,10 @@ FROM [LiveData].[dbo].FF_TRANS
 	INNER JOIN [LiveData].[dbo].CUSTOMER			ON CUSTOMER.CUST_ID				= SALES_ORDER.CUST_ID
 	INNER JOIN [LiveData].[dbo].DEBTOR				ON DEBTOR.[DATAFLEX RECNUM ONE] = CUSTOMER.DEBTOR_RECNUM
 WHERE ISNULL(FF_TRANS.SO_ID, '0')	>	0 
-	AND (FF_TRANS.TIME_START		>=	@FromShipDate 
-	AND FF_TRANS.TIME_START			<=	@ToShipDate)
-	AND SALES_ORDER.CUST_SO_ID		=	@JavelinNumber
+	AND (FF_TRANS.TIME_START			>=		@FromShipDate 
+	AND FF_TRANS.TIME_START				<=		@ToShipDate)
+	AND (SALES_ORDER.CUST_SO_ID			=		@JavelinNumber
+	OR  SALES_ORDER.CUST_SO_ID			=		@OWNumber)
 
 UNION
 
@@ -137,9 +141,10 @@ FROM [LiveData].[dbo].SO_CHARGE
 	INNER JOIN [LiveData].[dbo].DEBTOR				ON DEBTOR.[DATAFLEX RECNUM ONE] = CUSTOMER.DEBTOR_RECNUM
 	LEFT JOIN [LiveData].[dbo].PACKAGE				ON PACKAGE.PACKAGE_ID			= SO_CHARGE.PackageID
 	LEFT JOIN [LiveData].[dbo].SHIPPING_MODE		ON SHIPPING_MODE.SHIP_MODE_ID	= PACKAGE.SHIP_MODE_ID
-WHERE ISNULL(SO_CHARGE.SO_ID, '0')	>	0 
-	AND (SO_CHARGE.MODIFIED_DATE	>=	@FromShipDate 
-	AND SO_CHARGE.MODIFIED_DATE		<=	@ToShipDate)
-	AND SALES_ORDER.CUST_SO_ID		=	@JavelinNumber
+WHERE ISNULL(SO_CHARGE.SO_ID, '0')		>		0 
+	AND (SO_CHARGE.MODIFIED_DATE		>=		@FromShipDate 
+	AND SO_CHARGE.MODIFIED_DATE			<=		@ToShipDate)
+	AND (SALES_ORDER.CUST_SO_ID			=		@JavelinNumber
+	OR  SALES_ORDER.CUST_SO_ID			=		@OWNumber)
 
 ORDER BY SALES_ORDER.SO_ID Desc
