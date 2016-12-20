@@ -1,9 +1,11 @@
 DECLARE @FromShipDate as date
 DECLARE @ToShipDate as date
 DECLARE @JavelinNumber as varchar(10)
+DECLARE @JavelinLetter as varchar(10)
 SELECT @FromShipDate = '09/01/2016'   
 SELECT @ToShipDate = '12/16/2016'  --Note:  Make this +1 days from your last ship date
-SET @JavelinNumber = 'W1693170'
+SET @JavelinLetter = 'W'
+SET @JavelinNumber = '%' + @JavelinLetter
 
 SELECT DEBTOR.[DATAFLEX RECNUM ONE] as ID,DEBTOR.[AC NO] as Customer,SALES_ORDER.BILL_TO_ID as CustomerId, SALES_ORDER.CUST_ID as ParentId, DEBTOR.NAMES as Parent, '' as CostCentre,
 SALES_ORDER.SO_ID as OrderNum, SALES_ORDER.CUST_SO_ID as OrderWareNum, '' as CustRef, '' as PickSlip,
@@ -19,3 +21,4 @@ FROM [LiveData].[dbo].FF_TRANS
 	INNER JOIN [LiveData].[dbo].CUSTOMER ON CUSTOMER.CUST_ID = SALES_ORDER.CUST_ID
 	INNER JOIN [LiveData].[dbo].DEBTOR ON DEBTOR.[DATAFLEX RECNUM ONE] = CUSTOMER.DEBTOR_RECNUM
 WHERE ISNULL(FF_TRANS.SO_ID, '0') > 0 AND (FF_TRANS.TIME_START >= @FromShipDate AND FF_TRANS.TIME_START <= @ToShipDate)
+AND SALES_ORDER.CUST_SO_ID LIKE 'W%' --@JavelinNumber
