@@ -2,10 +2,12 @@ DECLARE @FromShipDate as date
 DECLARE @ToShipDate as date
 DECLARE @JavelinNumber as varchar(10)
 DECLARE @JavelinLetter as varchar(10)
+DECLARE @OWNumber as VARCHAR(10)
 SELECT @FromShipDate = '09/01/2016'   
-SELECT @ToShipDate = '12/16/2016'  --Note:  Make this +1 days from your last ship date
+SELECT @ToShipDate = '12/16/2016'			--Note:  Make this +1 days from your last ship date
 SET @JavelinLetter = 'W'
-SET @JavelinNumber = @JavelinLetter + '%'
+--SET @JavelinNumber = @JavelinLetter + '%' -- Note: Use this to get all Javelin Orders
+SET @OWNumber = 'W1693170'					-- Note: Use this to get a single javelin Order
 
 SELECT DEBTOR.[DATAFLEX RECNUM ONE] as ID,DEBTOR.[AC NO] as Customer,SALES_ORDER.BILL_TO_ID as CustomerId, SALES_ORDER.CUST_ID as ParentId, DEBTOR.NAMES as Parent, '' as CostCentre,
 SALES_ORDER.SO_ID as OrderNum, SALES_ORDER.CUST_SO_ID as OrderWareNum, '' as CustRef, '' as PickSlip,
