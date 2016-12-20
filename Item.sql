@@ -5,7 +5,7 @@ DECLARE @JavelinLetter as varchar(10)
 SELECT @FromShipDate = '09/01/2016'   
 SELECT @ToShipDate = '12/16/2016'  --Note:  Make this +1 days from your last ship date
 SET @JavelinLetter = 'W'
-SET @JavelinNumber = '%' + @JavelinLetter
+SET @JavelinNumber = @JavelinLetter + '%'
 
 SELECT DEBTOR.[DATAFLEX RECNUM ONE] as ID,
 DEBTOR.[AC NO] as Customer,
@@ -33,4 +33,4 @@ FROM  [LiveData].[dbo].[SO_LINE_ITEM]
 	LEFT JOIN [LiveData].[dbo].PACKAGE ON PACKAGE.SO_ID = SALES_ORDER.SO_ID
 	INNER JOIN [LiveData].[dbo].SO_LINE_ITEM_PRICE ON (SO_LINE_ITEM_PRICE.SO_ID = SO_LINE_ITEM.SO_ID) AND (SO_LINE_ITEM_PRICE.LINE_ITEM_NO = SO_LINE_ITEM.LINE_ITEM_NO)
 WHERE ISNULL(SO_LINE_ITEM.PICK_ID, '0') > 0 AND ISNULL(SO_LINE_ITEM.ITEM_NO,0) <> 0 AND (SO_LINE_ITEM.CREATED_DATE >= @FromShipDate AND SO_LINE_ITEM.CREATED_DATE <= @ToShipDate)
-AND SALES_ORDER.CUST_SO_ID LIKE '%W' --@JavelinNumber
+AND SALES_ORDER.CUST_SO_ID LIKE @JavelinNumber
