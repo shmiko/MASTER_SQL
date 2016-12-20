@@ -45,5 +45,5 @@ FROM [LiveData].[dbo].FF_TRANS
 WHERE ISNULL(FF_TRANS.SO_ID, '0')	>	0 
 	AND (FF_TRANS.TIME_START			>=		@FromShipDate 
 	AND FF_TRANS.TIME_START				<=		@ToShipDate)
-	AND (SALES_ORDER.CUST_SO_ID			=		@JavelinNumber
+	AND (SALES_ORDER.CUST_SO_ID			like		@JavelinNumber
 	OR  SALES_ORDER.CUST_SO_ID			=		@OWNumber)
