@@ -46,5 +46,5 @@ FROM [LiveData].[dbo].SO_CHARGE
 WHERE ISNULL(SO_CHARGE.SO_ID, '0')		>		0 
 	AND (SO_CHARGE.MODIFIED_DATE		>=		@FromShipDate 
 	AND SO_CHARGE.MODIFIED_DATE			<=		@ToShipDate)
-	AND (SALES_ORDER.CUST_SO_ID			=		@JavelinNumber
+	AND (SALES_ORDER.CUST_SO_ID			LIKE		@JavelinNumber
 	OR  SALES_ORDER.CUST_SO_ID			=		@OWNumber)
