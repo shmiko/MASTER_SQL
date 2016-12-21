@@ -11,7 +11,7 @@ SET @JavelinLetter = 'W'
 SET @OWNumber = 'W1586060'					-- Note: Use this to get a single javelin Order
 SET @OrdNumber = 2227
 /* Shipping */
-SELECT 
+SELECT TOP 1
 	DEBTOR.[DATAFLEX RECNUM ONE]					as ID,
 	DEBTOR.[AC NO]									as Customer,
 	SALES_ORDER.BILL_TO_ID							as CustomerId, 
