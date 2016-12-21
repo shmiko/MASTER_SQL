@@ -3,12 +3,13 @@ DECLARE @ToShipDate as date
 DECLARE @JavelinNumber as varchar(10)
 DECLARE @JavelinLetter as varchar(10)
 DECLARE @OWNumber as VARCHAR(10)
+DECLARE @OrdNumber as int
 SELECT @FromShipDate = '09/01/2016'   
 SELECT @ToShipDate = '12/16/2016'			--Note:  Make this +1 days from your last ship date
 SET @JavelinLetter = 'W'
 --SET @JavelinNumber = @JavelinLetter + '%' -- Note: Use this to get all Javelin Orders
-SET @OWNumber = 'W1693170'					-- Note: Use this to get a single javelin Order
-
+SET @OWNumber = 'W1586060'					-- Note: Use this to get a single javelin Order
+SET @OrdNumber = 2227
 /* Shipping */
 SELECT 
 	DEBTOR.[DATAFLEX RECNUM ONE]					as ID,
@@ -44,7 +45,7 @@ FROM [LiveData].[dbo].SO_CHARGE
 	LEFT JOIN [LiveData].[dbo].PACKAGE				ON PACKAGE.PACKAGE_ID			= SO_CHARGE.PackageID
 	LEFT JOIN [LiveData].[dbo].SHIPPING_MODE		ON SHIPPING_MODE.SHIP_MODE_ID	= PACKAGE.SHIP_MODE_ID
 WHERE ISNULL(SO_CHARGE.SO_ID, '0')		>		0 
-	AND (SO_CHARGE.MODIFIED_DATE		>=		@FromShipDate 
-	AND SO_CHARGE.MODIFIED_DATE			<=		@ToShipDate)
-	AND (SALES_ORDER.CUST_SO_ID			LIKE		@JavelinNumber
-	OR  SALES_ORDER.CUST_SO_ID			=		@OWNumber)
+	--AND (SO_CHARGE.MODIFIED_DATE		>=		@FromShipDate 
+	--AND SO_CHARGE.MODIFIED_DATE			<=		@ToShipDate)
+	AND SALES_ORDER.CUST_SO_ID			=		@OWNumber
+	--AND  SALES_ORDER.SO_ID			=		@OrdNumber
