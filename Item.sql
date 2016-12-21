@@ -26,7 +26,7 @@ SELECT
 	(SELECT TOP (1) SHIP_DATE 
 	 FROM [LiveData].[dbo].PACKAGE 
 	 WHERE PICK_ID=SO_LINE_ITEM.PICK_ID)			as DespDate, 
-	'Item'											as FeeType, 
+	'PickFee'											as FeeType, 
 	SO_LINE_ITEM.ITEM_NO							as Item, 
 	SO_LINE_ITEM.ITEM_DESCRIPTION					as Description, 
 	SO_LINE_ITEM.PACK_QTY							as Qty,
