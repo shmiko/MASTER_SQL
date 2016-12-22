@@ -1,14 +1,40 @@
 SELECT
-                CONVERT(bit,0)													AS Tag,
-                0.0																AS ChargeableAmount,
-                DEBTOR.[AC NO]													AS CustomerAcNo,
-                DEBTOR.NAMES													AS CustomerName,
-                DEBTOR.[DATAFLEX RECNUM ONE]									AS arcustomerid,
-                STKLOCHD.[TYPE]													AS LocationType,
-				 CAST([dbo].[ufnGetStockSOH] (PAPSIZE.[INVENTORY CODE]) AS INT) AS QtyInLocation,   
-				[dbo].[ufnGetLocnCountofStocks](STKLOCLN.[LOCATION])			AS LocationCount,          
-                STKLOCLN.[LOCATION]												AS Location,
-                PAPSIZE.[INVENTORY CODE]										AS Sku
+                ''																as ID,
+				DEBTOR.[AC NO]													as CustomerAcNo,
+				DEBTOR.NAMES													as CustomerName,
+                DEBTOR.[DATAFLEX RECNUM ONE]									as arcustomerid,     
+				''																as ParentId, 
+				''																as Parent, 
+				''																as CostCentre,
+				''																as OrderNum, 
+				''																as OrderWareNum, 
+				''																as CustRef, 
+				''																as PickSlip,
+				''																as DespNote, 
+				''																as DespDate, 
+				STKLOCHD.[TYPE]													as LocationType, 
+				''																as Item, 
+				PAPSIZE.[INVENTORY CODE]										as Sku, 
+				STKLOCLN.[LOCATION]												as "Location", 
+				CAST([dbo].[ufnGetStockSOH] (PAPSIZE.[INVENTORY CODE]) AS INT) 	as QtyInLocation,  
+				[dbo].[ufnGetLocnCountofStocks](STKLOCLN.[LOCATION])			as LocationCount, 
+				''																as UOI	, 
+				CONVERT(bit,0)													as Tag,
+                0.0																as ChargeableAmount,
+				''																as SellExcl, 
+				''																as SellIncl, 
+				''																as OrderByCustomerRecipientID,
+				''																as DeliverTo, 
+				''																as AttentionTo,
+				''																as Address1, 
+				''																as Address3, 
+				''																as Address3, 
+				''																as Suburb, 
+				''																as "State", 
+				''																as PostCode, 
+				''																as Country,
+				''																as "Weight", 
+				''																as Packages								
 FROM
                 STKLOCLN
                 LEFT JOIN STKLOCHD ON STKLOCHD.LOCATION = STKLOCLN.LOCATION AND STKLOCHD.[ChargeForStorage] = 1
@@ -28,7 +54,7 @@ WHERE
                 AND STKLOCHD.ChargeForStorage = 1
                 AND DEBTOR.ChargeForStorage = 1
                 --AND SUBQRY.DaysInWarehouse > Mat_StorBill.DAYSFREESTORE
-                --AND DEBTOR.[DATAFLEX RECNUM ONE] = 10 --BUPA
+                AND DEBTOR.[DATAFLEX RECNUM ONE] = 10 --BUPA
 
 ORDER BY
                 CustomerName, --DEBTOR.[DATAFLEX RECNUM ONE],
