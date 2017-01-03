@@ -17,11 +17,11 @@ exec :source := 'BSPRINTN14'
 var sAnalysis varchar2(20) /*VerbalOrderEntryFee*/
 exec SELECT  RM_ANAL INTO :sAnalysis FROM RM where RM_CUST = :cust;
 var anal varchar2(20)
-exec :anal := '22NSWP14'
+exec :anal := '21VICP'
 var start_date varchar2(20)
-exec :start_date := To_Date('1-Sep-2016')
+exec :start_date := To_Date('1-Dec-2016')
 var end_date varchar2(20)
-exec :end_date := To_Date('30-Sep-2016')
+exec :end_date := To_Date('30-Dec-2016')
 
 
 
@@ -29,7 +29,7 @@ exec :end_date := To_Date('30-Sep-2016')
     TRUNCATE TABLE  tbl_AdminData;
     --run this first
     --EXECUTE EOM_REPORT_PKG.GROUP_CUST_START;
-    --EXECUTE EOM_REPORT_PKG.EOM_CREATE_TEMP_DATA_BIND('21VICF','1-Sep-2016','28-Sep-2016');
+    --EXECUTE EOM_REPORT_PKG.EOM_CREATE_TEMP_DATA_BIND('22NSWP14','1-Dec-2016','30-Dec-2016');
     --now run 1 of these -change variables at top first for each run
     --EXECUTE CREATE_TEMP_LOCN_BY_CUST('21VICP');
     --EXECUTE CREATE_TEMP_LOCN_BY_CUST('21VICF');

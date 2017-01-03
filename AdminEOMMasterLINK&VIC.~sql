@@ -3,11 +3,11 @@
 /*decalre variables These are being declared via the stored procedure - just need to redeclare cust so as we can get the rates*/
 
 var cust varchar2(20)
-exec :cust := 'LINK'
+exec :cust := 'LINK14'
 var nx NUMBER
 EXEC :nx := 1810105
 var cust2 varchar2(20)
-exec :cust2 := 'VHAAUS'
+exec :cust2 := 'LINK14'
 var ordernum varchar2(20)
 exec :ordernum := '1363806'
 var stock varchar2(20)
@@ -17,11 +17,11 @@ exec :source := 'BSPRINTN14'
 var sAnalysis varchar2(20) /*VerbalOrderEntryFee*/
 exec SELECT  RM_ANAL INTO :sAnalysis FROM RM where RM_CUST = :cust;
 var anal varchar2(20)
-exec :anal := '22NSWP'
+exec :anal := '22NSWP14'
 var start_date varchar2(20)
-exec :start_date := To_Date('1-May-2016')
+exec :start_date := To_Date('1-Sep-2016')
 var end_date varchar2(20)
-exec :end_date := To_Date('31-May-2016')
+exec :end_date := To_Date('30-Sep-2016')
 
 
 
@@ -29,10 +29,12 @@ exec :end_date := To_Date('31-May-2016')
     TRUNCATE TABLE  tbl_AdminData;
     --run this first
     --EXECUTE EOM_REPORT_PKG.GROUP_CUST_START;
+    --EXECUTE EOM_REPORT_PKG.EOM_CREATE_TEMP_DATA_BIND('21VICF','1-Sep-2016','28-Sep-2016');
     --now run 1 of these -change variables at top first for each run
-    --EXECUTE EOM_REPORT_PKG.EOM_CREATE_TEMP_DATA_BIND('21VICP','1-Oct-2015','31-Oct-2015');
-    --EXECUTE EOM_REPORT_PKG.EOM_CREATE_TEMP_DATA_BIND('22NSWP','1-Oct-2015','31-Oct-2015');
-    --EXECUTE EOM_REPORT_PKG.EOM_CREATE_TEMP_DATA_BIND('22NSWP14','1-Oct-2015','31-Oct-2015');
+    --EXECUTE CREATE_TEMP_LOCN_BY_CUST('21VICP');
+    --EXECUTE CREATE_TEMP_LOCN_BY_CUST('21VICF');
+    --EXECUTE CREATE_TEMP_LOCN_BY_CUST('22NSWP');
+    --EXECUTE CREATE_TEMP_LOCN_BY_CUST('22NSWP14');
 
   /*SELECT  RM_ANAL FROM RM WHERE RM_CUST = 'LINK' */
 
