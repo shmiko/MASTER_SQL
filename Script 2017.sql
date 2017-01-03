@@ -1,7 +1,5 @@
 SELECT RM_CUST FROM RM WHERE RM_ANAL = '22NSWP'
 
-
-
 select
    object_name,
    object_type,
