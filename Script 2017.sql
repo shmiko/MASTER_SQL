@@ -11,3 +11,5 @@ from
 where object_type = 'TABLE'
 and
   object_name Like '%Dev%';
+  
+  --
