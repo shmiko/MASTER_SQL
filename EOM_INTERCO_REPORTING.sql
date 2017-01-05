@@ -12127,7 +12127,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
       DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Need to TRUNCATE Dev_Group_Cust.' );
 		Else
 			v_query  := 'TRUNCATE TABLE Tmp_Group_Cust';
-      DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Need to TRUNCATE Dev_Group_Cust.' );
+      DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Need to TRUNCATE Tmp_Group_Cust.' );
 		End If;
 		EXECUTE IMMEDIATE v_query;
 		
