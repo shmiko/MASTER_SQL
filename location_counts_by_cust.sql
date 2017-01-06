@@ -13,3 +13,4 @@ SELECT Count(DISTINCT NA_STOCK) AS CountOfStocks, IL_LOCN, r.sGroupCust,
               AND NE_STATUS <> 3
               AND r.sGroupCust IS NOT NULL
               GROUP BY r.sGroupCust,IL_LOCN, IM_CUST,IL_NOTE_2
+              ORDER BY r.sGroupCust Desc;
