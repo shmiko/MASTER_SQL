@@ -590,7 +590,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
       l_start number default dbms_utility.get_time;
       tst_pick_counts tmp_Admin_Data_Pick_LineCounts%ROWTYPE;
       v_time_taken VARCHAR2(205);
-  
+      vRetTblCount INT;
     BEGIN
   
      
@@ -640,6 +640,8 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
                   AND SL_PSLIP != 'CANCELLED'
                   GROUP BY SL_PICK,SL_ORDER,SL_PSLIP,TP.vDateDesp,TP.vPackages,TP.vWeight,TP.vST_XX_NUM_PAL_SW,TP.vST_XX_NUM_PALLETS,TP.vST_XX_NUM_CARTONS}';
           EXECUTE IMMEDIATE v_query USING start_date,end_date;
+        Select F_IS_TABLE_EEMPTY('Dev_Admin_Data_Pick_LineCounts') INTO vRetTblCount From Dual;
+        DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Ran B_EOM_START_RUN_ONCE_DATA for all customers. Table Dev_Admin_Data_Pick_LineCounts has ' || vRetTblCount || ' records.' );
       Else
          /* Truncate all temp tables*/
       
@@ -680,6 +682,8 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
                   AND SL_PSLIP != 'CANCELLED'
                 GROUP BY SL_PICK,SL_ORDER,SL_PSLIP,TP.vDateDesp,TP.vPackages,TP.vWeight,TP.vST_XX_NUM_PAL_SW,TP.vST_XX_NUM_PALLETS,TP.vST_XX_NUM_CARTONS}';
         EXECUTE IMMEDIATE v_query USING start_date,end_date;
+        Select F_IS_TABLE_EEMPTY('Tmp_Admin_Data_Pick_LineCounts') INTO vRetTblCount From Dual;
+        DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Ran B_EOM_START_RUN_ONCE_DATA for all customers. Table Tmp_Admin_Data_Pick_LineCounts has ' || vRetTblCount || ' records.' );
       End If;
       /*nCheckpoint := 14;
       v_query := q'{INSERT INTO Tmp_Batch_Price_SL_Stock(vBatchStock,vBatchPickNum,vUnitPrice,vDExcl, vQuantity)
@@ -710,6 +714,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
        --DBMS_OUTPUT.PUT_LINE('B_EOM_START_RUN_ONCE_DATA as table is empty...Is it Really?????' );
        --EOM_REPORT_PKG.B_EOM_START_RUN_ONCE_DATA(start_date,end_date,sAnalysis_Start,sCust_start,0);
      -- End If;
+     DBMS_OUTPUT.PUT_LINE('B_EOM_START_RUN_ONCE_DATA ok at checkpoint ' || nCheckpoint);
    RETURN;
     EXCEPTION
       WHEN OTHERS THEN
@@ -761,6 +766,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
               WHERE IM_ACTIVE = 1
               AND NI_AVAIL_ACTUAL >= 1
               AND NI_STATUS <> 3
+              AND r.sGroupCust IS NOT NULL
               GROUP BY r.sGroupCust,IL_LOCN, IM_CUST,IL_NOTE_2}';
     Else
       
@@ -774,6 +780,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
               LEFT JOIN Tmp_Group_Cust r ON r.sCust = IM_CUST
               WHERE IM_ACTIVE = 1
               AND NI_AVAIL_ACTUAL >= 1
+              AND r.sGroupCust IS NOT NULL
               AND NI_STATUS <> 3
               GROUP BY r.sGroupCust,IL_LOCN, IM_CUST,IL_NOTE_2}';
     End If;
@@ -12107,15 +12114,16 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
 		v_query_logfile VARCHAR2(22);
 		v_query_result2 VARCHAR2(22);
 		vRtnVal VARCHAR2(40);
+    vRetTblCount INT;
 		v_tmp_date VARCHAR2(12) := TO_DATE(end_date, 'DD-MON-YY');     
 	BEGIN
 		nCheckpoint := 1;
 		If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
 			v_query  := 'TRUNCATE TABLE "PWIN175"."DEV_ALL_FEES"';
-      DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Need to TRUNCATE DEV_ALL_FEES.' );
+      DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' TRUNCATE DEV_ALL_FEES.' );
 		Else
 			v_query  := 'TRUNCATE TABLE "PWIN175"."TMP_ALL_FEES"';
-      DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Need to TRUNCATE TMP_ALL_FEES.' );
+      DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' TRUNCATE TMP_ALL_FEES.' );
 		End If;
     
 		EXECUTE IMMEDIATE v_query;
@@ -12124,10 +12132,10 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
 		nCheckpoint := 2;
 		If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
 			v_query  := 'TRUNCATE TABLE Dev_Group_Cust';
-      DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Need to TRUNCATE Dev_Group_Cust.' );
+      DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' TRUNCATE Dev_Group_Cust.' );
 		Else
 			v_query  := 'TRUNCATE TABLE Tmp_Group_Cust';
-      DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Need to TRUNCATE Tmp_Group_Cust.' );
+      DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' TRUNCATE Tmp_Group_Cust.' );
 		End If;
 		EXECUTE IMMEDIATE v_query;
 		
@@ -12137,6 +12145,8 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
       If F_IS_TABLE_EEMPTY('Dev_Group_Cust') <= 0 Then
         DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Need to run A_EOM_GROUP_CUST(sOp) for all customers as table Dev_Group_Cust is empty.' );
         A_EOM_GROUP_CUST(sOp);
+        Select F_IS_TABLE_EEMPTY('Dev_Group_Cust') INTO vRetTblCount From Dual;
+        DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Ran A_EOM_GROUP_CUST(sOp) for all customers. Table Dev_Group_Cust has ' || vRetTblCount || ' records.' );
       Else
         DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' No Need to run A_EOM_GROUP_CUST(sOp) for all customers as table Dev_Group_Cust is full of data - saved another 5 seconds.' );
       End If;
@@ -12144,10 +12154,15 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
       If F_IS_TABLE_EEMPTY('Tmp_Group_Cust') <= 0 Then
         DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Need to run A_EOM_GROUP_CUST(sOp) for all customers as table Tmp_Group_Cust is empty.' );
         A_EOM_GROUP_CUST(sOp);
+        Select F_IS_TABLE_EEMPTY('Tmp_Group_Cust') INTO vRetTblCount From Dual;
+        DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Ran A_EOM_GROUP_CUST(sOp) for all customers. Table Tmp_Group_Cust has ' || vRetTblCount || ' records.' );
       Else
         DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' No Need to run A_EOM_GROUP_CUST(sOp) for all customers as table Tmp_Group_Cust is full of data - saved another 5 seconds.' );
       End If;
     End If;
+    
+    DBMS_OUTPUT.PUT_LINE('-------------------------------------------------------------------------------');
+    DBMS_OUTPUT.PUT_LINE('-------------------------------------------------------------------------------');
 		nCheckpoint := 3;
 		--v_query := q'{SELECT TO_CHAR(LAST_ANALYZED, 'DD-MON-YY') FROM DBA_TABLES WHERE TABLE_NAME = 'TMP_ADMIN_DATA_PICK_LINECOUNTS'}';
 		--EXECUTE IMMEDIATE v_query INTO vRtnVal;-- USING sCustomerCode;
