@@ -28,8 +28,8 @@ Process exited.
 Disconnecting from the database PWIN175.
 
 
-
-Connecting to the database IQ. DEV as PRJ
+DEV as PRJ
+Connecting to the database IQ. 
 1 TRUNCATE DEV_ALL_FEES.
 2 TRUNCATE Dev_Group_Cust.
 F_IS_TABLE_EEMPTY --- The count of the Dev_Group_Cust table is 0
