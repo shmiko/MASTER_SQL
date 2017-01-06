@@ -1,4 +1,5 @@
-Connecting to the database PWIN175. TMP as PAUL
+TMP as PAUL
+Connecting to the database PWIN175. 
 1 TRUNCATE TMP_ALL_FEES.
 2 TRUNCATE Tmp_Group_Cust.
 F_IS_TABLE_EEMPTY --- The count of the Tmp_Group_Cust table is 0
