@@ -1,4 +1,5 @@
 TMP as PAUL
+
 Connecting to the database PWIN175. 
 1 TRUNCATE TMP_ALL_FEES.
 2 TRUNCATE Tmp_Group_Cust.
@@ -30,6 +31,7 @@ Disconnecting from the database PWIN175.
 
 
 DEV as PRJ
+
 Connecting to the database IQ. 
 1 TRUNCATE DEV_ALL_FEES.
 2 TRUNCATE Dev_Group_Cust.
