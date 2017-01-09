@@ -29,7 +29,6 @@ F_IS_TABLE_EEMPTY --- The count of the TMP_PICK_FEES table is 0
 Process exited.
 Disconnecting from the database PWIN175.
 
-
 DEV as PRJ
 
 Connecting to the database IQ. 
