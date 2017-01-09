@@ -1,3 +1,5 @@
+--Consolodation for intercompany and customer eom
+
 CREATE OR REPLACE 
 PACKAGE EOM AS 
 
