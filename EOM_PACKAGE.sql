@@ -1,43 +1,20 @@
---Consolodation for intercompany and customer eom
-
-CREATE OR REPLACE 
-PACKAGE EOM AS 
-
-  PROCEDURE Z3_EOM_RUN_ALL (
-       p_array_size_start IN PLS_INTEGER DEFAULT 100
-      ,start_date IN VARCHAR2-- := To_Date('1-Jun-2015') or format date as 01-Jun-15 -- use this when you want the date entered automatically
-      ,end_date IN VARCHAR2-- := To_Date('30-Jun-2015')
-      ,Customer IN VARCHAR2
-      ,Analysis IN RM.RM_ANAL%TYPE
-      ,FilterBy IN VARCHAR2
-      ,Op IN VARCHAR2
-      ,Inter_Y_OR_No IN VARCHAR2
-      ,p_dev_bool in boolean
-      ,p_intercompany_bool in boolean
-      );
-   
-   
-
-END EOM;
-
-
-CREATE OR REPLACE
-PACKAGE BODY EOM AS
+create or replace PACKAGE BODY EOM AS
 
   /* Y Run this once for each customer including intercompany   
-       This merges all the Charges from each of the temp tables   
-       Temp Tables Used   
-       1. TMP_ALL_FEES   
+     This merges all the Charges from each of the temp tables   
+     Temp Tables Used   
+     1. TMP_ALL_FEES   
 	*/
+  
     PROCEDURE Z3_EOM_RUN_ALL (
       p_array_size_start IN PLS_INTEGER DEFAULT 100
-      ,start_date IN VARCHAR2-- := To_Date('1-Jun-2015') or format date as 01-Jun-15 -- use this when you want the date entered automatically
-      ,end_date IN VARCHAR2-- := To_Date('30-Jun-2015')
+      ,start_date IN VARCHAR2 
+      ,end_date IN VARCHAR2
       ,Customer IN VARCHAR2
       ,Analysis IN RM.RM_ANAL%TYPE
       ,FilterBy IN VARCHAR2
-      ,Op IN VARCHAR2
-      ,Inter_Y_OR_No IN VARCHAR2
+      ,Op IN VARCHAR2 DEFAULT 'PAUL'
+      ,Inter_Y_OR_No IN VARCHAR2 DEFAULT 'N'
       ,p_dev_bool in boolean
       ,p_intercompany_bool in boolean
 		)
@@ -59,6 +36,31 @@ PACKAGE BODY EOM AS
 		v_tmp_date VARCHAR2(12) := TO_DATE(end_date, 'DD-MON-YY');     
 	BEGIN
 		nCheckpoint := 1;
+    If (upper(Inter_Y_OR_No) = 'Y') Then
+      If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
+        DBMS_OUTPUT.PUT_LINE(Op || ' is running this report in the DEV environment for ' );
+        DBMS_OUTPUT.PUT_LINE('date range from ' || start_date || ' to ' || end_date || ' and for ' );
+        DBMS_OUTPUT.PUT_LINE('customer ' || Customer || ' and for ' );
+        DBMS_OUTPUT.PUT_LINE('intercompany analysis ' || Analysis ||'.' );
+      Else
+        DBMS_OUTPUT.PUT_LINE(Op || ' is running this report in the TMP environment for '  );
+        DBMS_OUTPUT.PUT_LINE('date range from ' || start_date || ' to ' || end_date || ' and for '  );
+        DBMS_OUTPUT.PUT_LINE('customer ' || Customer || ' and for '  );
+        DBMS_OUTPUT.PUT_LINE( 'intercompany analysis ' || Analysis ||'.' );
+      End If;
+    Else
+      If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
+        DBMS_OUTPUT.PUT_LINE(Op || ' is running this report in the DEV environment for ' );
+        DBMS_OUTPUT.PUT_LINE('date range from ' || start_date || ' to ' || end_date || ' and for ' );
+        DBMS_OUTPUT.PUT_LINE('customer ' || Customer || '.' );
+      Else
+        DBMS_OUTPUT.PUT_LINE(Op || ' is running this report in the TMP environment for ' );
+        DBMS_OUTPUT.PUT_LINE('date range from ' || start_date || ' to ' || end_date || ' and for ' );
+        DBMS_OUTPUT.PUT_LINE('customer ' || Customer || '.' );
+      End If;
+    End If;
+    DBMS_OUTPUT.PUT_LINE('-------------------------------------------------------------------------------');
+    DBMS_OUTPUT.PUT_LINE('-------------------------------------------------------------------------------');
     If (upper(Inter_Y_OR_No) = 'Y') Then
       If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
         v_query  := 'TRUNCATE TABLE "PWIN175"."DEV_ALL_FEES"';
@@ -250,7 +252,7 @@ PACKAGE BODY EOM AS
       End If;
     End If;
 		--nCheckpoint := 45;
-		--DBMS_OUTPUT.PUT_LINE('4th EOM Customer Rates are caluclated on the fly...' );
+		--DBMS_OUTPUT.PUT_LINE('4th EOM Customer Rates are caluclated on the fly...' ); 
     
 		nCheckpoint := 5;
 		--  SELECT F_EOM_PROCESS_RUN_CHECK(TO_DATE(end_date, 'DD-MON-YY'),'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL','') INTO v_query_logfile FROM DUAL;
@@ -260,11 +262,11 @@ PACKAGE BODY EOM AS
       EOM_INTERCO_REPORTING.F_EOM_TMP_ALL_FREIGHT_ALL(p_array_size_start,start_date,end_date,Op,Analysis);
       EOM_INTERCO_REPORTING.F8_Z_EOM_RUN_FREIGHT(p_array_size_start,start_date,end_date,Customer,FilterBy,Op,Analysis); 
       DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Running F_EOM_TMP_ALL_FREIGHT_ALL & F8_Z_EOM_RUN_FREIGHT for ALL based on to date from EOM logs - v_query_logfile is ' || v_query_logfile || '- for end date being ' || TO_DATE(end_date, 'DD-MON-YY') || '.' );
-   Else
+    Else
       IQ_EOM_REPORTING.F_EOM_TMP_ALL_FREIGHT_ALL(p_array_size_start,start_date,end_date,Op);
       IQ_EOM_REPORTING.F8_Z_EOM_RUN_FREIGHT(p_array_size_start,start_date,end_date,Customer,FilterBy,Op); 
       DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Running F_EOM_TMP_ALL_FREIGHT_ALL & F8_Z_EOM_RUN_FREIGHT for ALL based on to date from EOM logs - v_query_logfile is ' || v_query_logfile || '- for end date being ' || TO_DATE(end_date, 'DD-MON-YY') || '.' );
-   End If;
+    End If;
 		--ElsIf v_query_result2  = 'RUNCUST' Then
 		--IQ_EOM_REPORTING.F_EOM_TMP_ALL_FREIGHT_ALL(p_array_size_start,start_date,end_date);
 		--IQ_EOM_REPORTING.F8_Z_EOM_RUN_FREIGHT(p_array_size_start,start_date,end_date,Customer,FilterBy); 
