@@ -826,6 +826,7 @@ create or replace PACKAGE BODY EOM AS
         v_query := 'TRUNCATE TABLE TMP_ALL_FEES_F';
       End If;
     End If;
+	
 		EXECUTE IMMEDIATE v_query;
 		COMMIT;
     If (upper(Inter_Y_OR_No) = 'Y') Then
