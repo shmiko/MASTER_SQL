@@ -18,6 +18,7 @@ FROM
                
 WHERE 
                 STKLOCLN.QUANTITY > 0
+				--CHECK
                 AND PAPSIZE.ChargeForStorage = 1
                 AND ISNULL(PAPSIZE.[CREDITOR RECNUM],0) > 0
                 AND ISNULL(DEBTOR.[DATAFLEX RECNUM ONE],0) > 0
