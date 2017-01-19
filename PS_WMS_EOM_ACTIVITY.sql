@@ -3,6 +3,7 @@ DECLARE @ToShipDate as date
 DECLARE @JavelinNumber as varchar(10)
 DECLARE @JavelinLetter as varchar(10)
 DECLARE @OWNumber as VARCHAR(10)
+DECLARE @WMS_OrderNumber as VARCHAR(10)
 SELECT @FromShipDate = '09/01/2016'   
 SELECT @ToShipDate = '12/16/2016'			--Note:  Make this +1 days from your last ship date
 SET @JavelinLetter = 'W'
@@ -41,6 +42,13 @@ SELECT
 	(RECIPIENT.FIRST_NAME 
 		+ ' ' 
 		+ RECIPIENT.LAST_NAME)						as AttentionTo, 
+	ISNULL(ShipToAddress.ADDR_1,'')					as Address1, 
+	ISNULL(ShipToAddress.ADDR_2,'')					as Address3, 
+	ISNULL(ShipToAddress.ADDR_3,'')					as Address3, 
+	ISNULL(ShipToAddress.CITY,'')					as Suburb, 
+	ISNULL(ShipToAddress.STATE_CODE,'')				as "State", 
+	ISNULL(ShipToAddress.ZIP_CODE,'')				as PostCode, 
+	ISNULL(ShipToCountry.COUNTRY_NAME,'')			as Country, 
 	(SELECT SUM(ACTUAL_WEIGHT) 
 	 FROM [LiveData].[dbo].PACKAGE 
 	 WHERE PICK_ID = SO_LINE_ITEM.PICK_ID)			as Weight, 
@@ -49,10 +57,13 @@ SELECT
 	 WHERE PACKAGE.PICK_ID=SO_LINE_ITEM.PICK_ID)	as Packages
 FROM  [LiveData].[dbo].[SO_LINE_ITEM]
 	INNER JOIN [LiveData].[dbo].SALES_ORDER			ON SALES_ORDER.SO_ID			= SO_LINE_ITEM.SO_ID
+	INNER JOIN RECIPIENT							ON RECIPIENT.RECIP_ID			= SALES_ORDER.SHIP_TO_ID
+	INNER JOIN FFADDRESS ShipToAddress				ON ShipToAddress.ADDRESS_ID 	= Recipient.DEF_ADDRESS_ID 
+	INNER JOIN COUNTRY ShipToCountry				ON ShipToCountry.COUNTRY_NUMBER = ShipToAddress.COUNTRY_ID 
 	INNER JOIN [LiveData].[dbo].CUSTOMER			ON CUSTOMER.CUST_ID				= SO_LINE_ITEM.CUST_ID
 	INNER JOIN [LiveData].[dbo].DEBTOR				ON DEBTOR.[DATAFLEX RECNUM ONE] = CUSTOMER.DEBTOR_RECNUM
 	INNER JOIN [LiveData].[dbo].PAPSIZE				ON PAPSIZE.[CODE]				= cast(SO_LINE_ITEM.ITEM_NO as char) 
-	INNER JOIN[LiveData].[dbo].RECIPIENT			ON RECIPIENT.RECIP_ID			= SO_LINE_ITEM.SHIP_TO_ID
+	--INNER JOIN[LiveData].[dbo].RECIPIENT			ON RECIPIENT.RECIP_ID			= SALES_ORDER.SHIP_TO_ID
 	LEFT JOIN [LiveData].[dbo].OrderShipTo			ON OrderShipTo.OrderId			= SALES_ORDER.SO_ID
 	LEFT JOIN [LiveData].[dbo].PACKAGE				ON PACKAGE.SO_ID				= SALES_ORDER.SO_ID
 	INNER JOIN [LiveData].[dbo].SO_LINE_ITEM_PRICE	ON (SO_LINE_ITEM_PRICE.SO_ID	= SO_LINE_ITEM.SO_ID) 
@@ -61,8 +72,8 @@ WHERE ISNULL(SO_LINE_ITEM.PICK_ID, '0') >		0
 	AND ISNULL(SO_LINE_ITEM.ITEM_NO,0)	<>		0 
 	AND (SO_LINE_ITEM.CREATED_DATE		>=		@FromShipDate 
 	AND SO_LINE_ITEM.CREATED_DATE		<=		@ToShipDate)
-	AND (SALES_ORDER.CUST_SO_ID			LIKE	@JavelinNumber
-	OR  SALES_ORDER.CUST_SO_ID			=		@OWNumber)
+	--AND (SALES_ORDER.CUST_SO_ID			LIKE	@JavelinNumber
+	--OR  SALES_ORDER.CUST_SO_ID			=		@OWNumber)
 
 UNION 
 
@@ -92,18 +103,28 @@ SELECT
 			+ ISNULL(FF_TRANS.SalesTax,0))			as SellIncl, 
 	''												as DeliverTo, 
 	''												as AttentionTo, 
+	ISNULL(ShipToAddress.ADDR_1,'')					as Address1, 
+	ISNULL(ShipToAddress.ADDR_2,'')					as Address3, 
+	ISNULL(ShipToAddress.ADDR_3,'')					as Address3, 
+	ISNULL(ShipToAddress.CITY,'')					as Suburb, 
+	ISNULL(ShipToAddress.STATE_CODE,'')				as "State", 
+	ISNULL(ShipToAddress.ZIP_CODE,'')				as PostCode, 
+	ISNULL(ShipToCountry.COUNTRY_NAME,'')			as Country,
 	'0'												as Weight, 
 	'0'												as Packages
 FROM [LiveData].[dbo].FF_TRANS
 	INNER JOIN [LiveData].[dbo].SALES_ORDER			ON SALES_ORDER.SO_ID			= FF_TRANS.SO_ID
+	INNER JOIN RECIPIENT							ON RECIPIENT.RECIP_ID			= SALES_ORDER.SHIP_TO_ID
+	INNER JOIN FFADDRESS ShipToAddress				ON ShipToAddress.ADDRESS_ID 	= Recipient.DEF_ADDRESS_ID 
+	INNER JOIN COUNTRY ShipToCountry				ON ShipToCountry.COUNTRY_NUMBER = ShipToAddress.COUNTRY_ID 
 	INNER JOIN [LiveData].[dbo].FF_TIMELINE			ON FF_TIMELINE.TIMELINE_ID		= FF_TRANS.TIMELINE_ID
 	INNER JOIN [LiveData].[dbo].CUSTOMER			ON CUSTOMER.CUST_ID				= SALES_ORDER.CUST_ID
 	INNER JOIN [LiveData].[dbo].DEBTOR				ON DEBTOR.[DATAFLEX RECNUM ONE] = CUSTOMER.DEBTOR_RECNUM
 WHERE ISNULL(FF_TRANS.SO_ID, '0')	>	0 
 	AND (FF_TRANS.TIME_START			>=		@FromShipDate 
 	AND FF_TRANS.TIME_START				<=		@ToShipDate)
-	AND (SALES_ORDER.CUST_SO_ID			=		@JavelinNumber
-	OR  SALES_ORDER.CUST_SO_ID			=		@OWNumber)
+	--AND (SALES_ORDER.CUST_SO_ID			=		@JavelinNumber
+	--OR  SALES_ORDER.CUST_SO_ID			=		@OWNumber)
 
 UNION
 
@@ -132,11 +153,21 @@ SELECT
 	(SO_CHARGE.AMOUNT 
 	+ ISNULL(SO_CHARGE.SALES_TAX,0))				as SellIncl, 
 	''												as DeliverTo, 
-	''												as AttentionTo, 
+	''												as AttentionTo,  
+	ISNULL(ShipToAddress.ADDR_1,'')					as Address1, 
+	ISNULL(ShipToAddress.ADDR_2,'')					as Address3, 
+	ISNULL(ShipToAddress.ADDR_3,'')					as Address3, 
+	ISNULL(ShipToAddress.CITY,'')					as Suburb, 
+	ISNULL(ShipToAddress.STATE_CODE,'')				as "State", 
+	ISNULL(ShipToAddress.ZIP_CODE,'')				as PostCode, 
+	ISNULL(ShipToCountry.COUNTRY_NAME,'')			as Country,
 	PACKAGE.ACTUAL_WEIGHT							as Weight, 
 	'1'												as Packages
 FROM [LiveData].[dbo].SO_CHARGE
 	INNER JOIN [LiveData].[dbo].SALES_ORDER			ON SALES_ORDER.SO_ID			= SO_CHARGE.SO_ID
+	INNER JOIN RECIPIENT							ON RECIPIENT.RECIP_ID			= SALES_ORDER.SHIP_TO_ID
+	INNER JOIN FFADDRESS ShipToAddress				ON ShipToAddress.ADDRESS_ID 	= Recipient.DEF_ADDRESS_ID 
+	INNER JOIN COUNTRY ShipToCountry				ON ShipToCountry.COUNTRY_NUMBER = ShipToAddress.COUNTRY_ID 
 	INNER JOIN [LiveData].[dbo].CUSTOMER			ON CUSTOMER.CUST_ID				= SALES_ORDER.CUST_ID
 	INNER JOIN [LiveData].[dbo].DEBTOR				ON DEBTOR.[DATAFLEX RECNUM ONE] = CUSTOMER.DEBTOR_RECNUM
 	LEFT JOIN [LiveData].[dbo].PACKAGE				ON PACKAGE.PACKAGE_ID			= SO_CHARGE.PackageID
@@ -144,7 +175,7 @@ FROM [LiveData].[dbo].SO_CHARGE
 WHERE ISNULL(SO_CHARGE.SO_ID, '0')		>		0 
 	AND (SO_CHARGE.MODIFIED_DATE		>=		@FromShipDate 
 	AND SO_CHARGE.MODIFIED_DATE			<=		@ToShipDate)
-	AND (SALES_ORDER.CUST_SO_ID			=		@JavelinNumber
-	OR  SALES_ORDER.CUST_SO_ID			=		@OWNumber)
+	--AND (SALES_ORDER.CUST_SO_ID			=		@JavelinNumber
+	--OR  SALES_ORDER.CUST_SO_ID			=		@OWNumber)
 
 ORDER BY SALES_ORDER.SO_ID Desc

@@ -1,13 +1,13 @@
 SELECT
                 CONVERT(bit,0) AS Tag,
-                0.0 AS ChargeableAmount,
-                DEBTOR.[AC NO] AS CustomerAcNo,
+DEBTOR.[AC NO] AS CustomerAcNo,
                 DEBTOR.NAMES AS CustomerName,
                 DEBTOR.[DATAFLEX RECNUM ONE] AS arcustomerid,
                 STKLOCHD.[TYPE] AS LocationType,
 				 CAST([dbo].[ufnGetStockSOH] (PAPSIZE.[INVENTORY CODE]) AS INT) AS QtyInLocation,   
 				[dbo].[ufnGetLocnCountofStocks](STKLOCLN.[LOCATION]) AS LocationCount,          
                 STKLOCLN.[LOCATION] AS Location,
+                0.0 AS ChargeableAmount,
                 PAPSIZE.[INVENTORY CODE]
 FROM
                 STKLOCLN
@@ -28,7 +28,7 @@ WHERE
                 AND STKLOCHD.ChargeForStorage = 1
                 AND DEBTOR.ChargeForStorage = 1
                 --AND SUBQRY.DaysInWarehouse > Mat_StorBill.DAYSFREESTORE
-                AND DEBTOR.[DATAFLEX RECNUM ONE] = 12
+                --AND DEBTOR.[DATAFLEX RECNUM ONE] = 12
 
 ORDER BY
                 CustomerName, --DEBTOR.[DATAFLEX RECNUM ONE],
