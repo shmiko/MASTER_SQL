@@ -1,13 +1,13 @@
 SELECT
                 CONVERT(bit,0) AS Tag,
-DEBTOR.[AC NO] AS CustomerAcNo,
+                0.0 AS ChargeableAmount,
+                DEBTOR.[AC NO] AS CustomerAcNo,
                 DEBTOR.NAMES AS CustomerName,
                 DEBTOR.[DATAFLEX RECNUM ONE] AS arcustomerid,
                 STKLOCHD.[TYPE] AS LocationType,
 				 CAST([dbo].[ufnGetStockSOH] (PAPSIZE.[INVENTORY CODE]) AS INT) AS QtyInLocation,   
 				[dbo].[ufnGetLocnCountofStocks](STKLOCLN.[LOCATION]) AS LocationCount,          
                 STKLOCLN.[LOCATION] AS Location,
-                0.0 AS ChargeableAmount,
                 PAPSIZE.[INVENTORY CODE]
 FROM
                 STKLOCLN

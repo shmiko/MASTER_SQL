@@ -13,43 +13,49 @@ SET				@SOID					= 2227
 
 USE LiveData
 SELECT 
-Account.[DATAFLEX RECNUM ONE]			as ID,
-Account.[AC NO]							as Customer,
-Ord.BILL_TO_ID							as CustomerId, 
-Ord.CUST_ID								as ParentId, 
-Account.NAMES							as Parent, 
-Sol.COST_CENTER							as CostCentre,
-Ord.SO_ID								as OrderNum, 
-Ord.CUST_SO_ID							as OrderWareNum, 
-Sol.PO_NO								as CustRef, 
-Sol.PICK_ID								as PickSlip,
-Recipient.ShippingComment				as DespNote,
-Trans.TIME_START						as DespDate, 
-'Stock'									as FeeType, 
-Sol.ITEM_NO								as Item, 
-Sol.INVENTORY_CODE						as InventoryCode, 
-Sol.ITEM_DESCRIPTION					as Description, 
-Sol.PACK_QTY							as Qty,
-SOl.ORDER_QTY + ISNULL(Sol.BO_QTY,0)	as OrderQty,
-Sku.[UNIT OF ISSUE]					as UOI,
-Sku.[UNIT ISSUE DESC]				as UnitOfIssDesc, 
-Prices.UNIT_PRICE			as UnitPrice, 
+Account.[DATAFLEX RECNUM ONE]				as ID,
+Account.[AC NO]								as Customer,
+Ord.BILL_TO_ID								as CustomerId, 
+Ord.CUST_ID									as ParentId, 
+Account.NAMES								as Parent, 
+Sol.COST_CENTER								as CostCentre,
+Ord.SO_ID									as OrderNum, 
+Ord.CUST_SO_ID								as OrderWareNum, 
+Sol.PO_NO									as CustRef, 
+Sol.PICK_ID									as PickSlip,
+OrdShipTo.ShippingComment					as DespNote,
+Trans.TIME_START							as DespDate, 
+'Stock'										as FeeType, 
+Sol.ITEM_NO									as Item, 
+Sol.INVENTORY_CODE							as InventoryCode, 
+Sol.ITEM_DESCRIPTION						as "Description", 
+Sol.PACK_QTY								as Qty,
+SOl.ORDER_QTY + ISNULL(Sol.BO_QTY,0)		as OrderQty,
+Sku.[UNIT OF ISSUE]							as UOI,
+Sku.[UNIT ISSUE DESC]						as UnitOfIssDesc, 
+Prices.UNIT_PRICE							as UnitPrice, 
 ((Prices.UNIT_PRICE * Sol.PACK_QTY) 
-	+ Prices.SHIPPING_HANDLING)		as SellExcl, 
+	+ Prices.SHIPPING_HANDLING)				as SellExcl, 
 ((Prices.UNIT_PRICE * Sol.PACK_QTY) 
 	+ Prices.SHIPPING_HANDLING 
-	+ ISNULL(Prices.SALES_TAX,0))	as SellIncl, 
-ISNULL(OrderBy.CUST_RECIP_ID,'')		as OrderByCustomerRecipientID, 
-ISNULL(OrderBy.LAST_NAME,'')			as OrderedBy, 
-ISNULL(OrdShipTo.CUST_RECIP_ID,'')			as RecipientID, 
-ISNULL(OrdShipTo.COMPANY_NAME,'')			as CompanyName, 
-ISNULL(ShipToAddress.ADDR_1,'') 		as Address1, 
-ISNULL(ShipToAddress.ADDR_2,'') 		as Address3, 
-ISNULL(ShipToAddress.ADDR_3,'') 		as Address3, 
-ISNULL(ShipToAddress.CITY,'') 			as Suburb, 
-ISNULL(ShipToAddress.STATE_CODE,'') 	as State, 
-ISNULL(ShipToAddress.ZIP_CODE,'')		as PostCode, 
-ISNULL(ShipToCountry.COUNTRY_NAME,'')  as Country 
+	+ ISNULL(Prices.SALES_TAX,0))			as SellIncl, 
+ISNULL(OrderBy.CUST_RECIP_ID,'')			as OrderByCustomerRecipientID, 
+--ISNULL(Recipient.CUST_RECIP_ID,'')		as RecipientID, 
+ISNULL(Recipient.COMPANY_NAME,'')			as DeliverTo, 
+ISNULL(RECIPIENT.LAST_NAME,'')				as AttentionTo,
+ISNULL(ShipToAddress.ADDR_1,'') 			as Address1, 
+ISNULL(ShipToAddress.ADDR_2,'') 			as Address3, 
+ISNULL(ShipToAddress.ADDR_3,'') 			as Address3, 
+ISNULL(ShipToAddress.CITY,'') 				as Suburb, 
+ISNULL(ShipToAddress.STATE_CODE,'') 		as "State", 
+ISNULL(ShipToAddress.ZIP_CODE,'')			as PostCode, 
+ISNULL(ShipToCountry.COUNTRY_NAME,'')		as Country,
+(SELECT SUM(ACTUAL_WEIGHT) 
+FROM [LiveData].[dbo].PACKAGE 
+WHERE PICK_ID = Sol.PICK_ID)		as "Weight", 
+(SELECT COUNT(1) 
+FROM [LiveData].[dbo].PACKAGE 
+WHERE PACKAGE.PICK_ID=Sol.PICK_ID)	as "Packages" 
 FROM SALES_ORDER Ord 
 INNER JOIN 			BATCH 				Inp					ON Ord.BATCH_ID 					= Inp.BATCH_ID 
 INNER JOIN 			RECIPIENT 			OrderBy				ON OrderBy.RECIP_ID 				= Ord.ORDER_BY_ID 
@@ -67,6 +73,7 @@ INNER JOIN 			FF_TRANS			Trans				ON Ord.SO_ID 						= Trans.SO_ID
 INNER JOIN 			FF_TIMELINE			Timeline			ON Timeline.TIMELINE_ID 			= Trans.TIMELINE_ID
 INNER JOIN 			SO_LINE_ITEM_PRICE	Prices				ON (Prices.SO_ID 					= Sol.SO_ID) 
 															AND (Prices.LINE_ITEM_NO			= Sol.LINE_ITEM_NO)
+LEFT JOIN			PACKAGE				Pack				ON Pack.SO_ID						= Ord.SO_ID
 
 
 WHERE Ord.SO_ID = 2227 
