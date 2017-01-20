@@ -12902,6 +12902,7 @@ BEGIN
   BEGIN
       nCheckpoint := 1;
       --OPEN EOM_CUSTS;
+	  --ok
       --LOOP
       --FETCH EOM_CUSTS BULK COLLECT INTO l_data LIMIT p_array_size;
       ----DBMS_OUTPUT.PUT_LINE(RM_CUST || '.' );
