@@ -1,0 +1,20 @@
+Select *
+    FROM  NA n1 INNER JOIN IL l1 ON l1.IL_UID = n1.NA_EXT_KEY
+      INNER JOIN NE e ON e.NE_ACCOUNT = n1.NA_ACCOUNT
+      INNER JOIN IM  ON  IM_STOCK = n1.NA_STOCK
+
+  
+  
+    --FROM NI n1 INNER JOIN  IM ON IM_STOCK = n1.NI_STOCK --AND IM_CUST = sCustomerCode
+    --LEFT OUTER JOIN IL l1 ON l1.IL_LOCN = n1.NI_LOCN
+    INNER JOIN  Tmp_Locn_Cnt_By_Cust tmp ON tmp.SLOCN = l1.IL_LOCN 
+    INNER JOIN  Tmp_Group_Cust r ON r.sCust = IM_CUST
+    WHERE n1.NA_EXT_TYPE = 1210067
+    AND e.NE_AVAIL_ACTUAL >= '1'
+    AND l1.IL_IN_LOCN NOT IN ('OBSOLETEMEL','OBSOLETESYD','PASTHISTORY', 'CANBERRA')
+    AND e.NE_STATUS =  1
+    AND e.NE_STRENGTH = 3
+
+    AND r.sGroupCust = 'WBC'
+   -- AND l1.IL_LOCN = 'S5B13-10'
+   -- AND r.ANAL = sAnalysis;
