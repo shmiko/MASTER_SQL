@@ -133,7 +133,7 @@ create or replace PACKAGE BODY EOM AS
 				If (upper(Debug_Y_OR_N) = 'Y') Then
 					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Need to run A_EOM_GROUP_CUST(Op) for all customers as table Dev_Group_Cust is empty. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
 				End If;
-				EOM_INTERCO_REPORTING.A_EOM_GROUP_CUST(Op);
+				EOM_INTERCO_REPORTING.A_EOM_GROUP_CUST(Op,Debug_Y_OR_N);
 				Select F_IS_TABLE_EEMPTY('Dev_Group_Cust',Debug_Y_OR_N) INTO vRetTblCount From Dual;
 				If (upper(Debug_Y_OR_N) = 'Y') Then
 					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Ran A_EOM_GROUP_CUST(Op) for all customers. Table Dev_Group_Cust has ' || vRetTblCount || ' records. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
@@ -148,7 +148,7 @@ create or replace PACKAGE BODY EOM AS
 				If (upper(Debug_Y_OR_N) = 'Y') Then
 					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Need to run A_EOM_GROUP_CUST(Op) for all customers as table Tmp _Group_Cust is empty. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
 				End If;
-				EOM_INTERCO_REPORTING.A_EOM_GROUP_CUST(Op);
+				EOM_INTERCO_REPORTING.A_EOM_GROUP_CUST(Op,Debug_Y_OR_N);
 				Select F_IS_TABLE_EEMPTY('Tmp_Group_Cust',Debug_Y_OR_N) INTO vRetTblCount From Dual;
 				If (upper(Debug_Y_OR_N) = 'Y') Then
 					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Ran A_EOM_GROUP_CUST(Op) for all customers. Table Tmp_Group_Cust has ' || vRetTblCount || ' records. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
@@ -165,7 +165,7 @@ create or replace PACKAGE BODY EOM AS
 				If (upper(Debug_Y_OR_N) = 'Y') Then
 					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Need to run A_EOM_GROUP_CUST(Op) for all customers as table Dev_Group_Cust is empty. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
 				End If;
-				IQ_EOM_REPORTING.A_EOM_GROUP_CUST(Op);
+				IQ_EOM_REPORTING.A_EOM_GROUP_CUST(Op,Debug_Y_OR_N);
 				Select F_IS_TABLE_EEMPTY('Dev_Group_Cust',Debug_Y_OR_N) INTO vRetTblCount From Dual;
 				If (upper(Debug_Y_OR_N) = 'Y') Then
 					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Ran A_EOM_GROUP_CUST(Op) for all customers. Table Dev_Group_Cust has ' || vRetTblCount || ' records. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
@@ -180,7 +180,7 @@ create or replace PACKAGE BODY EOM AS
 				If (upper(Debug_Y_OR_N) = 'Y') Then
 					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Need to run A_EOM_GROUP_CUST(Op) for all customers as table Tmp_Group_Cust is empty. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
 				End If;
-				IQ_EOM_REPORTING.A_EOM_GROUP_CUST(Op);
+				IQ_EOM_REPORTING.A_EOM_GROUP_CUST(Op,Debug_Y_OR_N);
 				Select F_IS_TABLE_EEMPTY('Tmp_Group_Cust',Debug_Y_OR_N) INTO vRetTblCount From Dual;
 				If (upper(Debug_Y_OR_N) = 'Y') Then
 					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Ran A_EOM_GROUP_CUST(Op) for all customers. Table Tmp_Group_Cust has ' || vRetTblCount || ' records. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
