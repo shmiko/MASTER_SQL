@@ -89,8 +89,9 @@ create or replace PACKAGE BODY EOM AS
     End If;
 	EXECUTE IMMEDIATE v_query;
 	sFileName := Customer || '-EOM-ADMIN-ORACLE-' || '-RunBy-' || Op || '-RunOn-' || start_date || '-TO-' || end_date || '-RunAt-' || sFileTime || sFileSuffix;
-    DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');
-	
+    If (upper(Debug_Y_OR_N) = 'Y') Then
+	  DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');
+	End If;
     --CHECKPOINT 2;
 	nCheckpoint := 2;
     If (upper(Inter_Y_OR_No) = 'Y') Then
@@ -119,8 +120,10 @@ create or replace PACKAGE BODY EOM AS
 		End If;
     End If;
 	EXECUTE IMMEDIATE v_query;
-	DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');
-    
+    If (upper(Debug_Y_OR_N) = 'Y') Then
+	  DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');
+	End If;
+	
 	nCheckpoint := 2.5;
 	--Select (F_EOM_CHECK_LOG(v_tmp_date ,'Tmp_Group_Cust','A_EOM_GROUP_CUST')) INTO v_query_logfile From Dual;--v_query := q'{Select EOM_REPORT_PKG.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
 	--If UPPER(v_query_logfile) != UPPER(v_tmp_date) Then
@@ -189,7 +192,9 @@ create or replace PACKAGE BODY EOM AS
 			End If;
 		End If;
     End If;
-    DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');
+    If (upper(Debug_Y_OR_N) = 'Y') Then
+	  DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');
+	End If;
 	
 	nCheckpoint := 3;
 	--v_query := q'{SELECT TO_CHAR(LAST_ANALYZED, 'DD-MON-YY') FROM DBA_TABLES WHERE TABLE_NAME = 'TMP_ADMIN_DATA_PICK_LINECOUNTS'}';
@@ -323,7 +328,9 @@ create or replace PACKAGE BODY EOM AS
 			End If;
 		End If;
     End If;
-	DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');
+	If (upper(Debug_Y_OR_N) = 'Y') Then
+	  DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');
+	End If;
     
 	nCheckpoint := 5;
 	--  SELECT F_EOM_PROCESS_RUN_CHECK(TO_DATE(end_date, 'DD-MON-YY'),'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL','') INTO v_query_logfile FROM DUAL;
@@ -352,7 +359,9 @@ create or replace PACKAGE BODY EOM AS
 	--Else
 	--DBMS_OUTPUT.PUT_LINE('Running F_EOM_PROCESS_RUN_CHECK freight nothing - v_query_result2 is ' || v_query_result2 || ' and v_query_logfile is ' || v_query_logfile || '' );
 	--End If;  
-	DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');
+    If (upper(Debug_Y_OR_N) = 'Y') Then
+	  DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');
+	End If;
 	
 	nCheckpoint := 6;
 	-- SELECT F_EOM_PROCESS_RUN_CHECK(TO_DATE(end_date, 'DD-MON-YY'),'TMP_STOR_ALL_FEES','H4_EOM_ALL_STOR_FEES','') INTO v_query_logfile FROM DUAL;
@@ -380,7 +389,9 @@ create or replace PACKAGE BODY EOM AS
 	-- Else
 	-- DBMS_OUTPUT.PUT_LINE('Running F_EOM_PROCESS_RUN_CHECK storage nothing' || 'v_query_result2 is ' || v_query_result2 || '-- v_query_logfile is ' || v_query_logfile || '-' );
 	-- End If;
-	DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');
+    If (upper(Debug_Y_OR_N) = 'Y') Then
+	  DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');
+	End If;
 	
 	nCheckpoint := 71; --E0_ALL_ORD_FEES
     If (upper(Inter_Y_OR_No) = 'Y') Then
@@ -400,7 +411,9 @@ create or replace PACKAGE BODY EOM AS
 	  nCheckpoint := 73;
 	  IQ_EOM_REPORTING.E3_FAX_ORD_FEES(p_array_size_start,start_date,end_date,Customer,Analysis);
 	*/  
-	DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');	
+    If (upper(Debug_Y_OR_N) = 'Y') Then
+	  DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');
+	End If;
 	
 	nCheckpoint := 74;
     If (upper(Inter_Y_OR_No) = 'Y') Then
@@ -414,7 +427,9 @@ create or replace PACKAGE BODY EOM AS
             DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Running E4_STD_ORD_FEES for ALL based on to date from EOM logs');
       End If;
     End If;
-	DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');
+    If (upper(Debug_Y_OR_N) = 'Y') Then
+	  DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');
+	End If;
     
 	nCheckpoint := 75;
     If (upper(Inter_Y_OR_No) = 'Y') Then
@@ -428,7 +443,9 @@ create or replace PACKAGE BODY EOM AS
             DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Running E5_DESTOY_ORD_FEES for ALL based on to date from EOM logs');    
       End If;
     End If;
-	DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');
+    If (upper(Debug_Y_OR_N) = 'Y') Then
+	  DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');
+	End If;
     
 	nCheckpoint := 81;
     If (upper(Inter_Y_OR_No) = 'Y') Then
@@ -442,7 +459,9 @@ create or replace PACKAGE BODY EOM AS
             DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Running G1_SHRINKWRAP_FEES for ALL based on to date from EOM logs');    
       End If;
     End If;    
-	DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');
+    If (upper(Debug_Y_OR_N) = 'Y') Then
+	  DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');
+	End If;
     
 	nCheckpoint := 82;
     If (upper(Inter_Y_OR_No) = 'Y') Then
@@ -458,7 +477,9 @@ create or replace PACKAGE BODY EOM AS
     End If;
     --nCheckpoint := 83;
 	--IQ_EOM_REPORTING.G3_PACKING_FEES(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy);
-	DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');      
+    If (upper(Debug_Y_OR_N) = 'Y') Then
+	  DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');
+	End If;     
       
 	nCheckpoint := 84;
 	If (upper(Inter_Y_OR_No) = 'Y') Then
@@ -706,7 +727,9 @@ create or replace PACKAGE BODY EOM AS
 			END IF;
 		End If;    
     End If;
-	DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');
+    If (upper(Debug_Y_OR_N) = 'Y') Then
+	  DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');
+	End If;
     
 	nCheckpoint := 85;
     If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
@@ -894,7 +917,9 @@ create or replace PACKAGE BODY EOM AS
 			END IF;
 		End If;
 	End If;
-	DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');
+    If (upper(Debug_Y_OR_N) = 'Y') Then
+	  DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');
+	End If;
 	
 	nCheckpoint := 9;
     If (upper(Inter_Y_OR_No) = 'Y') Then
@@ -902,7 +927,9 @@ create or replace PACKAGE BODY EOM AS
     Else
 		EOM_INTERCO_REPORTING.I_EOM_MISC_FEES(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
     End If;
-	DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');	
+    If (upper(Debug_Y_OR_N) = 'Y') Then
+	  DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');
+	End If;
 	
 	nCheckpoint := 10;
     If (upper(Inter_Y_OR_No) = 'Y') Then
@@ -910,7 +937,9 @@ create or replace PACKAGE BODY EOM AS
     Else
 		EOM_INTERCO_REPORTING.K1_PAL_DESP_FEES(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
     End If;
-	DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');
+    If (upper(Debug_Y_OR_N) = 'Y') Then
+	  DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');
+	End If;
 	
     nCheckpoint := 11;
     If (upper(Inter_Y_OR_No) = 'Y') Then
@@ -918,7 +947,9 @@ create or replace PACKAGE BODY EOM AS
 	Else
 		EOM_INTERCO_REPORTING.K2_CTN_IN_FEES(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
     End If;
-	DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');
+    If (upper(Debug_Y_OR_N) = 'Y') Then
+	  DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');
+	End If;
     
     nCheckpoint := 12;
     If (upper(Inter_Y_OR_No) = 'Y') Then
@@ -926,7 +957,9 @@ create or replace PACKAGE BODY EOM AS
 	Else
 		EOM_INTERCO_REPORTING.K3_PAL_IN_FEES(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
     End If;
-	DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');
+    If (upper(Debug_Y_OR_N) = 'Y') Then
+	  DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');
+	End If;
     
     nCheckpoint := 13;
     If (upper(Inter_Y_OR_No) = 'Y') Then
@@ -934,7 +967,9 @@ create or replace PACKAGE BODY EOM AS
     Else
 		EOM_INTERCO_REPORTING.K4_CTN_DESP_FEES(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
     End If;
-	DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');
+    If (upper(Debug_Y_OR_N) = 'Y') Then
+	  DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');
+	End If;
 	
 	nCheckpoint := 14;
     If (upper(Inter_Y_OR_No) = 'Y') Then
@@ -972,7 +1007,9 @@ create or replace PACKAGE BODY EOM AS
 			--IQ_EOM_REPORTING.Z_EOM_RUN_IAG(p_array_size_start,start_date,end_date,'CGU',Analysis);
 		End If;
     End IF;
-	DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');
+    If (upper(Debug_Y_OR_N) = 'Y') Then
+	  DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');
+	End If;
       
 	nCheckpoint := 99;
     If (upper(Inter_Y_OR_No) = 'Y') Then
@@ -996,7 +1033,9 @@ create or replace PACKAGE BODY EOM AS
     Else
 		IQ_EOM_REPORTING.Y_EOM_TMP_MERGE_ALL_FEES2(Op);
     End If;
-    DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');
+    If (upper(Debug_Y_OR_N) = 'Y') Then
+	  DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');
+	End If;
 		
 	nCheckpoint := 100;
     If (upper(Inter_Y_OR_No) = 'Y') Then
@@ -1019,7 +1058,9 @@ create or replace PACKAGE BODY EOM AS
     Else
 		IQ_EOM_REPORTING.Y_EOM_TMP_MERGE_ALL_FEES_FINAL(Customer,Op);
     End If;
-	DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');
+    If (upper(Debug_Y_OR_N) = 'Y') Then
+	  DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');
+	End If;
 	
 	nCheckpoint := 101;
 	If (upper(Inter_Y_OR_No) = 'Y') Then
@@ -1058,7 +1099,9 @@ create or replace PACKAGE BODY EOM AS
     --DBMS_OUTPUT.PUT_LINE('LAST EOM Successfully Ran EOM_RUN_ALL for the date range '
 	-- || start_date || ' -- ' || end_date || ' - ' || v_query2 || ' records inserted in ' ||  (round((dbms_utility.get_time-l_start)/100, 6) ||
 	-- ' Seconds... for customer '|| Customer ));
-	DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');	
+    If (upper(Debug_Y_OR_N) = 'Y') Then
+	  DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');
+	End If;
 	COMMIT;
     RETURN;
 	EXCEPTION
