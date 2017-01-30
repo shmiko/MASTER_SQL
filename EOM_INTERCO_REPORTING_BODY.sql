@@ -2063,136 +2063,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
       nbreakpoint   NUMBER;
       sFileName VARCHAR2(560);
       sFileTime VARCHAR2(56)  := TO_CHAR(SYSDATE,'YYYYMMDD HH24MISS');
-      CURSOR c
-      IS
-    /* EOM Storage Fees */
-      select IM_CUST AS "Customer",
-      r.sGroupCust AS "Parent",
-      IM_XX_COST_CENTRE01     AS "CostCentre",
-      NULL               AS "Order",
-      NULL               AS "OrderwareNum",
-      NULL               AS "CustomerRef",
-      NULL         AS "Pickslip",
-      NULL                      AS "DespatchNote",
-      NULL               AS "DespatchNote",
-      NULL             AS "OrderDate",
-      CASE /*Fee Type*/
-        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW'
-          THEN 'FEEPALLETS'
-        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW'
-          THEN 'SLOWFEEPALLETS'
-        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW'
-          THEN 'FEESHELFS'
-        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW'
-          THEN 'SLOWFEESHELFS'
-        ELSE 'UNKNOWN'
-        END AS "FeeType",
-      IM_STOCK AS "Item",
-      CASE /*explanation of charge*/
-        WHEN UPPER(l1.IL_NOTE_2) = 'YES' 
-          THEN 'Pallet Space Utilisation Fee (per month) is split across ' || tmp.NCOUNTOFSTOCKS || ' stock(s)'
-        ELSE 'Shelf SPace Utilisation Fee (per month) is split across ' ||	tmp.NCOUNTOFSTOCKS  || ' stock(s)'
-        END AS "Description",
-      CASE   
-        WHEN l1.IL_NOTE_2 IS NOT NULL THEN  1
-        ELSE 0
-        END                     AS "Qty",
-      IM_LEVEL_UNIT AS "UOI", 
-      CASE
-       WHEN UPPER(l1.IL_NOTE_2) = 'YES'  AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --pallet for fast moving
-          f_get_fee('RM_XX_FEE11',sCustomerCode) / tmp.NCOUNTOFSTOCKS
-        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --shelf for fast moving
-          f_get_fee('RM_XX_FEE12',sCustomerCode) / tmp.NCOUNTOFSTOCKS
-        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',sCustomerCode) !=0 THEN --pallet for slow moving if slow rate exists
-         f_get_fee('RM_SPARE_CHAR_3',sCustomerCode) / tmp.NCOUNTOFSTOCKS
-        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',sCustomerCode) !=0 THEN --shelf for slow moving if slow rate exists
-          f_get_fee('RM_XX_FEE30',sCustomerCode) / tmp.NCOUNTOFSTOCKS
-        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',sCustomerCode) =0 THEN --pallet for slow moving if slow rate DOESN't exist, revert to normal charge
-         f_get_fee('RM_XX_FEE11',sCustomerCode) / tmp.NCOUNTOFSTOCKS
-        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',sCustomerCode) =0 THEN --shelf for slow moving if slow rate DOESN't exist
-          f_get_fee('RM_XX_FEE12',sCustomerCode) / tmp.NCOUNTOFSTOCKS
-        ELSE 999
-        END AS "UnitPrice",
-      CASE
-        WHEN UPPER(l1.IL_NOTE_2) = 'YES'  AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --pallet for fast moving
-          f_get_fee('RM_XX_FEE11',sCustomerCode) / tmp.NCOUNTOFSTOCKS
-        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --shelf for fast moving
-          f_get_fee('RM_XX_FEE12',sCustomerCode) / tmp.NCOUNTOFSTOCKS
-        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',sCustomerCode) !=0 THEN --pallet for slow moving if slow rate exists
-         f_get_fee('RM_SPARE_CHAR_3',sCustomerCode) / tmp.NCOUNTOFSTOCKS
-        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',sCustomerCode) !=0 THEN --shelf for slow moving if slow rate exists
-          f_get_fee('RM_XX_FEE30',sCustomerCode) / tmp.NCOUNTOFSTOCKS
-        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',sCustomerCode) =0 THEN --pallet for slow moving if slow rate DOESN't exist, revert to normal charge
-         f_get_fee('RM_XX_FEE11',sCustomerCode) / tmp.NCOUNTOFSTOCKS
-        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',sCustomerCode) =0 THEN --shelf for slow moving if slow rate DOESN't exist
-          f_get_fee('RM_XX_FEE12',sCustomerCode) / tmp.NCOUNTOFSTOCKS
-        ELSE 999
-        END AS "OWUnitPrice",
-      CASE
-        WHEN UPPER(l1.IL_NOTE_2) = 'YES'  AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --pallet for fast moving
-          f_get_fee('RM_XX_FEE11',sCustomerCode) / tmp.NCOUNTOFSTOCKS
-        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --shelf for fast moving
-          f_get_fee('RM_XX_FEE12',sCustomerCode) / tmp.NCOUNTOFSTOCKS
-        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',sCustomerCode) !=0 THEN --pallet for slow moving if slow rate exists
-         f_get_fee('RM_SPARE_CHAR_3',sCustomerCode) / tmp.NCOUNTOFSTOCKS
-        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',sCustomerCode) !=0 THEN --shelf for slow moving if slow rate exists
-          f_get_fee('RM_XX_FEE30',sCustomerCode) / tmp.NCOUNTOFSTOCKS
-        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',sCustomerCode) =0 THEN --pallet for slow moving if slow rate DOESN't exist, revert to normal charge
-         f_get_fee('RM_XX_FEE11',sCustomerCode) / tmp.NCOUNTOFSTOCKS
-        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',sCustomerCode) =0 THEN --shelf for slow moving if slow rate DOESN't exist
-          f_get_fee('RM_XX_FEE12',sCustomerCode) / tmp.NCOUNTOFSTOCKS
-        ELSE 999
-        END AS "DExcl",
-      CASE 
-        WHEN UPPER(l1.IL_NOTE_2) = 'YES'  AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --pallet for fast moving
-          (f_get_fee('RM_XX_FEE11',sCustomerCode) / tmp.NCOUNTOFSTOCKS) * 1.1
-        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --shelf for fast moving
-          (f_get_fee('RM_XX_FEE12',sCustomerCode) / tmp.NCOUNTOFSTOCKS) * 1.1
-        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',sCustomerCode) !=0 THEN --pallet for slow moving if slow rate exists
-          (f_get_fee('RM_SPARE_CHAR_3',sCustomerCode) / tmp.NCOUNTOFSTOCKS) * 1.1
-        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',sCustomerCode) !=0 THEN --shelf for slow moving if slow rate exists
-          (f_get_fee('RM_XX_FEE30',sCustomerCode) / tmp.NCOUNTOFSTOCKS) * 1.1
-        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',sCustomerCode) =0 THEN --pallet for slow moving if slow rate DOESN't exist, revert to normal charge
-          (f_get_fee('RM_XX_FEE11',sCustomerCode) / tmp.NCOUNTOFSTOCKS) * 1.1
-        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',sCustomerCode) =0 THEN --shelf for slow moving if slow rate DOESN't exist
-          (f_get_fee('RM_XX_FEE12',sCustomerCode) / tmp.NCOUNTOFSTOCKS) * 1.1
-        ELSE 999
-        END AS "DIncl",
-      TO_NUMBER(IM_REPORTING_PRICE),
-      IM_STD_COST AS "PreMarkUpPrice",
-			  IM_LAST_COST           AS "COSTPRICE",
-      NULL             AS "Address",
-      NULL              AS "Address2",
-      NULL                AS "Suburb",
-      NULL               AS "State",
-      NULL           AS "Postcode",
-      NULL              AS "DeliverTo",
-      NULL              AS "AttentionTo" ,
-      0              AS "Weight",
-      0            AS "Packages",
-      0         AS "OrderSource",
-      l1.IL_NOTE_2 AS "Pallet/Space", 
-      l1.IL_LOCN AS "Locn",
-      tmp.NCOUNTOFSTOCKS AS CountCustStocks,
-      NULL AS Email,
-      IM_BRAND AS Brand,
-      IM_OWNED_By AS    OwnedBy,
-      IM_PROFILE AS    sProfile,
-      r.ANAL AS    WaiveFee,
-      NULL As   Cost,
-      NULL AS PaymentType,NULL,NULL,NULL,NULL
-  
-    FROM NI n1 INNER JOIN IM ON IM_STOCK = n1.NI_STOCK AND IM_CUST = sCustomerCode
-    INNER JOIN IL l1 ON l1.IL_LOCN = n1.NI_LOCN
-    INNER JOIN Tmp_Locn_Cnt_By_Cust tmp ON tmp.SLOCN = l1.IL_LOCN
-    LEFT JOIN Tmp_Group_Cust r ON r.sCust = sCustomerCode
-    WHERE  IM_ACTIVE = 1
-    AND n1.NI_AVAIL_ACTUAL >= '1'
-    AND n1.NI_STATUS <> 0
-    AND tmp.SCUST = sCustomerCode
-    GROUP BY l1.IL_LOCN,IM_CUST,IM_BRAND,IM_OWNED_By,IM_PROFILE,l1.IL_NOTE_2,n1.NI_LOCN,n1.NI_STOCK,r.ANAL,
-    tmp.NCOUNTOFSTOCKS,IM_REPORTING_PRICE,r.sGroupCust,IM_LEVEL_UNIT,IM_XX_COST_CENTRE01,IM_STOCK,IM_STD_COST,IM_LAST_COST;
-
+ 
     
      CURSOR canal
       IS
@@ -2458,135 +2329,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
     GROUP BY l1.IL_LOCN,IM_CUST,IM_BRAND,IM_OWNED_By,IM_PROFILE,l1.IL_NOTE_2,n1.NI_LOCN,n1.NI_STOCK,r.ANAL,
     tmp.NCOUNTOFSTOCKS,IM_REPORTING_PRICE,r.sGroupCust,IM_LEVEL_UNIT,IM_XX_COST_CENTRE01,IM_STOCK,IM_STD_COST,IM_LAST_COST;
     
-    CURSOR cDEV
-      IS
-    /* EOM Storage Fees */
-      select IM_CUST AS "Customer",
-      r.sGroupCust AS "Parent",
-      IM_XX_COST_CENTRE01     AS "CostCentre",
-      NULL               AS "Order",
-      NULL               AS "OrderwareNum",
-      NULL               AS "CustomerRef",
-      NULL         AS "Pickslip",
-      NULL                      AS "DespatchNote",
-      NULL               AS "DespatchNote",
-      NULL             AS "OrderDate",
-      CASE /*Fee Type*/
-        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW'
-          THEN 'FEEPALLETS'
-        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW'
-          THEN 'SLOWFEEPALLETS'
-        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW'
-          THEN 'FEESHELFS'
-        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW'
-          THEN 'SLOWFEESHELFS'
-        ELSE 'UNKNOWN'
-        END AS "FeeType",
-      IM_STOCK AS "Item",
-      CASE /*explanation of charge*/
-        WHEN UPPER(l1.IL_NOTE_2) = 'YES' 
-          THEN 'Pallet Space Utilisation Fee (per month) is split across ' || tmp.NCOUNTOFSTOCKS || ' stock(s)'
-        ELSE 'Shelf SPace Utilisation Fee (per month) is split across ' ||	tmp.NCOUNTOFSTOCKS  || ' stock(s)'
-        END AS "Description",
-      CASE   
-        WHEN l1.IL_NOTE_2 IS NOT NULL THEN  1
-        ELSE 0
-        END                     AS "Qty",
-      IM_LEVEL_UNIT AS "UOI", 
-      CASE
-        WHEN UPPER(l1.IL_NOTE_2) = 'YES'  AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --pallet for fast moving
-          f_get_fee('RM_XX_FEE11',sCustomerCode) / tmp.NCOUNTOFSTOCKS
-        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --shelf for fast moving
-          f_get_fee('RM_XX_FEE12',sCustomerCode) / tmp.NCOUNTOFSTOCKS
-        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',sCustomerCode) !=0 THEN --pallet for slow moving if slow rate exists
-         f_get_fee('RM_SPARE_CHAR_3',sCustomerCode) / tmp.NCOUNTOFSTOCKS
-        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',sCustomerCode) !=0 THEN --shelf for slow moving if slow rate exists
-          f_get_fee('RM_XX_FEE30',sCustomerCode) / tmp.NCOUNTOFSTOCKS
-        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',sCustomerCode) =0 THEN --pallet for slow moving if slow rate DOESN't exist, revert to normal charge
-         f_get_fee('RM_XX_FEE11',sCustomerCode) / tmp.NCOUNTOFSTOCKS
-        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',sCustomerCode) =0 THEN --shelf for slow moving if slow rate DOESN't exist
-          f_get_fee('RM_XX_FEE12',sCustomerCode) / tmp.NCOUNTOFSTOCKS
-        ELSE 999
-        END AS "UnitPrice",
-      CASE
-        WHEN UPPER(l1.IL_NOTE_2) = 'YES'  AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --pallet for fast moving
-          f_get_fee('RM_XX_FEE11',sCustomerCode) / tmp.NCOUNTOFSTOCKS
-        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --shelf for fast moving
-          f_get_fee('RM_XX_FEE12',sCustomerCode) / tmp.NCOUNTOFSTOCKS
-        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',sCustomerCode) !=0 THEN --pallet for slow moving if slow rate exists
-         f_get_fee('RM_SPARE_CHAR_3',sCustomerCode) / tmp.NCOUNTOFSTOCKS
-        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',sCustomerCode) !=0 THEN --shelf for slow moving if slow rate exists
-          f_get_fee('RM_XX_FEE30',sCustomerCode) / tmp.NCOUNTOFSTOCKS
-        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',sCustomerCode) =0 THEN --pallet for slow moving if slow rate DOESN't exist, revert to normal charge
-         f_get_fee('RM_XX_FEE11',sCustomerCode) / tmp.NCOUNTOFSTOCKS
-        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',sCustomerCode) =0 THEN --shelf for slow moving if slow rate DOESN't exist
-          f_get_fee('RM_XX_FEE12',sCustomerCode) / tmp.NCOUNTOFSTOCKS
-        ELSE 999
-        END AS "OWUnitPrice",
-      CASE
-        WHEN UPPER(l1.IL_NOTE_2) = 'YES'  AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --pallet for fast moving
-          f_get_fee('RM_XX_FEE11',sCustomerCode) / tmp.NCOUNTOFSTOCKS
-        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --shelf for fast moving
-          f_get_fee('RM_XX_FEE12',sCustomerCode) / tmp.NCOUNTOFSTOCKS
-        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',sCustomerCode) !=0 THEN --pallet for slow moving if slow rate exists
-         f_get_fee('RM_SPARE_CHAR_3',sCustomerCode) / tmp.NCOUNTOFSTOCKS
-        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',sCustomerCode) !=0 THEN --shelf for slow moving if slow rate exists
-          f_get_fee('RM_XX_FEE30',sCustomerCode) / tmp.NCOUNTOFSTOCKS
-        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',sCustomerCode) =0 THEN --pallet for slow moving if slow rate DOESN't exist, revert to normal charge
-         f_get_fee('RM_XX_FEE11',sCustomerCode) / tmp.NCOUNTOFSTOCKS
-        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',sCustomerCode) =0 THEN --shelf for slow moving if slow rate DOESN't exist
-          f_get_fee('RM_XX_FEE12',sCustomerCode) / tmp.NCOUNTOFSTOCKS
-        ELSE 999
-        END AS "DExcl",
-      CASE 
-        WHEN UPPER(l1.IL_NOTE_2) = 'YES'  AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --pallet for fast moving
-          (f_get_fee('RM_XX_FEE11',sCustomerCode) / tmp.NCOUNTOFSTOCKS) * 1.1
-        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) != 'SLOW' THEN --shelf for fast moving
-          (f_get_fee('RM_XX_FEE12',sCustomerCode) / tmp.NCOUNTOFSTOCKS) * 1.1
-        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',sCustomerCode) !=0 THEN --pallet for slow moving if slow rate exists
-          (f_get_fee('RM_SPARE_CHAR_3',sCustomerCode) / tmp.NCOUNTOFSTOCKS) * 1.1
-        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',sCustomerCode) !=0 THEN --shelf for slow moving if slow rate exists
-          (f_get_fee('RM_XX_FEE30',sCustomerCode) / tmp.NCOUNTOFSTOCKS) * 1.1
-        WHEN UPPER(l1.IL_NOTE_2) = 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_SPARE_CHAR_3',sCustomerCode) =0 THEN --pallet for slow moving if slow rate DOESN't exist, revert to normal charge
-          (f_get_fee('RM_XX_FEE11',sCustomerCode) / tmp.NCOUNTOFSTOCKS) * 1.1
-        WHEN UPPER(l1.IL_NOTE_2) != 'YES' AND F_CONFIRM_SLOW_MOVER(IM_STOCK) = 'SLOW' AND f_get_fee('RM_XX_FEE30',sCustomerCode) =0 THEN --shelf for slow moving if slow rate DOESN't exist
-          (f_get_fee('RM_XX_FEE12',sCustomerCode) / tmp.NCOUNTOFSTOCKS) * 1.1
-        ELSE 999
-        END AS "DIncl",
-      TO_NUMBER(IM_REPORTING_PRICE),
-      IM_STD_COST AS "PreMarkUpPrice",
-			  IM_LAST_COST           AS "COSTPRICE",
-      NULL             AS "Address",
-      NULL              AS "Address2",
-      NULL                AS "Suburb",
-      NULL               AS "State",
-      NULL           AS "Postcode",
-      NULL              AS "DeliverTo",
-      NULL              AS "AttentionTo" ,
-      0              AS "Weight",
-      0            AS "Packages",
-      0         AS "OrderSource",
-      l1.IL_NOTE_2 AS "Pallet/Space", 
-      l1.IL_LOCN AS "Locn",
-      tmp.NCOUNTOFSTOCKS AS CountCustStocks,
-      NULL AS Email,
-      IM_BRAND AS Brand,
-      IM_OWNED_By AS    OwnedBy,
-      IM_PROFILE AS    sProfile,
-      r.ANAL AS    WaiveFee,
-      NULL As   Cost,
-      NULL AS PaymentType,NULL,NULL,NULL,NULL
-  
-    FROM NI n1 INNER JOIN IM ON IM_STOCK = n1.NI_STOCK AND IM_CUST = sCustomerCode
-    INNER JOIN IL l1 ON l1.IL_LOCN = n1.NI_LOCN
-    INNER JOIN Dev_Locn_Cnt_By_Cust tmp ON tmp.SLOCN = l1.IL_LOCN
-    LEFT JOIN Dev_Group_Cust r ON r.sCust = sCustomerCode
-    WHERE  IM_ACTIVE = 1
-    AND n1.NI_AVAIL_ACTUAL >= '1'
-    AND n1.NI_STATUS <> 0
-    AND tmp.SCUST = sCustomerCode
-    GROUP BY l1.IL_LOCN,IM_CUST,IM_BRAND,IM_OWNED_By,IM_PROFILE,l1.IL_NOTE_2,n1.NI_LOCN,n1.NI_STOCK,r.ANAL,
-    tmp.NCOUNTOFSTOCKS,IM_REPORTING_PRICE,r.sGroupCust,IM_LEVEL_UNIT,IM_XX_COST_CENTRE01,IM_STOCK,IM_STD_COST,IM_LAST_COST;
+    
   
     QueryTable VARCHAR2(600) := q'{SELECT To_Number(regexp_substr(RM_XX_FEE11,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = :sCustomerCode}';
     sCust_Rates RM.RM_XX_FEE11%TYPE;
@@ -2608,7 +2351,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
           End If;
           v_query := 'TRUNCATE TABLE DEV_STOR_ALL_FEES';
           EXECUTE IMMEDIATE v_query;
-          If (sAnalysis = 'VICP') Then
+          
             OPEN canalDev;
             ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
             LOOP
@@ -2624,30 +2367,11 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
             END LOOP;
             DBMS_OUTPUT.PUT_LINE(sAnalysis || ' - .' );
             CLOSE canalDev;
-          Else
-           OPEN cDEV;
-            ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
-            LOOP
-            FETCH cDEV BULK COLLECT INTO l_data LIMIT p_array_size;
-  
-            FORALL i IN 1..l_data.COUNT
-            ----DBMS_OUTPUT.PUT_LINE(i || '.' );
-            INSERT INTO DEV_STOR_ALL_FEES VALUES l_data(i);
-            --USING sCust;
-  
-            EXIT WHEN cDEV%NOTFOUND;
-  
-            END LOOP;
-           -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-            CLOSE cDEV;
-          End If;
-        -- FOR i IN l_data.FIRST .. l_data.LAST LOOP
-          ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-        --END LOOP;
+        
     Else
         v_query := 'TRUNCATE TABLE TMP_STOR_ALL_FEES';
         EXECUTE IMMEDIATE v_query;
-          If (sAnalysis = 'VICP') Then
+         
             OPEN canal;
             ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
             LOOP
@@ -2663,26 +2387,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
             END LOOP;
            -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
             CLOSE canal;
-          Else
-            OPEN c;
-              ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
-              LOOP
-              FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
-    
-              FORALL i IN 1..l_data.COUNT
-              ----DBMS_OUTPUT.PUT_LINE(i || '.' );
-              INSERT INTO TMP_STOR_ALL_FEES VALUES l_data(i);
-              --USING sCust;
-    
-              EXIT WHEN c%NOTFOUND;
-    
-              END LOOP;
-             -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-              CLOSE c;
-            End If;
-        -- FOR i IN l_data.FIRST .. l_data.LAST LOOP
-          ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-        --END LOOP;
+         
     End If;
         v_query2 :=  SQL%ROWCOUNT;
         COMMIT;
@@ -2711,7 +2416,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
             END IF;
           END IF;
         Else
-          If F_IS_TABLE_EEMPTY('TMP_STOR_ALL_FEES') > 0 Then
+          If F_IS_TABLE_EEMPTY('TMP_STOR_ALL_FEES',Debug_Y_OR_N) > 0 Then
     
             v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
             EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'H4A_EOM_ALL_STOR_FEES','IL','TMP_STOR_ALL_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
