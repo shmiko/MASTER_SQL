@@ -1,23 +1,23 @@
 create or replace PACKAGE BODY EOM AS
 
-  /* Y Run this once for each customer including intercompany   
-     This merges all the Charges from each of the temp tables   
-     Temp Tables Used   
-     1. TMP_ALL_FEES   
+	/* Y Run this once for each customer including intercompany   
+	This merges all the Charges from each of the temp tables   
+	Temp Tables Used   
+	1. TMP_ALL_FEES   
 	*/
   
-  PROCEDURE Z3_EOM_RUN_ALL (
-      p_array_size_start IN PLS_INTEGER DEFAULT 100
-      ,start_date IN VARCHAR2 
-      ,end_date IN VARCHAR2
-      ,Customer IN VARCHAR2
-      ,Analysis IN RM.RM_ANAL%TYPE
-      ,FilterBy IN VARCHAR2
-      ,Op IN VARCHAR2 DEFAULT 'PAUL'
-      ,Inter_Y_OR_No IN VARCHAR2 DEFAULT 'N'
-      ,p_dev_bool in boolean
-      ,p_intercompany_bool in boolean
-      ,Debug_Y_OR_N IN VARCHAR2 DEFAULT 'Y'
+	PROCEDURE Z3_EOM_RUN_ALL (
+		p_array_size_start IN PLS_INTEGER DEFAULT 100
+		,start_date IN VARCHAR2 
+		,end_date IN VARCHAR2
+		,Customer IN VARCHAR2
+		,Analysis IN RM.RM_ANAL%TYPE
+		,FilterBy IN VARCHAR2
+		,Op IN VARCHAR2 DEFAULT 'PAUL'
+		,Inter_Y_OR_No IN VARCHAR2 DEFAULT 'N'
+		,p_dev_bool in boolean
+		,p_intercompany_bool in boolean
+		,Debug_Y_OR_N IN VARCHAR2 DEFAULT 'Y'
 		)
 	AS
 		nCheckpoint  NUMBER;
@@ -33,168 +33,170 @@ create or replace PACKAGE BODY EOM AS
 		v_query_logfile VARCHAR2(22);
 		v_query_result2 VARCHAR2(22);
 		vRtnVal VARCHAR2(40);
-    vRetTblCount INT;
+		vRetTblCount INT;
 		v_tmp_date VARCHAR2(12) := TO_DATE(end_date, 'DD-MON-YY');     
 	BEGIN
-    --CHECKPOINT 1;
-		nCheckpoint := 1;
+	--CHECKPOINT 1;
+	nCheckpoint := 1;
     If ((upper(Inter_Y_OR_No) = 'Y') AND (upper(Debug_Y_OR_N) = 'Y')) Then
-      If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
-        DBMS_OUTPUT.PUT_LINE(Op || ' is running this report in the DEV environment for ' );
-        DBMS_OUTPUT.PUT_LINE('date range from ' || start_date || ' to ' || end_date || ' and for ' );
-        DBMS_OUTPUT.PUT_LINE('customer ' || Customer || ' and for ' );
-        DBMS_OUTPUT.PUT_LINE('intercompany analysis ' || Analysis ||'. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
-      Else
-        DBMS_OUTPUT.PUT_LINE(Op || ' is running this report in the TMP environment for '  );
-        DBMS_OUTPUT.PUT_LINE('date range from ' || start_date || ' to ' || end_date || ' and for '  );
-        DBMS_OUTPUT.PUT_LINE('customer ' || Customer || ' and for '  );
-        DBMS_OUTPUT.PUT_LINE( 'intercompany analysis ' || Analysis ||'. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
-      End If;
-      DBMS_OUTPUT.PUT_LINE('**************************************************************************************');
+		If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
+			DBMS_OUTPUT.PUT_LINE(Op || ' is running this report in the DEV environment for ' );
+			DBMS_OUTPUT.PUT_LINE('date range from ' || start_date || ' to ' || end_date || ' and for ' );
+			DBMS_OUTPUT.PUT_LINE('customer ' || Customer || ' and for ' );
+			DBMS_OUTPUT.PUT_LINE('intercompany analysis ' || Analysis ||'. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
+		Else
+			DBMS_OUTPUT.PUT_LINE(Op || ' is running this report in the TMP environment for '  );
+			DBMS_OUTPUT.PUT_LINE('date range from ' || start_date || ' to ' || end_date || ' and for '  );
+			DBMS_OUTPUT.PUT_LINE('customer ' || Customer || ' and for '  );
+			DBMS_OUTPUT.PUT_LINE( 'intercompany analysis ' || Analysis ||'. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
+		End If;
+		DBMS_OUTPUT.PUT_LINE('**************************************************************************************');
     ElsIf (upper(Debug_Y_OR_N) = 'Y') Then
-      If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
-        DBMS_OUTPUT.PUT_LINE(Op || ' is running this report in the DEV environment for ' );
-        DBMS_OUTPUT.PUT_LINE('date range from ' || start_date || ' to ' || end_date || ' and for ' );
-        DBMS_OUTPUT.PUT_LINE('customer ' || Customer || '. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
-      Else
-        DBMS_OUTPUT.PUT_LINE(Op || ' is running this report in the TMP environment for ' );
-        DBMS_OUTPUT.PUT_LINE('date range from ' || start_date || ' to ' || end_date || ' and for ' );
-        DBMS_OUTPUT.PUT_LINE('customer ' || Customer || '. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
-      End If;
-      DBMS_OUTPUT.PUT_LINE('**************************************************************************************');
+		If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
+			DBMS_OUTPUT.PUT_LINE(Op || ' is running this report in the DEV environment for ' );
+			DBMS_OUTPUT.PUT_LINE('date range from ' || start_date || ' to ' || end_date || ' and for ' );
+			DBMS_OUTPUT.PUT_LINE('customer ' || Customer || '. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
+		Else
+			DBMS_OUTPUT.PUT_LINE(Op || ' is running this report in the TMP environment for ' );
+			DBMS_OUTPUT.PUT_LINE('date range from ' || start_date || ' to ' || end_date || ' and for ' );
+			DBMS_OUTPUT.PUT_LINE('customer ' || Customer || '. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
+		End If;
+		DBMS_OUTPUT.PUT_LINE('**************************************************************************************');
     End If;
     
     If (upper(Inter_Y_OR_No) = 'Y') Then
-      If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
-        v_query  := 'TRUNCATE TABLE "PWIN175"."DEV_ALL_FEES"';
-        If (upper(Debug_Y_OR_N) = 'Y') Then
-          DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' TRUNCATE DEV_ALL_FEES. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
-        End If;
-      Else
-        v_query  := 'TRUNCATE TABLE "PWIN175"."TMP_ALL_FEES"';
-        If (upper(Debug_Y_OR_N) = 'Y') Then
-          DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' TRUNCATE TMP_ALL_FEES. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
-        End If;
-      End If;
+		If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
+			v_query  := 'TRUNCATE TABLE "PWIN175"."DEV_ALL_FEES"';
+			If (upper(Debug_Y_OR_N) = 'Y') Then
+			  DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' TRUNCATE DEV_ALL_FEES. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
+			End If;
+		Else
+			v_query  := 'TRUNCATE TABLE "PWIN175"."TMP_ALL_FEES"';
+			If (upper(Debug_Y_OR_N) = 'Y') Then
+			  DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' TRUNCATE TMP_ALL_FEES. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
+			End If;
+		End If;
     Else
-      If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
-        v_query  := 'TRUNCATE TABLE "PWIN175"."DEV_ALL_FEES"';
-        If (upper(Debug_Y_OR_N) = 'Y') Then
-          DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' TRUNCATE DEV_ALL_FEES. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
-        End If;
-      Else
-        v_query  := 'TRUNCATE TABLE "PWIN175"."TMP_ALL_FEES"';
-        If (upper(Debug_Y_OR_N) = 'Y') Then
-          DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' TRUNCATE TMP_ALL_FEES. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
-        End If;
-      End If;
+		If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
+			v_query  := 'TRUNCATE TABLE "PWIN175"."DEV_ALL_FEES"';
+			If (upper(Debug_Y_OR_N) = 'Y') Then
+			  DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' TRUNCATE DEV_ALL_FEES. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
+			End If;
+		Else
+			v_query  := 'TRUNCATE TABLE "PWIN175"."TMP_ALL_FEES"';
+			If (upper(Debug_Y_OR_N) = 'Y') Then
+			  DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' TRUNCATE TMP_ALL_FEES. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
+			End If;
+		End If;
     End If;
-		EXECUTE IMMEDIATE v_query;
-		sFileName := Customer || '-EOM-ADMIN-ORACLE-' || '-RunBy-' || Op || '-RunOn-' || start_date || '-TO-' || end_date || '-RunAt-' || sFileTime || sFileSuffix;
+	EXECUTE IMMEDIATE v_query;
+	sFileName := Customer || '-EOM-ADMIN-ORACLE-' || '-RunBy-' || Op || '-RunOn-' || start_date || '-TO-' || end_date || '-RunAt-' || sFileTime || sFileSuffix;
     DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');
-		
+	
     --CHECKPOINT 2;
-		nCheckpoint := 2;
+	nCheckpoint := 2;
     If (upper(Inter_Y_OR_No) = 'Y') Then
-      If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
-        v_query  := 'TRUNCATE TABLE Dev_Group_Cust';
-        If (upper(Debug_Y_OR_N) = 'Y') Then
-          DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' TRUNCATE Dev_Group_Cust. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
-        End If;
-      Else
-        v_query  := 'TRUNCATE TABLE Tmp_Group_Cust';
-        If (upper(Debug_Y_OR_N) = 'Y') Then
-          DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' TRUNCATE Tmp_Group_Cust. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
-        End If;
-      End If; 
+		If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
+			v_query  := 'TRUNCATE TABLE Dev_Group_Cust';
+			If (upper(Debug_Y_OR_N) = 'Y') Then
+			  DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' TRUNCATE Dev_Group_Cust. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
+			End If;
+		Else
+			v_query  := 'TRUNCATE TABLE Tmp_Group_Cust';
+			If (upper(Debug_Y_OR_N) = 'Y') Then
+			  DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' TRUNCATE Tmp_Group_Cust. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
+			End If;
+		End If; 
     Else
-      If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
-        v_query  := 'TRUNCATE TABLE Dev_Group_Cust';
-        If (upper(Debug_Y_OR_N) = 'Y') Then
-          DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' TRUNCATE Dev_Group_Cust. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
-        End If;
-      Else
-        v_query  := 'TRUNCATE TABLE Tmp_Group_Cust';
-        If (upper(Debug_Y_OR_N) = 'Y') Then
-          DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' TRUNCATE Tmp_Group_Cust. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
-        End If;
-      End If;
+		If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
+			v_query  := 'TRUNCATE TABLE Dev_Group_Cust';
+			If (upper(Debug_Y_OR_N) = 'Y') Then
+			  DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' TRUNCATE Dev_Group_Cust. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
+			End If;
+		Else
+			v_query  := 'TRUNCATE TABLE Tmp_Group_Cust';
+			If (upper(Debug_Y_OR_N) = 'Y') Then
+				DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' TRUNCATE Tmp_Group_Cust. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
+			End If;
+		End If;
     End If;
-		EXECUTE IMMEDIATE v_query;
-		DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');
-    nCheckpoint := 2.5;
-		--Select (F_EOM_CHECK_LOG(v_tmp_date ,'Tmp_Group_Cust','A_EOM_GROUP_CUST')) INTO v_query_logfile From Dual;--v_query := q'{Select EOM_REPORT_PKG.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
-		--If UPPER(v_query_logfile) != UPPER(v_tmp_date) Then
+	EXECUTE IMMEDIATE v_query;
+	DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');
+    
+	nCheckpoint := 2.5;
+	--Select (F_EOM_CHECK_LOG(v_tmp_date ,'Tmp_Group_Cust','A_EOM_GROUP_CUST')) INTO v_query_logfile From Dual;--v_query := q'{Select EOM_REPORT_PKG.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
+	--If UPPER(v_query_logfile) != UPPER(v_tmp_date) Then
     If (upper(Inter_Y_OR_No) = 'Y') Then
-      If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
-         If F_IS_TABLE_EEMPTY('Dev_Group_Cust') <= 0 Then
-            If (upper(Debug_Y_OR_N) = 'Y') Then
-              DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Need to run A_EOM_GROUP_CUST(Op) for all customers as table Dev_Group_Cust is empty. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
-            End If;
-            EOM_INTERCO_REPORTING.A_EOM_GROUP_CUST(Op);
-            Select F_IS_TABLE_EEMPTY('Dev_Group_Cust') INTO vRetTblCount From Dual;
-            If (upper(Debug_Y_OR_N) = 'Y') Then
-              DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Ran A_EOM_GROUP_CUST(Op) for all customers. Table Dev_Group_Cust has ' || vRetTblCount || ' records. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
-            End If;
-        Else
-            If (upper(Debug_Y_OR_N) = 'Y') Then
-              DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' No Need to run A_EOM_GROUP_CUST(Op) for all customers as table Dev_Group_Cust is full of data - saved another 5 seconds. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
-            End If;
-        End If;
-      Else
-        If F_IS_TABLE_EEMPTY('Tmp_Group_Cust') <= 0 Then
-          If (upper(Debug_Y_OR_N) = 'Y') Then
-              DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Need to run A_EOM_GROUP_CUST(Op) for all customers as table Tmp _Group_Cust is empty. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
-          End If;
-          EOM_INTERCO_REPORTING.A_EOM_GROUP_CUST(Op);
-          Select F_IS_TABLE_EEMPTY('Tmp_Group_Cust') INTO vRetTblCount From Dual;
-          If (upper(Debug_Y_OR_N) = 'Y') Then
-              DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Ran A_EOM_GROUP_CUST(Op) for all customers. Table Tmp_Group_Cust has ' || vRetTblCount || ' records. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
-          End If;
-        Else
-          If (upper(Debug_Y_OR_N) = 'Y') Then
-            DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' No Need to run A_EOM_GROUP_CUST(Op) for all customers as table Tmp_Group_Cust is full of data - saved another 5 seconds. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
-          End If;
-        End If;
-      End If;
+		If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
+			If F_IS_TABLE_EEMPTY('Dev_Group_Cust') <= 0 Then
+				If (upper(Debug_Y_OR_N) = 'Y') Then
+				  DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Need to run A_EOM_GROUP_CUST(Op) for all customers as table Dev_Group_Cust is empty. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
+				End If;
+				EOM_INTERCO_REPORTING.A_EOM_GROUP_CUST(Op);
+				Select F_IS_TABLE_EEMPTY('Dev_Group_Cust') INTO vRetTblCount From Dual;
+				If (upper(Debug_Y_OR_N) = 'Y') Then
+				  DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Ran A_EOM_GROUP_CUST(Op) for all customers. Table Dev_Group_Cust has ' || vRetTblCount || ' records. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
+				End If;
+			Else
+				If (upper(Debug_Y_OR_N) = 'Y') Then
+				  DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' No Need to run A_EOM_GROUP_CUST(Op) for all customers as table Dev_Group_Cust is full of data - saved another 5 seconds. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
+				End If;
+			End If;
+		Else
+			If F_IS_TABLE_EEMPTY('Tmp_Group_Cust') <= 0 Then
+				If (upper(Debug_Y_OR_N) = 'Y') Then
+					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Need to run A_EOM_GROUP_CUST(Op) for all customers as table Tmp _Group_Cust is empty. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
+				End If;
+				EOM_INTERCO_REPORTING.A_EOM_GROUP_CUST(Op);
+				Select F_IS_TABLE_EEMPTY('Tmp_Group_Cust') INTO vRetTblCount From Dual;
+				If (upper(Debug_Y_OR_N) = 'Y') Then
+					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Ran A_EOM_GROUP_CUST(Op) for all customers. Table Tmp_Group_Cust has ' || vRetTblCount || ' records. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
+				End If;
+			Else
+				If (upper(Debug_Y_OR_N) = 'Y') Then
+					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' No Need to run A_EOM_GROUP_CUST(Op) for all customers as table Tmp_Group_Cust is full of data - saved another 5 seconds. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
+				End If;
+			End If;
+		End If;
     Else
-      If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
-        If F_IS_TABLE_EEMPTY('Dev_Group_Cust') <= 0 Then
-          If (upper(Debug_Y_OR_N) = 'Y') Then
-            DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Need to run A_EOM_GROUP_CUST(Op) for all customers as table Dev_Group_Cust is empty. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
-          End If;
-          IQ_EOM_REPORTING.A_EOM_GROUP_CUST(Op);
-          Select F_IS_TABLE_EEMPTY('Dev_Group_Cust') INTO vRetTblCount From Dual;
-          If (upper(Debug_Y_OR_N) = 'Y') Then
-            DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Ran A_EOM_GROUP_CUST(Op) for all customers. Table Dev_Group_Cust has ' || vRetTblCount || ' records. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
-          End If;
-        Else
-          If (upper(Debug_Y_OR_N) = 'Y') Then
-            DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' No Need to run A_EOM_GROUP_CUST(Op) for all customers as table Dev_Group_Cust is full of data - saved another 5 seconds. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
-          End If;
-        End If;
-      Else
-        If F_IS_TABLE_EEMPTY('Tmp_Group_Cust') <= 0 Then
-          If (upper(Debug_Y_OR_N) = 'Y') Then
-            DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Need to run A_EOM_GROUP_CUST(Op) for all customers as table Tmp_Group_Cust is empty. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
-          End If;
-          IQ_EOM_REPORTING.A_EOM_GROUP_CUST(Op);
-          Select F_IS_TABLE_EEMPTY('Tmp_Group_Cust') INTO vRetTblCount From Dual;
-          If (upper(Debug_Y_OR_N) = 'Y') Then
-            DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Ran A_EOM_GROUP_CUST(Op) for all customers. Table Tmp_Group_Cust has ' || vRetTblCount || ' records. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
-          End If;
-        Else
-          If (upper(Debug_Y_OR_N) = 'Y') Then
-            DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' No Need to run A_EOM_GROUP_CUST(Op) for all customers as table Tmp_Group_Cust is full of data - saved another 5 seconds. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
-          End If;
-        End If;
-      End If;
+		If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
+			If F_IS_TABLE_EEMPTY('Dev_Group_Cust') <= 0 Then
+				If (upper(Debug_Y_OR_N) = 'Y') Then
+					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Need to run A_EOM_GROUP_CUST(Op) for all customers as table Dev_Group_Cust is empty. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
+				End If;
+				IQ_EOM_REPORTING.A_EOM_GROUP_CUST(Op);
+				Select F_IS_TABLE_EEMPTY('Dev_Group_Cust') INTO vRetTblCount From Dual;
+				If (upper(Debug_Y_OR_N) = 'Y') Then
+					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Ran A_EOM_GROUP_CUST(Op) for all customers. Table Dev_Group_Cust has ' || vRetTblCount || ' records. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
+				End If;
+			Else
+				If (upper(Debug_Y_OR_N) = 'Y') Then
+					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' No Need to run A_EOM_GROUP_CUST(Op) for all customers as table Dev_Group_Cust is full of data - saved another 5 seconds. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
+				End If;
+			End If;
+		Else
+			If F_IS_TABLE_EEMPTY('Tmp_Group_Cust') <= 0 Then
+				If (upper(Debug_Y_OR_N) = 'Y') Then
+					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Need to run A_EOM_GROUP_CUST(Op) for all customers as table Tmp_Group_Cust is empty. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
+				End If;
+				IQ_EOM_REPORTING.A_EOM_GROUP_CUST(Op);
+				Select F_IS_TABLE_EEMPTY('Tmp_Group_Cust') INTO vRetTblCount From Dual;
+				If (upper(Debug_Y_OR_N) = 'Y') Then
+					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Ran A_EOM_GROUP_CUST(Op) for all customers. Table Tmp_Group_Cust has ' || vRetTblCount || ' records. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
+				End If;
+			Else
+				If (upper(Debug_Y_OR_N) = 'Y') Then
+					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' No Need to run A_EOM_GROUP_CUST(Op) for all customers as table Tmp_Group_Cust is full of data - saved another 5 seconds. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
+				End If;
+			End If;
+		End If;
     End If;
     DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');
-		nCheckpoint := 3;
-		--v_query := q'{SELECT TO_CHAR(LAST_ANALYZED, 'DD-MON-YY') FROM DBA_TABLES WHERE TABLE_NAME = 'TMP_ADMIN_DATA_PICK_LINECOUNTS'}';
-		--EXECUTE IMMEDIATE v_query INTO vRtnVal;-- USING sCustomerCode;
-		--If F_IS_TABLE_EEMPTY('TMP_ADMIN_DATA_PICK_LINECOUNTS') <= 0 Then
+	
+	nCheckpoint := 3;
+	--v_query := q'{SELECT TO_CHAR(LAST_ANALYZED, 'DD-MON-YY') FROM DBA_TABLES WHERE TABLE_NAME = 'TMP_ADMIN_DATA_PICK_LINECOUNTS'}';
+	--EXECUTE IMMEDIATE v_query INTO vRtnVal;-- USING sCustomerCode;
+	--If F_IS_TABLE_EEMPTY('TMP_ADMIN_DATA_PICK_LINECOUNTS') <= 0 Then
     If (upper(Inter_Y_OR_No) = 'Y') Then
       If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
         Select (EOM_INTERCO_REPORTING.F_EOM_CHECK_LOG(v_tmp_date ,'DEV_ADMIN_DATA_PICK_LINECOUNTS','B_EOM_START_RUN_ONCE_DATA',Op)) INTO v_query_logfile From Dual;--v_query := q'{Select EOM_REPORT_PKG.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
