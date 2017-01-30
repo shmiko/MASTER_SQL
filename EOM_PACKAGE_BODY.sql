@@ -1,11 +1,9 @@
 create or replace PACKAGE BODY EOM AS
-
 	/* Y Run this once for each customer including intercompany   
 	This merges all the Charges from each of the temp tables   
 	Temp Tables Used   
 	1. TMP_ALL_FEES   
 	*/
-  
 	PROCEDURE Z3_EOM_RUN_ALL (
 		p_array_size_start IN PLS_INTEGER DEFAULT 100
 		,start_date IN VARCHAR2 
@@ -128,12 +126,12 @@ create or replace PACKAGE BODY EOM AS
 	--If UPPER(v_query_logfile) != UPPER(v_tmp_date) Then
     If (upper(Inter_Y_OR_No) = 'Y') Then
 		If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
-			If F_IS_TABLE_EEMPTY('Dev_Group_Cust') <= 0 Then
+			If F_IS_TABLE_EEMPTY('Dev_Group_Cust',Debug_Y_OR_N) <= 0 Then
 				If (upper(Debug_Y_OR_N) = 'Y') Then
 					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Need to run A_EOM_GROUP_CUST(Op) for all customers as table Dev_Group_Cust is empty. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
 				End If;
 				EOM_INTERCO_REPORTING.A_EOM_GROUP_CUST(Op);
-				Select F_IS_TABLE_EEMPTY('Dev_Group_Cust') INTO vRetTblCount From Dual;
+				Select F_IS_TABLE_EEMPTY('Dev_Group_Cust',Debug_Y_OR_N) INTO vRetTblCount From Dual;
 				If (upper(Debug_Y_OR_N) = 'Y') Then
 					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Ran A_EOM_GROUP_CUST(Op) for all customers. Table Dev_Group_Cust has ' || vRetTblCount || ' records. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
 				End If;
@@ -143,12 +141,12 @@ create or replace PACKAGE BODY EOM AS
 				End If;
 			End If;
 		Else
-			If F_IS_TABLE_EEMPTY('Tmp_Group_Cust') <= 0 Then
+			If F_IS_TABLE_EEMPTY('Tmp_Group_Cust',Debug_Y_OR_N) <= 0 Then
 				If (upper(Debug_Y_OR_N) = 'Y') Then
 					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Need to run A_EOM_GROUP_CUST(Op) for all customers as table Tmp _Group_Cust is empty. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
 				End If;
 				EOM_INTERCO_REPORTING.A_EOM_GROUP_CUST(Op);
-				Select F_IS_TABLE_EEMPTY('Tmp_Group_Cust') INTO vRetTblCount From Dual;
+				Select F_IS_TABLE_EEMPTY('Tmp_Group_Cust',Debug_Y_OR_N) INTO vRetTblCount From Dual;
 				If (upper(Debug_Y_OR_N) = 'Y') Then
 					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Ran A_EOM_GROUP_CUST(Op) for all customers. Table Tmp_Group_Cust has ' || vRetTblCount || ' records. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
 				End If;
@@ -160,12 +158,12 @@ create or replace PACKAGE BODY EOM AS
 		End If;
     Else
 		If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
-			If F_IS_TABLE_EEMPTY('Dev_Group_Cust') <= 0 Then
+			If F_IS_TABLE_EEMPTY('Dev_Group_Cust',Debug_Y_OR_N) <= 0 Then
 				If (upper(Debug_Y_OR_N) = 'Y') Then
 					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Need to run A_EOM_GROUP_CUST(Op) for all customers as table Dev_Group_Cust is empty. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
 				End If;
 				IQ_EOM_REPORTING.A_EOM_GROUP_CUST(Op);
-				Select F_IS_TABLE_EEMPTY('Dev_Group_Cust') INTO vRetTblCount From Dual;
+				Select F_IS_TABLE_EEMPTY('Dev_Group_Cust',Debug_Y_OR_N) INTO vRetTblCount From Dual;
 				If (upper(Debug_Y_OR_N) = 'Y') Then
 					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Ran A_EOM_GROUP_CUST(Op) for all customers. Table Dev_Group_Cust has ' || vRetTblCount || ' records. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
 				End If;
@@ -175,12 +173,12 @@ create or replace PACKAGE BODY EOM AS
 				End If;
 			End If;
 		Else
-			If F_IS_TABLE_EEMPTY('Tmp_Group_Cust') <= 0 Then
+			If F_IS_TABLE_EEMPTY('Tmp_Group_Cust',Debug_Y_OR_N) <= 0 Then
 				If (upper(Debug_Y_OR_N) = 'Y') Then
 					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Need to run A_EOM_GROUP_CUST(Op) for all customers as table Tmp_Group_Cust is empty. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
 				End If;
 				IQ_EOM_REPORTING.A_EOM_GROUP_CUST(Op);
-				Select F_IS_TABLE_EEMPTY('Tmp_Group_Cust') INTO vRetTblCount From Dual;
+				Select F_IS_TABLE_EEMPTY('Tmp_Group_Cust',Debug_Y_OR_N) INTO vRetTblCount From Dual;
 				If (upper(Debug_Y_OR_N) = 'Y') Then
 					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Ran A_EOM_GROUP_CUST(Op) for all customers. Table Tmp_Group_Cust has ' || vRetTblCount || ' records. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
 				End If;
@@ -196,11 +194,11 @@ create or replace PACKAGE BODY EOM AS
 	nCheckpoint := 3;
 	--v_query := q'{SELECT TO_CHAR(LAST_ANALYZED, 'DD-MON-YY') FROM DBA_TABLES WHERE TABLE_NAME = 'TMP_ADMIN_DATA_PICK_LINECOUNTS'}';
 	--EXECUTE IMMEDIATE v_query INTO vRtnVal;-- USING sCustomerCode;
-	--If F_IS_TABLE_EEMPTY('TMP_ADMIN_DATA_PICK_LINECOUNTS') <= 0 Then
+	--If F_IS_TABLE_EEMPTY('TMP_ADMIN_DATA_PICK_LINECOUNTS',Debug_Y_OR_N) <= 0 Then
     If (upper(Inter_Y_OR_No) = 'Y') Then
       If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
         Select (EOM_INTERCO_REPORTING.F_EOM_CHECK_LOG(v_tmp_date ,'DEV_ADMIN_DATA_PICK_LINECOUNTS','B_EOM_START_RUN_ONCE_DATA',Op)) INTO v_query_logfile From Dual;--v_query := q'{Select EOM_REPORT_PKG.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
-        If F_IS_TABLE_EEMPTY('DEV_ADMIN_DATA_PICK_LINECOUNTS') <= 0 Then
+        If F_IS_TABLE_EEMPTY('DEV_ADMIN_DATA_PICK_LINECOUNTS',Debug_Y_OR_N) <= 0 Then
 			If (upper(Debug_Y_OR_N) = 'Y') Then
 				DBMS_OUTPUT.PUT_LINE(nCheckpoint || '  Need to RUN_ONCE B_EOM_START_RUN_ONCE_DATA as DEV_ADMIN_DATA_PICK_LINECOUNTS for all customers as table is empty. result was ' || UPPER(v_query_logfile) || ' and end date was ' ||  UPPER(v_tmp_date) || '. This comes from EOM @ checkpoint ' || nCheckpoint || '.');
 			End If;
@@ -216,7 +214,7 @@ create or replace PACKAGE BODY EOM AS
         End If;
       Else
         Select (EOM_INTERCO_REPORTING.F_EOM_CHECK_LOG(v_tmp_date ,'TMP_ADMIN_DATA_PICK_LINECOUNTS','B_EOM_START_RUN_ONCE_DATA',Op)) INTO v_query_logfile From Dual;--v_query := q'{Select EOM_REPORT_PKG.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
-        If F_IS_TABLE_EEMPTY('TMP_ADMIN_DATA_PICK_LINECOUNTS') <= 0 Then
+        If F_IS_TABLE_EEMPTY('TMP_ADMIN_DATA_PICK_LINECOUNTS',Debug_Y_OR_N) <= 0 Then
           If (upper(Debug_Y_OR_N) = 'Y') Then
             DBMS_OUTPUT.PUT_LINE(nCheckpoint || '  Need to RUN_ONCE B_EOM_START_RUN_ONCE_DATA as TMP_ADMIN_DATA_PICK_LINECOUNTS for all customers as table is empty. result was ' || UPPER(v_query_logfile) || ' and end date was ' ||  UPPER(v_tmp_date) );
           End If;
@@ -234,7 +232,7 @@ create or replace PACKAGE BODY EOM AS
     Else
       If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
         Select (IQ_EOM_REPORTING.F_EOM_CHECK_LOG(v_tmp_date ,'DEV_ADMIN_DATA_PICK_LINECOUNTS','B_EOM_START_RUN_ONCE_DATA',Op)) INTO v_query_logfile From Dual;--v_query := q'{Select EOM_REPORT_PKG.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
-        If F_IS_TABLE_EEMPTY('DEV_ADMIN_DATA_PICK_LINECOUNTS') <= 0 Then
+        If F_IS_TABLE_EEMPTY('DEV_ADMIN_DATA_PICK_LINECOUNTS',Debug_Y_OR_N) <= 0 Then
           If (upper(Debug_Y_OR_N) = 'Y') Then
             DBMS_OUTPUT.PUT_LINE(nCheckpoint || '  Need to RUN_ONCE B_EOM_START_RUN_ONCE_DATA as DEV_ADMIN_DATA_PICK_LINECOUNTS for all customers as table is empty. result was ' || UPPER(v_query_logfile) || ' and end date was ' ||  UPPER(v_tmp_date) );
           End If;
@@ -248,7 +246,7 @@ create or replace PACKAGE BODY EOM AS
         End If;
       Else
         Select (IQ_EOM_REPORTING.F_EOM_CHECK_LOG(v_tmp_date ,'TMP_ADMIN_DATA_PICK_LINECOUNTS','B_EOM_START_RUN_ONCE_DATA',Op)) INTO v_query_logfile From Dual;--v_query := q'{Select EOM_REPORT_PKG.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
-        If F_IS_TABLE_EEMPTY('TMP_ADMIN_DATA_PICK_LINECOUNTS') <= 0 Then
+        If F_IS_TABLE_EEMPTY('TMP_ADMIN_DATA_PICK_LINECOUNTS',Debug_Y_OR_N) <= 0 Then
           If (upper(Debug_Y_OR_N) = 'Y') Then
             DBMS_OUTPUT.PUT_LINE(nCheckpoint || '  Need to RUN_ONCE B_EOM_START_RUN_ONCE_DATA as TMP_ADMIN_DATA_PICK_LINECOUNTS for all customers as table is empty. result was ' || UPPER(v_query_logfile) || ' and end date was ' ||  UPPER(v_tmp_date) );
           End If;
@@ -266,9 +264,9 @@ create or replace PACKAGE BODY EOM AS
 	nCheckpoint := 4;
 	If (upper(Inter_Y_OR_No) = 'Y') Then
 		If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
-			If F_IS_TABLE_EEMPTY('Dev_Locn_Cnt_By_Cust') <= 0 Then
+			If F_IS_TABLE_EEMPTY('Dev_Locn_Cnt_By_Cust',Debug_Y_OR_N) <= 0 Then
 				-- Select (F_EOM_CHECK_LOG(v_tmp_date ,'Tmp_Locn_Cnt_By_Cust','C_EOM_START_ALL_TEMP_STOR_DATA')) INTO v_query_logfile From Dual;--v_query := q'{Select EOM_REPORT_PKG.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
-				--If UPPER(v_query_logfile) != UPPER(v_tmp_date) OR F_IS_TABLE_EEMPTY('Tmp_Locn_Cnt_By_Cust') <= 0 Then
+				--If UPPER(v_query_logfile) != UPPER(v_tmp_date) OR F_IS_TABLE_EEMPTY('Tmp_Locn_Cnt_By_Cust',Debug_Y_OR_N) <= 0 Then
 				If (upper(Debug_Y_OR_N) = 'Y') Then
 					DBMS_OUTPUT.PUT_LINE(nCheckpoint || '  Need to RUN_ONCE C_EOM_START_ALL_TEMP_STOR_DATA as Dev_Locn_Cnt_By_Cust for all customers as table is empty.result was ' || UPPER(v_query_logfile) || ' and end date was ' ||  UPPER(v_tmp_date) );
 				End If;
@@ -280,9 +278,9 @@ create or replace PACKAGE BODY EOM AS
 				End If;
 			End If;
 		Else
-			If F_IS_TABLE_EEMPTY('Tmp_Locn_Cnt_By_Cust') <= 0 Then
+			If F_IS_TABLE_EEMPTY('Tmp_Locn_Cnt_By_Cust',Debug_Y_OR_N) <= 0 Then
 				-- Select (F_EOM_CHECK_LOG(v_tmp_date ,'Tmp_Locn_Cnt_By_Cust','C_EOM_START_ALL_TEMP_STOR_DATA')) INTO v_query_logfile From Dual;--v_query := q'{Select EOM_REPORT_PKG.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
-				--If UPPER(v_query_logfile) != UPPER(v_tmp_date) OR F_IS_TABLE_EEMPTY('Tmp_Locn_Cnt_By_Cust') <= 0 Then
+				--If UPPER(v_query_logfile) != UPPER(v_tmp_date) OR F_IS_TABLE_EEMPTY('Tmp_Locn_Cnt_By_Cust',Debug_Y_OR_N) <= 0 Then
 				If (upper(Debug_Y_OR_N) = 'Y') Then
 					DBMS_OUTPUT.PUT_LINE(nCheckpoint || '  Need to RUN_ONCE C_EOM_START_ALL_TEMP_STOR_DATA as Tmp_Locn_Cnt_By_Cust for all customers as table is empty.result was ' || UPPER(v_query_logfile) || ' and end date was ' ||  UPPER(v_tmp_date) );
 				End If;
@@ -296,9 +294,9 @@ create or replace PACKAGE BODY EOM AS
 		End If;
     Else
 		If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
-			If F_IS_TABLE_EEMPTY('Dev_Locn_Cnt_By_Cust') <= 0 Then
+			If F_IS_TABLE_EEMPTY('Dev_Locn_Cnt_By_Cust',Debug_Y_OR_N) <= 0 Then
 				-- Select (F_EOM_CHECK_LOG(v_tmp_date ,'Tmp_Locn_Cnt_By_Cust','C_EOM_START_ALL_TEMP_STOR_DATA')) INTO v_query_logfile From Dual;--v_query := q'{Select EOM_REPORT_PKG.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
-				--If UPPER(v_query_logfile) != UPPER(v_tmp_date) OR F_IS_TABLE_EEMPTY('Tmp_Locn_Cnt_By_Cust') <= 0 Then
+				--If UPPER(v_query_logfile) != UPPER(v_tmp_date) OR F_IS_TABLE_EEMPTY('Tmp_Locn_Cnt_By_Cust',Debug_Y_OR_N) <= 0 Then
 				If (upper(Debug_Y_OR_N) = 'Y') Then
 					DBMS_OUTPUT.PUT_LINE(nCheckpoint || '  Need to RUN_ONCE C_EOM_START_ALL_TEMP_STOR_DATA as Dev_Locn_Cnt_By_Cust for all customers as table is empty.result was ' || UPPER(v_query_logfile) || ' and end date was ' ||  UPPER(v_tmp_date) );
 				End If;
@@ -310,9 +308,9 @@ create or replace PACKAGE BODY EOM AS
 				End If;
 			End If;
 		Else
-			If F_IS_TABLE_EEMPTY('Tmp_Locn_Cnt_By_Cust') <= 0 Then
+			If F_IS_TABLE_EEMPTY('Tmp_Locn_Cnt_By_Cust',Debug_Y_OR_N) <= 0 Then
 				-- Select (F_EOM_CHECK_LOG(v_tmp_date ,'Tmp_Locn_Cnt_By_Cust','C_EOM_START_ALL_TEMP_STOR_DATA')) INTO v_query_logfile From Dual;--v_query := q'{Select EOM_REPORT_PKG.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
-				--If UPPER(v_query_logfile) != UPPER(v_tmp_date) OR F_IS_TABLE_EEMPTY('Tmp_Locn_Cnt_By_Cust') <= 0 Then
+				--If UPPER(v_query_logfile) != UPPER(v_tmp_date) OR F_IS_TABLE_EEMPTY('Tmp_Locn_Cnt_By_Cust',Debug_Y_OR_N) <= 0 Then
 				If (upper(Debug_Y_OR_N) = 'Y') Then
 					DBMS_OUTPUT.PUT_LINE(nCheckpoint || '  Need to RUN_ONCE C_EOM_START_ALL_TEMP_STOR_DATA as Tmp_Locn_Cnt_By_Cust for all customers as table is empty.result was ' || UPPER(v_query_logfile) || ' and end date was ' ||  UPPER(v_tmp_date) );
 				End If;
@@ -485,7 +483,7 @@ create or replace PACKAGE BODY EOM AS
     End If;
     If (upper(Inter_Y_OR_No) = 'Y') Then
 		If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
-			If F_IS_TABLE_EEMPTY('DEV_HANDLING_FEES') <= 0 Then
+			If F_IS_TABLE_EEMPTY('DEV_HANDLING_FEES',Debug_Y_OR_N) <= 0 Then
 				If (upper(Debug_Y_OR_N) = 'Y') Then
 					DBMS_OUTPUT.PUT_LINE('7th Need to RUN_ONCE G4_HANDLING_FEES_F for all customers as table is empty. result was ' || UPPER(v_query_result2) 
 					|| ' and this cust was ' ||  UPPER(Customer)
@@ -540,7 +538,7 @@ create or replace PACKAGE BODY EOM AS
 				-- ' Seconds...for customer ' || Customer);
 			END IF;
 		Else
-			If F_IS_TABLE_EEMPTY('TMP_HANDLING_FEES') <= 0 Then
+			If F_IS_TABLE_EEMPTY('TMP_HANDLING_FEES',Debug_Y_OR_N) <= 0 Then
 				If (upper(Debug_Y_OR_N) = 'Y') Then
 					DBMS_OUTPUT.PUT_LINE('7th Need to RUN_ONCE G4_HANDLING_FEES_F for all customers as table is empty. result was ' || UPPER(v_query_result2) 
 					|| ' and this cust was ' ||  UPPER(Customer)
@@ -597,7 +595,7 @@ create or replace PACKAGE BODY EOM AS
 		End If;
     Else
 		If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
-			If F_IS_TABLE_EEMPTY('DEV_HANDLING_FEES') <= 0 Then
+			If F_IS_TABLE_EEMPTY('DEV_HANDLING_FEES',Debug_Y_OR_N) <= 0 Then
 				If (upper(Debug_Y_OR_N) = 'Y') Then
 					DBMS_OUTPUT.PUT_LINE('7th Need to RUN_ONCE G4_HANDLING_FEES_F for all customers as table is empty. result was ' || UPPER(v_query_result2) 
 					|| ' and this cust was ' ||  UPPER(Customer)
@@ -652,7 +650,7 @@ create or replace PACKAGE BODY EOM AS
 				-- ' Seconds...for customer ' || Customer);
 			END IF;
 		Else
-			If F_IS_TABLE_EEMPTY('TMP_HANDLING_FEES') <= 0 Then
+			If F_IS_TABLE_EEMPTY('TMP_HANDLING_FEES',Debug_Y_OR_N) <= 0 Then
 				If (upper(Debug_Y_OR_N) = 'Y') Then
 					DBMS_OUTPUT.PUT_LINE('7th Need to RUN_ONCE G4_HANDLING_FEES_F for all customers as table is empty. result was ' || UPPER(v_query_result2) 
 					|| ' and this cust was ' ||  UPPER(Customer)
@@ -715,7 +713,7 @@ create or replace PACKAGE BODY EOM AS
 		If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
 			Select (EOM_INTERCO_REPORTING.F_EOM_CHECK_CUST_LOG(Customer ,'DEV_PICK_FEES','G5_PICK_FEES_F',Op)) INTO v_query_result2 From Dual;--v_query := q'{Select IQ_EOM_REPORTING.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
 			Select (EOM_INTERCO_REPORTING.F_EOM_CHECK_LOG(v_tmp_date ,'DEV_PICK_FEES','G5_PICK_FEES_F',Op)) INTO v_query_logfile From Dual;
-			If F_IS_TABLE_EEMPTY('DEV_PICK_FEES') <= 0 Then
+			If F_IS_TABLE_EEMPTY('DEV_PICK_FEES',Debug_Y_OR_N) <= 0 Then
 				If (upper(Debug_Y_OR_N) = 'Y') Then
 					DBMS_OUTPUT.PUT_LINE('8th Need to RUN_ONCE G5_PICK_FEES_F for all customers as table is  empty. cust result was ' || UPPER(v_query_result2) 
 					|| ' and this cust was ' ||  UPPER(Customer)
@@ -760,7 +758,7 @@ create or replace PACKAGE BODY EOM AS
 		Else
 			Select (EOM_INTERCO_REPORTING.F_EOM_CHECK_CUST_LOG(Customer ,'TMP_PICK_FEES','G5_PICK_FEES_F',Op)) INTO v_query_result2 From Dual;--v_query := q'{Select IQ_EOM_REPORTING.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
 			Select (EOM_INTERCO_REPORTING.F_EOM_CHECK_LOG(v_tmp_date ,'TMP_PICK_FEES','G5_PICK_FEES_F',Op)) INTO v_query_logfile From Dual;
-			If F_IS_TABLE_EEMPTY('TMP_PICK_FEES') <= 0 Then
+			If F_IS_TABLE_EEMPTY('TMP_PICK_FEES',Debug_Y_OR_N) <= 0 Then
 				If (upper(Debug_Y_OR_N) = 'Y') Then
 					DBMS_OUTPUT.PUT_LINE('8th Need to RUN_ONCE G5_PICK_FEES_F for all customers as table is  empty. cust result was ' || UPPER(v_query_result2) 
 					|| ' and this cust was ' ||  UPPER(Customer)
@@ -807,7 +805,7 @@ create or replace PACKAGE BODY EOM AS
 		If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
 			Select (IQ_EOM_REPORTING.F_EOM_CHECK_CUST_LOG(Customer ,'DEV_PICK_FEES','G5_PICK_FEES_F',Op)) INTO v_query_result2 From Dual;--v_query := q'{Select IQ_EOM_REPORTING.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
 			Select (IQ_EOM_REPORTING.F_EOM_CHECK_LOG(v_tmp_date ,'DEV_PICK_FEES','G5_PICK_FEES_F',Op)) INTO v_query_logfile From Dual;
-			If F_IS_TABLE_EEMPTY('DEV_PICK_FEES') <= 0 Then
+			If F_IS_TABLE_EEMPTY('DEV_PICK_FEES',Debug_Y_OR_N) <= 0 Then
 				If (upper(Debug_Y_OR_N) = 'Y') Then
 					DBMS_OUTPUT.PUT_LINE('8th Need to RUN_ONCE G5_PICK_FEES_F for all customers as table is  empty. cust result was ' || UPPER(v_query_result2) 
 					|| ' and this cust was ' ||  UPPER(Customer)
@@ -852,7 +850,7 @@ create or replace PACKAGE BODY EOM AS
 		Else
 			Select (IQ_EOM_REPORTING.F_EOM_CHECK_CUST_LOG(Customer ,'TMP_PICK_FEES','G5_PICK_FEES_F',Op)) INTO v_query_result2 From Dual;--v_query := q'{Select IQ_EOM_REPORTING.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
 			Select (IQ_EOM_REPORTING.F_EOM_CHECK_LOG(v_tmp_date ,'TMP_PICK_FEES','G5_PICK_FEES_F',Op)) INTO v_query_logfile From Dual;
-			If F_IS_TABLE_EEMPTY('TMP_PICK_FEES') <= 0 Then
+			If F_IS_TABLE_EEMPTY('TMP_PICK_FEES',Debug_Y_OR_N) <= 0 Then
 				If (upper(Debug_Y_OR_N) = 'Y') Then
 					DBMS_OUTPUT.PUT_LINE('8th Need to RUN_ONCE G5_PICK_FEES_F for all customers as table is  empty. cust result was ' || UPPER(v_query_result2) 
 					|| ' and this cust was ' ||  UPPER(Customer)
