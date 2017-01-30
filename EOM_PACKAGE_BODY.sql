@@ -484,117 +484,117 @@ create or replace PACKAGE BODY EOM AS
             DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Running F_EOM_CHECK_CUST_LOG & F_EOM_CHECK_LOG for ALL based on to date from EOM logs');
     End If;
     If (upper(Inter_Y_OR_No) = 'Y') Then
-      If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
-        If F_IS_TABLE_EEMPTY('DEV_HANDLING_FEES') <= 0 Then
-			If (upper(Debug_Y_OR_N) = 'Y') Then
-				DBMS_OUTPUT.PUT_LINE('7th Need to RUN_ONCE G4_HANDLING_FEES_F for all customers as table is empty. result was ' || UPPER(v_query_result2) 
-				|| ' and this cust was ' ||  UPPER(Customer)
-				|| ' and to date was ' ||  UPPER(v_query_logfile)
-				|| ' and this date was ' ||  UPPER(v_tmp_date) 
-				);
-			End If;
-			EOM_INTERCO_REPORTING.G4_HANDLING_FEES_F(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
-			If (upper(Debug_Y_OR_N) = 'Y') Then
-				DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' 1 Running G4_HANDLING_FEES_F for ALL based on to date from EOM logs as DEV_HANDLING_FEES was empty');
-			End If;
-        ELSIf UPPER(v_query_result2) != UPPER(Customer) AND UPPER(v_query_logfile) IS NOT NULL AND UPPER(v_query_logfile) != UPPER(v_tmp_date) Then
-			If (upper(Debug_Y_OR_N) = 'Y') Then
-				DBMS_OUTPUT.PUT_LINE('7th Need to RUN_ONCE G4_HANDLING_FEES_F for all customers as table is not empty. result was ' || UPPER(v_query_result2) 
-				|| ' and this cust was ' ||  UPPER(Customer)
-				|| ' and to date was ' ||  UPPER(v_query_logfile)
-				|| ' and this date was ' ||  UPPER(v_tmp_date) 
-				);
-			End If;
-			EOM_INTERCO_REPORTING.G4_HANDLING_FEES_F(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
-			If (upper(Debug_Y_OR_N) = 'Y') Then
-				DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' 2 Running G4_HANDLING_FEES_F for ALL based on to date from EOM logs as DEV_HANDLING_FEES was empty');
-			End If;
-			--ELSIF  UPPER(v_query_result2) = UPPER(Customer) 
-			--AND UPPER(v_query_result2) IS NOT NULL 
-			--AND UPPER(v_query_logfile) = UPPER(v_tmp_date) Then
-			If (upper(Debug_Y_OR_N) = 'Y') Then
-				DBMS_OUTPUT.PUT_LINE('7th No Need to RUN_ONCE G4_HANDLING_FEES_F for all customers as table is not empty. Last Cust match was ' ||  UPPER(v_query_result2) 
-				|| ' and this cust was ' ||  UPPER(Customer)
-				|| ' and to date was ' ||  UPPER(v_query_logfile)
-				|| ' and this date was ' ||  UPPER(v_tmp_date) 
-				);
-			End If;
-        ELSIf UPPER(v_query_result2) IS NULL OR UPPER(v_query_logfile) IS NULL Then
-			If (upper(Debug_Y_OR_N) = 'Y') Then
-				DBMS_OUTPUT.PUT_LINE('7th Need to RUN_ONCE G4_HANDLING_FEES_F for all customers as LOGFILE is missing. result was ' || UPPER(v_query_result2) 
-				|| ' and this cust was ' ||  UPPER(Customer)
-				|| ' and to date was ' ||  UPPER(v_query_logfile)
-				|| ' and this date was ' ||  UPPER(v_tmp_date) 
-				);
-			End If;
-			EOM_INTERCO_REPORTING.G4_HANDLING_FEES_F(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
-			If (upper(Debug_Y_OR_N) = 'Y') Then
-				DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' 3 Running G4_HANDLING_FEES_F for ALL based on to date from EOM logs as DEV_HANDLING_FEES was empty');
-			End If;
-        Else
-			EOM_INTERCO_REPORTING.G4_HANDLING_FEES_F(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
-			If (upper(Debug_Y_OR_N) = 'Y') Then
-				DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' 4 Running G4_HANDLING_FEES_F for ALL based on to date from EOM logs as DEV_HANDLING_FEES was empty');
-			End If;
-			--DBMS_OUTPUT.PUT_LINE('7th No matches for running G4_HANDLING_FEES_F, ran it just in case still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) ||
-			-- ' Seconds...for customer ' || Customer);
-        END IF;
-	Else
-		If F_IS_TABLE_EEMPTY('TMP_HANDLING_FEES') <= 0 Then
-			If (upper(Debug_Y_OR_N) = 'Y') Then
-				DBMS_OUTPUT.PUT_LINE('7th Need to RUN_ONCE G4_HANDLING_FEES_F for all customers as table is empty. result was ' || UPPER(v_query_result2) 
-				|| ' and this cust was ' ||  UPPER(Customer)
-				|| ' and to date was ' ||  UPPER(v_query_logfile)
-				|| ' and this date was ' ||  UPPER(v_tmp_date) 
-				);
-			End If;
-			EOM_INTERCO_REPORTING.G4_HANDLING_FEES_F(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
-			If (upper(Debug_Y_OR_N) = 'Y') Then
-				DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' 4 Running G4_HANDLING_FEES_F for ALL based on to date from EOM logs as TMP_HANDLING_FEES was empty');
-			End If;
-		ELSIf UPPER(v_query_result2) != UPPER(Customer) AND UPPER(v_query_logfile) IS NOT NULL AND UPPER(v_query_logfile) != UPPER(v_tmp_date) Then
-			If (upper(Debug_Y_OR_N) = 'Y') Then
-				DBMS_OUTPUT.PUT_LINE('7th Need to RUN_ONCE G4_HANDLING_FEES_F for all customers as table is not empty. result was ' || UPPER(v_query_result2) 
-				|| ' and this cust was ' ||  UPPER(Customer)
-				|| ' and to date was ' ||  UPPER(v_query_logfile)
-				|| ' and this date was ' ||  UPPER(v_tmp_date) 
-				);
-			End If;
-			EOM_INTERCO_REPORTING.G4_HANDLING_FEES_F(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
-			If (upper(Debug_Y_OR_N) = 'Y') Then
-				DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' 4 Running G4_HANDLING_FEES_F for ALL based on to date from EOM logs as TMP_HANDLING_FEES was empty');
-			End If;
-			--ELSIF  UPPER(v_query_result2) = UPPER(Customer) 
-			--AND UPPER(v_query_result2) IS NOT NULL 
-			--AND UPPER(v_query_logfile) = UPPER(v_tmp_date) Then
-			If (upper(Debug_Y_OR_N) = 'Y') Then
-				DBMS_OUTPUT.PUT_LINE('7th No Need to RUN_ONCE G4_HANDLING_FEES_F for all customers as table is not empty. Last Cust match was ' ||  UPPER(v_query_result2) 
-				|| ' and this cust was ' ||  UPPER(Customer)
-				|| ' and to date was ' ||  UPPER(v_query_logfile)
-				|| ' and this date was ' ||  UPPER(v_tmp_date) 
-				);
-			End If;
-		ELSIf UPPER(v_query_result2) IS NULL OR UPPER(v_query_logfile) IS NULL Then
-			If (upper(Debug_Y_OR_N) = 'Y') Then
-				DBMS_OUTPUT.PUT_LINE('7th Need to RUN_ONCE G4_HANDLING_FEES_F for all customers as LOGFILE is missing. result was ' || UPPER(v_query_result2) 
-				|| ' and this cust was ' ||  UPPER(Customer)
-				|| ' and to date was ' ||  UPPER(v_query_logfile)
-				|| ' and this date was ' ||  UPPER(v_tmp_date) 
-				);
-			End If;
-			EOM_INTERCO_REPORTING.G4_HANDLING_FEES_F(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
-			If (upper(Debug_Y_OR_N) = 'Y') Then
-				DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' 4 Running G4_HANDLING_FEES_F for ALL based on to date from EOM logs as TMP_HANDLING_FEES was empty');
-			End If;
+		If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
+			If F_IS_TABLE_EEMPTY('DEV_HANDLING_FEES') <= 0 Then
+				If (upper(Debug_Y_OR_N) = 'Y') Then
+					DBMS_OUTPUT.PUT_LINE('7th Need to RUN_ONCE G4_HANDLING_FEES_F for all customers as table is empty. result was ' || UPPER(v_query_result2) 
+					|| ' and this cust was ' ||  UPPER(Customer)
+					|| ' and to date was ' ||  UPPER(v_query_logfile)
+					|| ' and this date was ' ||  UPPER(v_tmp_date) 
+					);
+				End If;
+				EOM_INTERCO_REPORTING.G4_HANDLING_FEES_F(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
+				If (upper(Debug_Y_OR_N) = 'Y') Then
+					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' 1 Running G4_HANDLING_FEES_F for ALL based on to date from EOM logs as DEV_HANDLING_FEES was empty');
+				End If;
+			ELSIf UPPER(v_query_result2) != UPPER(Customer) AND UPPER(v_query_logfile) IS NOT NULL AND UPPER(v_query_logfile) != UPPER(v_tmp_date) Then
+				If (upper(Debug_Y_OR_N) = 'Y') Then
+					DBMS_OUTPUT.PUT_LINE('7th Need to RUN_ONCE G4_HANDLING_FEES_F for all customers as table is not empty. result was ' || UPPER(v_query_result2) 
+					|| ' and this cust was ' ||  UPPER(Customer)
+					|| ' and to date was ' ||  UPPER(v_query_logfile)
+					|| ' and this date was ' ||  UPPER(v_tmp_date) 
+					);
+				End If;
+				EOM_INTERCO_REPORTING.G4_HANDLING_FEES_F(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
+				If (upper(Debug_Y_OR_N) = 'Y') Then
+					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' 2 Running G4_HANDLING_FEES_F for ALL based on to date from EOM logs as DEV_HANDLING_FEES was empty');
+				End If;
+				--ELSIF  UPPER(v_query_result2) = UPPER(Customer) 
+				--AND UPPER(v_query_result2) IS NOT NULL 
+				--AND UPPER(v_query_logfile) = UPPER(v_tmp_date) Then
+				If (upper(Debug_Y_OR_N) = 'Y') Then
+					DBMS_OUTPUT.PUT_LINE('7th No Need to RUN_ONCE G4_HANDLING_FEES_F for all customers as table is not empty. Last Cust match was ' ||  UPPER(v_query_result2) 
+					|| ' and this cust was ' ||  UPPER(Customer)
+					|| ' and to date was ' ||  UPPER(v_query_logfile)
+					|| ' and this date was ' ||  UPPER(v_tmp_date) 
+					);
+				End If;
+			ELSIf UPPER(v_query_result2) IS NULL OR UPPER(v_query_logfile) IS NULL Then
+				If (upper(Debug_Y_OR_N) = 'Y') Then
+					DBMS_OUTPUT.PUT_LINE('7th Need to RUN_ONCE G4_HANDLING_FEES_F for all customers as LOGFILE is missing. result was ' || UPPER(v_query_result2) 
+					|| ' and this cust was ' ||  UPPER(Customer)
+					|| ' and to date was ' ||  UPPER(v_query_logfile)
+					|| ' and this date was ' ||  UPPER(v_tmp_date) 
+					);
+				End If;
+				EOM_INTERCO_REPORTING.G4_HANDLING_FEES_F(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
+				If (upper(Debug_Y_OR_N) = 'Y') Then
+					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' 3 Running G4_HANDLING_FEES_F for ALL based on to date from EOM logs as DEV_HANDLING_FEES was empty');
+				End If;
+			Else
+				EOM_INTERCO_REPORTING.G4_HANDLING_FEES_F(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
+				If (upper(Debug_Y_OR_N) = 'Y') Then
+					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' 4 Running G4_HANDLING_FEES_F for ALL based on to date from EOM logs as DEV_HANDLING_FEES was empty');
+				End If;
+				--DBMS_OUTPUT.PUT_LINE('7th No matches for running G4_HANDLING_FEES_F, ran it just in case still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) ||
+				-- ' Seconds...for customer ' || Customer);
+			END IF;
 		Else
-			EOM_INTERCO_REPORTING.G4_HANDLING_FEES_F(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
-			If (upper(Debug_Y_OR_N) = 'Y') Then
-				DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' 4 Running G4_HANDLING_FEES_F for ALL based on to date from EOM logs as TMP_HANDLING_FEES was empty');
-			End If;
-			--DBMS_OUTPUT.PUT_LINE('7th No matches for running G4_HANDLING_FEES_F, ran it just in case still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) ||
-			-- ' Seconds...for customer ' || Customer);
-		END IF;
-		--End If;
+			If F_IS_TABLE_EEMPTY('TMP_HANDLING_FEES') <= 0 Then
+				If (upper(Debug_Y_OR_N) = 'Y') Then
+					DBMS_OUTPUT.PUT_LINE('7th Need to RUN_ONCE G4_HANDLING_FEES_F for all customers as table is empty. result was ' || UPPER(v_query_result2) 
+					|| ' and this cust was ' ||  UPPER(Customer)
+					|| ' and to date was ' ||  UPPER(v_query_logfile)
+					|| ' and this date was ' ||  UPPER(v_tmp_date) 
+					);
+				End If;
+				EOM_INTERCO_REPORTING.G4_HANDLING_FEES_F(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
+				If (upper(Debug_Y_OR_N) = 'Y') Then
+					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' 4 Running G4_HANDLING_FEES_F for ALL based on to date from EOM logs as TMP_HANDLING_FEES was empty');
+				End If;
+			ELSIf UPPER(v_query_result2) != UPPER(Customer) AND UPPER(v_query_logfile) IS NOT NULL AND UPPER(v_query_logfile) != UPPER(v_tmp_date) Then
+				If (upper(Debug_Y_OR_N) = 'Y') Then
+					DBMS_OUTPUT.PUT_LINE('7th Need to RUN_ONCE G4_HANDLING_FEES_F for all customers as table is not empty. result was ' || UPPER(v_query_result2) 
+					|| ' and this cust was ' ||  UPPER(Customer)
+					|| ' and to date was ' ||  UPPER(v_query_logfile)
+					|| ' and this date was ' ||  UPPER(v_tmp_date) 
+					);
+				End If;
+				EOM_INTERCO_REPORTING.G4_HANDLING_FEES_F(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
+				If (upper(Debug_Y_OR_N) = 'Y') Then
+					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' 4 Running G4_HANDLING_FEES_F for ALL based on to date from EOM logs as TMP_HANDLING_FEES was empty');
+				End If;
+				--ELSIF  UPPER(v_query_result2) = UPPER(Customer) 
+				--AND UPPER(v_query_result2) IS NOT NULL 
+				--AND UPPER(v_query_logfile) = UPPER(v_tmp_date) Then
+				If (upper(Debug_Y_OR_N) = 'Y') Then
+					DBMS_OUTPUT.PUT_LINE('7th No Need to RUN_ONCE G4_HANDLING_FEES_F for all customers as table is not empty. Last Cust match was ' ||  UPPER(v_query_result2) 
+					|| ' and this cust was ' ||  UPPER(Customer)
+					|| ' and to date was ' ||  UPPER(v_query_logfile)
+					|| ' and this date was ' ||  UPPER(v_tmp_date) 
+					);
+				End If;
+			ELSIf UPPER(v_query_result2) IS NULL OR UPPER(v_query_logfile) IS NULL Then
+				If (upper(Debug_Y_OR_N) = 'Y') Then
+					DBMS_OUTPUT.PUT_LINE('7th Need to RUN_ONCE G4_HANDLING_FEES_F for all customers as LOGFILE is missing. result was ' || UPPER(v_query_result2) 
+					|| ' and this cust was ' ||  UPPER(Customer)
+					|| ' and to date was ' ||  UPPER(v_query_logfile)
+					|| ' and this date was ' ||  UPPER(v_tmp_date) 
+					);
+				End If;
+				EOM_INTERCO_REPORTING.G4_HANDLING_FEES_F(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
+				If (upper(Debug_Y_OR_N) = 'Y') Then
+					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' 4 Running G4_HANDLING_FEES_F for ALL based on to date from EOM logs as TMP_HANDLING_FEES was empty');
+				End If;
+			Else
+				EOM_INTERCO_REPORTING.G4_HANDLING_FEES_F(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
+				If (upper(Debug_Y_OR_N) = 'Y') Then
+					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' 4 Running G4_HANDLING_FEES_F for ALL based on to date from EOM logs as TMP_HANDLING_FEES was empty');
+				End If;
+				--DBMS_OUTPUT.PUT_LINE('7th No matches for running G4_HANDLING_FEES_F, ran it just in case still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) ||
+				-- ' Seconds...for customer ' || Customer);
+			END IF;
+		End If;
     Else
 		If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
 			If F_IS_TABLE_EEMPTY('DEV_HANDLING_FEES') <= 0 Then
