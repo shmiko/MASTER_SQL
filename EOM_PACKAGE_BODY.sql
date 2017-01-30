@@ -712,359 +712,355 @@ create or replace PACKAGE BODY EOM AS
     
 	nCheckpoint := 85;
     If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
-      If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
-        Select (EOM_INTERCO_REPORTING.F_EOM_CHECK_CUST_LOG(Customer ,'DEV_PICK_FEES','G5_PICK_FEES_F',Op)) INTO v_query_result2 From Dual;--v_query := q'{Select IQ_EOM_REPORTING.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
-        Select (EOM_INTERCO_REPORTING.F_EOM_CHECK_LOG(v_tmp_date ,'DEV_PICK_FEES','G5_PICK_FEES_F',Op)) INTO v_query_logfile From Dual;
-        If F_IS_TABLE_EEMPTY('DEV_PICK_FEES') <= 0 Then
-          If (upper(Debug_Y_OR_N) = 'Y') Then
-            DBMS_OUTPUT.PUT_LINE('8th Need to RUN_ONCE G5_PICK_FEES_F for all customers as table is  empty. cust result was ' || UPPER(v_query_result2) 
-           || ' and this cust was ' ||  UPPER(Customer)
-           || ' and to date was ' ||  UPPER(v_query_logfile)
-           || ' and this date was ' ||  UPPER(v_tmp_date)
-            );
-          END IF;
-          EOM_INTERCO_REPORTING.G5_PICK_FEES_F(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
-        ELSIf UPPER(v_query_result2) != UPPER(Customer) 
-        AND UPPER(v_query_result2) IS NOT NULL 
-        AND UPPER(v_query_logfile) != UPPER(v_tmp_date) Then
-          If (upper(Debug_Y_OR_N) = 'Y') Then
-            DBMS_OUTPUT.PUT_LINE('8th Need to RUN_ONCE G5_PICK_FEES_F for all customers as table is not empty. cust result was ' || UPPER(v_query_result2) 
-          || ' and this cust was ' ||  UPPER(Customer)
-           || ' and to date was ' ||  UPPER(v_query_logfile)
-           || ' and this date was ' ||  UPPER(v_tmp_date)
-           );
-          END IF;
-          EOM_INTERCO_REPORTING.G5_PICK_FEES_F(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
-          --ELSIF UPPER(v_query_result2) = UPPER(Customer) 
-          --AND UPPER(v_query_result2) IS NOT NULL 
-          --AND UPPER(v_query_logfile) = UPPER(v_tmp_date) Then
-          If (upper(Debug_Y_OR_N) = 'Y') Then
-            DBMS_OUTPUT.PUT_LINE('8th No Need to RUN_ONCE G5_PICK_FEES_F for all customers as table is not empty. Last Cust match was ' ||  UPPER(v_query_result2) 
-           || ' and this cust was ' ||  UPPER(Customer)
-           || ' and to date was ' ||  UPPER(v_query_logfile)
-           || ' and this date was ' ||  UPPER(v_tmp_date)
-           );
-          END IF;
-        ELSIf UPPER(v_query_result2) IS NULL 
-        OR UPPER(v_query_logfile) IS NULL Then
-          If (upper(Debug_Y_OR_N) = 'Y') Then
-            DBMS_OUTPUT.PUT_LINE('8th Need to RUN_ONCE G5_PICK_FEES_F for all customers as LOGFILE is missing. cust result was ' || UPPER(v_query_result2) 
-            || ' and this cust was ' ||  UPPER(Customer)
-             || ' and to date was ' ||  UPPER(v_query_logfile)
-            || ' and this date was ' ||  UPPER(v_tmp_date)
-             );
-         END IF;
-          EOM_INTERCO_REPORTING.G5_PICK_FEES_F(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
-        Else
-          EOM_INTERCO_REPORTING.G5_PICK_FEES_F(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
-          --DBMS_OUTPUT.PUT_LINE('8th No matches for running G5_PICK_FEES_F, ran it just in case still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) ||
-          --' Seconds...for customer ' || Customer);
-        END IF;
-      Else
-        Select (EOM_INTERCO_REPORTING.F_EOM_CHECK_CUST_LOG(Customer ,'TMP_PICK_FEES','G5_PICK_FEES_F',Op)) INTO v_query_result2 From Dual;--v_query := q'{Select IQ_EOM_REPORTING.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
-        Select (EOM_INTERCO_REPORTING.F_EOM_CHECK_LOG(v_tmp_date ,'TMP_PICK_FEES','G5_PICK_FEES_F',Op)) INTO v_query_logfile From Dual;
-        If F_IS_TABLE_EEMPTY('TMP_PICK_FEES') <= 0 Then
-          If (upper(Debug_Y_OR_N) = 'Y') Then
-            DBMS_OUTPUT.PUT_LINE('8th Need to RUN_ONCE G5_PICK_FEES_F for all customers as table is  empty. cust result was ' || UPPER(v_query_result2) 
-           || ' and this cust was ' ||  UPPER(Customer)
-           || ' and to date was ' ||  UPPER(v_query_logfile)
-           || ' and this date was ' ||  UPPER(v_tmp_date)
-            );
-          END IF;
-          EOM_INTERCO_REPORTING.G5_PICK_FEES_F(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
-        ELSIf UPPER(v_query_result2) != UPPER(Customer) 
-        AND UPPER(v_query_result2) IS NOT NULL 
-        AND UPPER(v_query_logfile) != UPPER(v_tmp_date) Then
-          If (upper(Debug_Y_OR_N) = 'Y') Then
-            DBMS_OUTPUT.PUT_LINE('8th Need to RUN_ONCE G5_PICK_FEES_F for all customers as table is not empty. cust result was ' || UPPER(v_query_result2) 
-          || ' and this cust was ' ||  UPPER(Customer)
-           || ' and to date was ' ||  UPPER(v_query_logfile)
-           || ' and this date was ' ||  UPPER(v_tmp_date)
-           );
-          END IF;
-          EOM_INTERCO_REPORTING.G5_PICK_FEES_F(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
-          --ELSIF UPPER(v_query_result2) = UPPER(Customer) 
-          --AND UPPER(v_query_result2) IS NOT NULL 
-          --AND UPPER(v_query_logfile) = UPPER(v_tmp_date) Then
-          If (upper(Debug_Y_OR_N) = 'Y') Then
-            DBMS_OUTPUT.PUT_LINE('8th No Need to RUN_ONCE G5_PICK_FEES_F for all customers as table is not empty. Last Cust match was ' ||  UPPER(v_query_result2) 
-           || ' and this cust was ' ||  UPPER(Customer)
-           || ' and to date was ' ||  UPPER(v_query_logfile)
-           || ' and this date was ' ||  UPPER(v_tmp_date)
-           );
-          END IF;
-        ELSIf UPPER(v_query_result2) IS NULL 
-        OR UPPER(v_query_logfile) IS NULL Then
-          If (upper(Debug_Y_OR_N) = 'Y') Then
-            DBMS_OUTPUT.PUT_LINE('8th Need to RUN_ONCE G5_PICK_FEES_F for all customers as LOGFILE is missing. cust result was ' || UPPER(v_query_result2) 
-          || ' and this cust was ' ||  UPPER(Customer)
-           || ' and to date was ' ||  UPPER(v_query_logfile)
-          || ' and this date was ' ||  UPPER(v_tmp_date)
-           );
-          END IF;
-          EOM_INTERCO_REPORTING.G5_PICK_FEES_F(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
-        Else
-          EOM_INTERCO_REPORTING.G5_PICK_FEES_F(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
-          --DBMS_OUTPUT.PUT_LINE('8th No matches for running G5_PICK_FEES_F, ran it just in case still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) ||
-          --' Seconds...for customer ' || Customer);
-        END IF;
-  
-      End If;
-    Else
-      If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
-        Select (IQ_EOM_REPORTING.F_EOM_CHECK_CUST_LOG(Customer ,'DEV_PICK_FEES','G5_PICK_FEES_F',Op)) INTO v_query_result2 From Dual;--v_query := q'{Select IQ_EOM_REPORTING.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
-        Select (IQ_EOM_REPORTING.F_EOM_CHECK_LOG(v_tmp_date ,'DEV_PICK_FEES','G5_PICK_FEES_F',Op)) INTO v_query_logfile From Dual;
-        If F_IS_TABLE_EEMPTY('DEV_PICK_FEES') <= 0 Then
-          If (upper(Debug_Y_OR_N) = 'Y') Then
-            DBMS_OUTPUT.PUT_LINE('8th Need to RUN_ONCE G5_PICK_FEES_F for all customers as table is  empty. cust result was ' || UPPER(v_query_result2) 
-           || ' and this cust was ' ||  UPPER(Customer)
-           || ' and to date was ' ||  UPPER(v_query_logfile)
-           || ' and this date was ' ||  UPPER(v_tmp_date)
-            );
-          End If;
-          IQ_EOM_REPORTING.G5_PICK_FEES_F(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
-        ELSIf UPPER(v_query_result2) != UPPER(Customer) 
-        AND UPPER(v_query_result2) IS NOT NULL 
-        AND UPPER(v_query_logfile) != UPPER(v_tmp_date) Then
-          If (upper(Debug_Y_OR_N) = 'Y') Then
-            DBMS_OUTPUT.PUT_LINE('8th Need to RUN_ONCE G5_PICK_FEES_F for all customers as table is not empty. cust result was ' || UPPER(v_query_result2) 
-          || ' and this cust was ' ||  UPPER(Customer)
-           || ' and to date was ' ||  UPPER(v_query_logfile)
-           || ' and this date was ' ||  UPPER(v_tmp_date)
-           );
-          End If;
-          IQ_EOM_REPORTING.G5_PICK_FEES_F(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
-          --ELSIF UPPER(v_query_result2) = UPPER(Customer) 
-          --AND UPPER(v_query_result2) IS NOT NULL 
-          --AND UPPER(v_query_logfile) = UPPER(v_tmp_date) Then
-          If (upper(Debug_Y_OR_N) = 'Y') Then
-            DBMS_OUTPUT.PUT_LINE('8th No Need to RUN_ONCE G5_PICK_FEES_F for all customers as table is not empty. Last Cust match was ' ||  UPPER(v_query_result2) 
-           || ' and this cust was ' ||  UPPER(Customer)
-           || ' and to date was ' ||  UPPER(v_query_logfile)
-           || ' and this date was ' ||  UPPER(v_tmp_date)
-           );
-          End If;
-        ELSIf UPPER(v_query_result2) IS NULL 
-        OR UPPER(v_query_logfile) IS NULL Then
-          If (upper(Debug_Y_OR_N) = 'Y') Then
-            DBMS_OUTPUT.PUT_LINE('8th Need to RUN_ONCE G5_PICK_FEES_F for all customers as LOGFILE is missing. cust result was ' || UPPER(v_query_result2) 
-            || ' and this cust was ' ||  UPPER(Customer)
-             || ' and to date was ' ||  UPPER(v_query_logfile)
-            || ' and this date was ' ||  UPPER(v_tmp_date)
-             );
-          End If;
-          IQ_EOM_REPORTING.G5_PICK_FEES_F(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
-        Else
-          IQ_EOM_REPORTING.G5_PICK_FEES_F(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
-          --DBMS_OUTPUT.PUT_LINE('8th No matches for running G5_PICK_FEES_F, ran it just in case still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) ||
-          --' Seconds...for customer ' || Customer);
-        END IF;
-      Else
-        Select (IQ_EOM_REPORTING.F_EOM_CHECK_CUST_LOG(Customer ,'TMP_PICK_FEES','G5_PICK_FEES_F',Op)) INTO v_query_result2 From Dual;--v_query := q'{Select IQ_EOM_REPORTING.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
-        Select (IQ_EOM_REPORTING.F_EOM_CHECK_LOG(v_tmp_date ,'TMP_PICK_FEES','G5_PICK_FEES_F',Op)) INTO v_query_logfile From Dual;
-        If F_IS_TABLE_EEMPTY('TMP_PICK_FEES') <= 0 Then
-          If (upper(Debug_Y_OR_N) = 'Y') Then
-            DBMS_OUTPUT.PUT_LINE('8th Need to RUN_ONCE G5_PICK_FEES_F for all customers as table is  empty. cust result was ' || UPPER(v_query_result2) 
-           || ' and this cust was ' ||  UPPER(Customer)
-           || ' and to date was ' ||  UPPER(v_query_logfile)
-           || ' and this date was ' ||  UPPER(v_tmp_date)
-            );
-          END IF;
-          IQ_EOM_REPORTING.G5_PICK_FEES_F(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
-        ELSIf UPPER(v_query_result2) != UPPER(Customer) 
-        AND UPPER(v_query_result2) IS NOT NULL 
-        AND UPPER(v_query_logfile) != UPPER(v_tmp_date) Then
-          If (upper(Debug_Y_OR_N) = 'Y') Then
-            DBMS_OUTPUT.PUT_LINE('8th Need to RUN_ONCE G5_PICK_FEES_F for all customers as table is not empty. cust result was ' || UPPER(v_query_result2) 
-          || ' and this cust was ' ||  UPPER(Customer)
-           || ' and to date was ' ||  UPPER(v_query_logfile)
-           || ' and this date was ' ||  UPPER(v_tmp_date)
-           );
-          END IF;
-          IQ_EOM_REPORTING.G5_PICK_FEES_F(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
-          --ELSIF UPPER(v_query_result2) = UPPER(Customer) 
-          --AND UPPER(v_query_result2) IS NOT NULL 
-          --AND UPPER(v_query_logfile) = UPPER(v_tmp_date) Then
-          If (upper(Debug_Y_OR_N) = 'Y') Then
-            DBMS_OUTPUT.PUT_LINE('8th No Need to RUN_ONCE G5_PICK_FEES_F for all customers as table is not empty. Last Cust match was ' ||  UPPER(v_query_result2) 
-           || ' and this cust was ' ||  UPPER(Customer)
-           || ' and to date was ' ||  UPPER(v_query_logfile)
-           || ' and this date was ' ||  UPPER(v_tmp_date)
-           );
-          END IF;
-        ELSIf UPPER(v_query_result2) IS NULL 
-        OR UPPER(v_query_logfile) IS NULL Then
-          If (upper(Debug_Y_OR_N) = 'Y') Then
-            DBMS_OUTPUT.PUT_LINE('8th Need to RUN_ONCE G5_PICK_FEES_F for all customers as LOGFILE is missing. cust result was ' || UPPER(v_query_result2) 
-          || ' and this cust was ' ||  UPPER(Customer)
-           || ' and to date was ' ||  UPPER(v_query_logfile)
-          || ' and this date was ' ||  UPPER(v_tmp_date)
-           );
-          END IF;
-          IQ_EOM_REPORTING.G5_PICK_FEES_F(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
-        Else
-          IQ_EOM_REPORTING.G5_PICK_FEES_F(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
-          --DBMS_OUTPUT.PUT_LINE('8th No matches for running G5_PICK_FEES_F, ran it just in case still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) ||
-          --' Seconds...for customer ' || Customer);
-        END IF;
-      End If;
-  End If;
-  
-		nCheckpoint := 9;
+		If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
+			Select (EOM_INTERCO_REPORTING.F_EOM_CHECK_CUST_LOG(Customer ,'DEV_PICK_FEES','G5_PICK_FEES_F',Op)) INTO v_query_result2 From Dual;--v_query := q'{Select IQ_EOM_REPORTING.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
+			Select (EOM_INTERCO_REPORTING.F_EOM_CHECK_LOG(v_tmp_date ,'DEV_PICK_FEES','G5_PICK_FEES_F',Op)) INTO v_query_logfile From Dual;
+			If F_IS_TABLE_EEMPTY('DEV_PICK_FEES') <= 0 Then
+				If (upper(Debug_Y_OR_N) = 'Y') Then
+					DBMS_OUTPUT.PUT_LINE('8th Need to RUN_ONCE G5_PICK_FEES_F for all customers as table is  empty. cust result was ' || UPPER(v_query_result2) 
+					|| ' and this cust was ' ||  UPPER(Customer)
+					|| ' and to date was ' ||  UPPER(v_query_logfile)
+					|| ' and this date was ' ||  UPPER(v_tmp_date)
+					);
+				END IF;
+				EOM_INTERCO_REPORTING.G5_PICK_FEES_F(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
+			ELSIf UPPER(v_query_result2) != UPPER(Customer) AND UPPER(v_query_result2) IS NOT NULL AND UPPER(v_query_logfile) != UPPER(v_tmp_date) Then
+				If (upper(Debug_Y_OR_N) = 'Y') Then
+					DBMS_OUTPUT.PUT_LINE('8th Need to RUN_ONCE G5_PICK_FEES_F for all customers as table is not empty. cust result was ' || UPPER(v_query_result2) 
+					|| ' and this cust was ' ||  UPPER(Customer)
+					|| ' and to date was ' ||  UPPER(v_query_logfile)
+					|| ' and this date was ' ||  UPPER(v_tmp_date)
+					);
+				END IF;
+				EOM_INTERCO_REPORTING.G5_PICK_FEES_F(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
+				--ELSIF UPPER(v_query_result2) = UPPER(Customer) 
+				--AND UPPER(v_query_result2) IS NOT NULL 
+				--AND UPPER(v_query_logfile) = UPPER(v_tmp_date) Then
+				If (upper(Debug_Y_OR_N) = 'Y') Then
+					DBMS_OUTPUT.PUT_LINE('8th No Need to RUN_ONCE G5_PICK_FEES_F for all customers as table is not empty. Last Cust match was ' ||  UPPER(v_query_result2) 
+					|| ' and this cust was ' ||  UPPER(Customer)
+					|| ' and to date was ' ||  UPPER(v_query_logfile)
+					|| ' and this date was ' ||  UPPER(v_tmp_date)
+					);
+				END IF;
+			ELSIf UPPER(v_query_result2) IS NULL OR UPPER(v_query_logfile) IS NULL Then
+				If (upper(Debug_Y_OR_N) = 'Y') Then
+					DBMS_OUTPUT.PUT_LINE('8th Need to RUN_ONCE G5_PICK_FEES_F for all customers as LOGFILE is missing. cust result was ' || UPPER(v_query_result2) 
+					|| ' and this cust was ' ||  UPPER(Customer)
+					|| ' and to date was ' ||  UPPER(v_query_logfile)
+					|| ' and this date was ' ||  UPPER(v_tmp_date)
+					);
+				END IF;
+				EOM_INTERCO_REPORTING.G5_PICK_FEES_F(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
+			Else
+				EOM_INTERCO_REPORTING.G5_PICK_FEES_F(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
+				--DBMS_OUTPUT.PUT_LINE('8th No matches for running G5_PICK_FEES_F, ran it just in case still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) ||
+				--' Seconds...for customer ' || Customer);
+			END IF;
+		Else
+			Select (EOM_INTERCO_REPORTING.F_EOM_CHECK_CUST_LOG(Customer ,'TMP_PICK_FEES','G5_PICK_FEES_F',Op)) INTO v_query_result2 From Dual;--v_query := q'{Select IQ_EOM_REPORTING.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
+			Select (EOM_INTERCO_REPORTING.F_EOM_CHECK_LOG(v_tmp_date ,'TMP_PICK_FEES','G5_PICK_FEES_F',Op)) INTO v_query_logfile From Dual;
+			If F_IS_TABLE_EEMPTY('TMP_PICK_FEES') <= 0 Then
+				If (upper(Debug_Y_OR_N) = 'Y') Then
+					DBMS_OUTPUT.PUT_LINE('8th Need to RUN_ONCE G5_PICK_FEES_F for all customers as table is  empty. cust result was ' || UPPER(v_query_result2) 
+					|| ' and this cust was ' ||  UPPER(Customer)
+					|| ' and to date was ' ||  UPPER(v_query_logfile)
+					|| ' and this date was ' ||  UPPER(v_tmp_date)
+					);
+				END IF;
+				EOM_INTERCO_REPORTING.G5_PICK_FEES_F(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
+			ELSIf UPPER(v_query_result2) != UPPER(Customer) AND UPPER(v_query_result2) IS NOT NULL AND UPPER(v_query_logfile) != UPPER(v_tmp_date) Then
+				If (upper(Debug_Y_OR_N) = 'Y') Then
+					DBMS_OUTPUT.PUT_LINE('8th Need to RUN_ONCE G5_PICK_FEES_F for all customers as table is not empty. cust result was ' || UPPER(v_query_result2) 
+					|| ' and this cust was ' ||  UPPER(Customer)
+					|| ' and to date was ' ||  UPPER(v_query_logfile)
+					|| ' and this date was ' ||  UPPER(v_tmp_date)
+					);
+				END IF;
+				EOM_INTERCO_REPORTING.G5_PICK_FEES_F(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
+				--ELSIF UPPER(v_query_result2) = UPPER(Customer) 
+				--AND UPPER(v_query_result2) IS NOT NULL 
+				--AND UPPER(v_query_logfile) = UPPER(v_tmp_date) Then
+				If (upper(Debug_Y_OR_N) = 'Y') Then
+					DBMS_OUTPUT.PUT_LINE('8th No Need to RUN_ONCE G5_PICK_FEES_F for all customers as table is not empty. Last Cust match was ' ||  UPPER(v_query_result2) 
+					|| ' and this cust was ' ||  UPPER(Customer)
+					|| ' and to date was ' ||  UPPER(v_query_logfile)
+					|| ' and this date was ' ||  UPPER(v_tmp_date)
+					);
+				END IF;
+			ELSIf UPPER(v_query_result2) IS NULL OR UPPER(v_query_logfile) IS NULL Then
+				If (upper(Debug_Y_OR_N) = 'Y') Then
+					DBMS_OUTPUT.PUT_LINE('8th Need to RUN_ONCE G5_PICK_FEES_F for all customers as LOGFILE is missing. cust result was ' || UPPER(v_query_result2) 
+					|| ' and this cust was ' ||  UPPER(Customer)
+					|| ' and to date was ' ||  UPPER(v_query_logfile)
+					|| ' and this date was ' ||  UPPER(v_tmp_date)
+					);
+				END IF;
+				EOM_INTERCO_REPORTING.G5_PICK_FEES_F(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
+			Else
+				EOM_INTERCO_REPORTING.G5_PICK_FEES_F(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
+				--DBMS_OUTPUT.PUT_LINE('8th No matches for running G5_PICK_FEES_F, ran it just in case still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) ||
+				--' Seconds...for customer ' || Customer);
+			END IF;
+		End If;
+	Else
+		If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
+			Select (IQ_EOM_REPORTING.F_EOM_CHECK_CUST_LOG(Customer ,'DEV_PICK_FEES','G5_PICK_FEES_F',Op)) INTO v_query_result2 From Dual;--v_query := q'{Select IQ_EOM_REPORTING.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
+			Select (IQ_EOM_REPORTING.F_EOM_CHECK_LOG(v_tmp_date ,'DEV_PICK_FEES','G5_PICK_FEES_F',Op)) INTO v_query_logfile From Dual;
+			If F_IS_TABLE_EEMPTY('DEV_PICK_FEES') <= 0 Then
+				If (upper(Debug_Y_OR_N) = 'Y') Then
+					DBMS_OUTPUT.PUT_LINE('8th Need to RUN_ONCE G5_PICK_FEES_F for all customers as table is  empty. cust result was ' || UPPER(v_query_result2) 
+					|| ' and this cust was ' ||  UPPER(Customer)
+					|| ' and to date was ' ||  UPPER(v_query_logfile)
+					|| ' and this date was ' ||  UPPER(v_tmp_date)
+					);
+				End If;
+				IQ_EOM_REPORTING.G5_PICK_FEES_F(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
+			ELSIf UPPER(v_query_result2) != UPPER(Customer) AND UPPER(v_query_result2) IS NOT NULL AND UPPER(v_query_logfile) != UPPER(v_tmp_date) Then
+				If (upper(Debug_Y_OR_N) = 'Y') Then
+					DBMS_OUTPUT.PUT_LINE('8th Need to RUN_ONCE G5_PICK_FEES_F for all customers as table is not empty. cust result was ' || UPPER(v_query_result2) 
+					|| ' and this cust was ' ||  UPPER(Customer)
+					|| ' and to date was ' ||  UPPER(v_query_logfile)
+					|| ' and this date was ' ||  UPPER(v_tmp_date)
+					);
+				End If;
+				IQ_EOM_REPORTING.G5_PICK_FEES_F(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
+				--ELSIF UPPER(v_query_result2) = UPPER(Customer) 
+				--AND UPPER(v_query_result2) IS NOT NULL 
+				--AND UPPER(v_query_logfile) = UPPER(v_tmp_date) Then
+				If (upper(Debug_Y_OR_N) = 'Y') Then
+					DBMS_OUTPUT.PUT_LINE('8th No Need to RUN_ONCE G5_PICK_FEES_F for all customers as table is not empty. Last Cust match was ' ||  UPPER(v_query_result2) 
+					|| ' and this cust was ' ||  UPPER(Customer)
+					|| ' and to date was ' ||  UPPER(v_query_logfile)
+					|| ' and this date was ' ||  UPPER(v_tmp_date)
+					);
+				End If;
+			ELSIf UPPER(v_query_result2) IS NULL OR UPPER(v_query_logfile) IS NULL Then
+				If (upper(Debug_Y_OR_N) = 'Y') Then
+					DBMS_OUTPUT.PUT_LINE('8th Need to RUN_ONCE G5_PICK_FEES_F for all customers as LOGFILE is missing. cust result was ' || UPPER(v_query_result2) 
+					|| ' and this cust was ' ||  UPPER(Customer)
+					|| ' and to date was ' ||  UPPER(v_query_logfile)
+					|| ' and this date was ' ||  UPPER(v_tmp_date)
+					);
+				End If;
+				IQ_EOM_REPORTING.G5_PICK_FEES_F(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
+			Else
+				IQ_EOM_REPORTING.G5_PICK_FEES_F(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
+				--DBMS_OUTPUT.PUT_LINE('8th No matches for running G5_PICK_FEES_F, ran it just in case still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) ||
+				--' Seconds...for customer ' || Customer);
+			END IF;
+		Else
+			Select (IQ_EOM_REPORTING.F_EOM_CHECK_CUST_LOG(Customer ,'TMP_PICK_FEES','G5_PICK_FEES_F',Op)) INTO v_query_result2 From Dual;--v_query := q'{Select IQ_EOM_REPORTING.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
+			Select (IQ_EOM_REPORTING.F_EOM_CHECK_LOG(v_tmp_date ,'TMP_PICK_FEES','G5_PICK_FEES_F',Op)) INTO v_query_logfile From Dual;
+			If F_IS_TABLE_EEMPTY('TMP_PICK_FEES') <= 0 Then
+				If (upper(Debug_Y_OR_N) = 'Y') Then
+					DBMS_OUTPUT.PUT_LINE('8th Need to RUN_ONCE G5_PICK_FEES_F for all customers as table is  empty. cust result was ' || UPPER(v_query_result2) 
+					|| ' and this cust was ' ||  UPPER(Customer)
+					|| ' and to date was ' ||  UPPER(v_query_logfile)
+					|| ' and this date was ' ||  UPPER(v_tmp_date)
+					);
+				END IF;
+				IQ_EOM_REPORTING.G5_PICK_FEES_F(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
+			ELSIf UPPER(v_query_result2) != UPPER(Customer) AND UPPER(v_query_result2) IS NOT NULL AND UPPER(v_query_logfile) != UPPER(v_tmp_date) Then
+				If (upper(Debug_Y_OR_N) = 'Y') Then
+					DBMS_OUTPUT.PUT_LINE('8th Need to RUN_ONCE G5_PICK_FEES_F for all customers as table is not empty. cust result was ' || UPPER(v_query_result2) 
+					|| ' and this cust was ' ||  UPPER(Customer)
+					|| ' and to date was ' ||  UPPER(v_query_logfile)
+					|| ' and this date was ' ||  UPPER(v_tmp_date)
+					);
+				END IF;
+				IQ_EOM_REPORTING.G5_PICK_FEES_F(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
+				--ELSIF UPPER(v_query_result2) = UPPER(Customer) 
+				--AND UPPER(v_query_result2) IS NOT NULL 
+				--AND UPPER(v_query_logfile) = UPPER(v_tmp_date) Then
+				If (upper(Debug_Y_OR_N) = 'Y') Then
+					DBMS_OUTPUT.PUT_LINE('8th No Need to RUN_ONCE G5_PICK_FEES_F for all customers as table is not empty. Last Cust match was ' ||  UPPER(v_query_result2) 
+					|| ' and this cust was ' ||  UPPER(Customer)
+					|| ' and to date was ' ||  UPPER(v_query_logfile)
+					|| ' and this date was ' ||  UPPER(v_tmp_date)
+					);
+				END IF;
+			ELSIf UPPER(v_query_result2) IS NULL OR UPPER(v_query_logfile) IS NULL Then
+				If (upper(Debug_Y_OR_N) = 'Y') Then
+					DBMS_OUTPUT.PUT_LINE('8th Need to RUN_ONCE G5_PICK_FEES_F for all customers as LOGFILE is missing. cust result was ' || UPPER(v_query_result2) 
+					|| ' and this cust was ' ||  UPPER(Customer)
+					|| ' and to date was ' ||  UPPER(v_query_logfile)
+					|| ' and this date was ' ||  UPPER(v_tmp_date)
+					);
+				END IF;
+				IQ_EOM_REPORTING.G5_PICK_FEES_F(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
+			Else
+				IQ_EOM_REPORTING.G5_PICK_FEES_F(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
+				--DBMS_OUTPUT.PUT_LINE('8th No matches for running G5_PICK_FEES_F, ran it just in case still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) ||
+				--' Seconds...for customer ' || Customer);
+			END IF;
+		End If;
+	End If;
+	DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');
+	
+	nCheckpoint := 9;
     If (upper(Inter_Y_OR_No) = 'Y') Then
-      EOM_INTERCO_REPORTING.I_EOM_MISC_FEES(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
+		EOM_INTERCO_REPORTING.I_EOM_MISC_FEES(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
     Else
-      EOM_INTERCO_REPORTING.I_EOM_MISC_FEES(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
+		EOM_INTERCO_REPORTING.I_EOM_MISC_FEES(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
     End If;
-		nCheckpoint := 10;
+	DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');	
+	
+	nCheckpoint := 10;
     If (upper(Inter_Y_OR_No) = 'Y') Then
-      EOM_INTERCO_REPORTING.K1_PAL_DESP_FEES(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
+		EOM_INTERCO_REPORTING.K1_PAL_DESP_FEES(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
     Else
-      EOM_INTERCO_REPORTING.K1_PAL_DESP_FEES(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
+		EOM_INTERCO_REPORTING.K1_PAL_DESP_FEES(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
     End If;
-		
+	DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');
+	
     nCheckpoint := 11;
     If (upper(Inter_Y_OR_No) = 'Y') Then
-      EOM_INTERCO_REPORTING.K2_CTN_IN_FEES(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
-		Else
-      EOM_INTERCO_REPORTING.K2_CTN_IN_FEES(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
+		EOM_INTERCO_REPORTING.K2_CTN_IN_FEES(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
+	Else
+		EOM_INTERCO_REPORTING.K2_CTN_IN_FEES(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
     End If;
+	DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');
     
     nCheckpoint := 12;
     If (upper(Inter_Y_OR_No) = 'Y') Then
-      EOM_INTERCO_REPORTING.K3_PAL_IN_FEES(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
-		Else
-      EOM_INTERCO_REPORTING.K3_PAL_IN_FEES(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
+		EOM_INTERCO_REPORTING.K3_PAL_IN_FEES(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
+	Else
+		EOM_INTERCO_REPORTING.K3_PAL_IN_FEES(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
     End If;
+	DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');
     
     nCheckpoint := 13;
     If (upper(Inter_Y_OR_No) = 'Y') Then
-      EOM_INTERCO_REPORTING.K4_CTN_DESP_FEES(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
+		EOM_INTERCO_REPORTING.K4_CTN_DESP_FEES(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
     Else
-      EOM_INTERCO_REPORTING.K4_CTN_DESP_FEES(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
+		EOM_INTERCO_REPORTING.K4_CTN_DESP_FEES(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
     End If;
-
+	DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');
+	
+	nCheckpoint := 14;
     If (upper(Inter_Y_OR_No) = 'Y') Then
-      If ( Customer = 'VHAAUS' ) Then
-        nCheckpoint := 14;
-        EOM_INTERCO_REPORTING.J_EOM_CUSTOMER_FEES_VHA(p_array_size_start,start_date,end_date,Customer,Op);
-      ElsIf ( Customer = 'BEYONDBL' ) Then
-        nCheckpoint := 15;
-        EOM_INTERCO_REPORTING.J_EOM_CUSTOMER_FEES_BB(p_array_size_start,start_date,end_date,Customer,Op);
-      ElsIf ( Customer = 'WBC' ) Then
-        nCheckpoint := 15;
-        EOM_INTERCO_REPORTING.J_EOM_CUSTOMER_FEES_WBC(p_array_size_start,start_date,end_date,Customer,Op);
-      ElsIf ( Customer = 'TABCORP' ) Then
-        nCheckpoint := 16;
-        EOM_INTERCO_REPORTING.J_EOM_CUSTOMER_FEES_TAB(p_array_size_start,start_date,end_date,Customer,Op);
-        --ElsIf ( Customer = 'IAG' ) Then
-        --nCheckpoint := 60;
-        --IQ_EOM_REPORTING.Z_EOM_RUN_IAG(p_array_size_start,start_date,end_date,'CGU',Analysis);
-      End If;
+		If ( Customer = 'VHAAUS' ) Then
+			nCheckpoint := 14.1;
+			EOM_INTERCO_REPORTING.J_EOM_CUSTOMER_FEES_VHA(p_array_size_start,start_date,end_date,Customer,Op);
+		ElsIf ( Customer = 'BEYONDBL' ) Then
+			nCheckpoint := 14.2;
+			EOM_INTERCO_REPORTING.J_EOM_CUSTOMER_FEES_BB(p_array_size_start,start_date,end_date,Customer,Op);
+		ElsIf ( Customer = 'WBC' ) Then
+			nCheckpoint := 14.3;
+			EOM_INTERCO_REPORTING.J_EOM_CUSTOMER_FEES_WBC(p_array_size_start,start_date,end_date,Customer,Op);
+		ElsIf ( Customer = 'TABCORP' ) Then
+			nCheckpoint := 14.4;
+			EOM_INTERCO_REPORTING.J_EOM_CUSTOMER_FEES_TAB(p_array_size_start,start_date,end_date,Customer,Op);
+			--ElsIf ( Customer = 'IAG' ) Then
+			--nCheckpoint := 60;
+			--IQ_EOM_REPORTING.Z_EOM_RUN_IAG(p_array_size_start,start_date,end_date,'CGU',Analysis);
+		End If;
     Else
-      If ( Customer = 'VHAAUS' ) Then
-        nCheckpoint := 14;
-        IQ_EOM_REPORTING.J_EOM_CUSTOMER_FEES_VHA(p_array_size_start,start_date,end_date,Customer,Op);
-      ElsIf ( Customer = 'BEYONDBL' ) Then
-        nCheckpoint := 15;
-        IQ_EOM_REPORTING.J_EOM_CUSTOMER_FEES_BB(p_array_size_start,start_date,end_date,Customer,Op);
-      ElsIf ( Customer = 'WBC' ) Then
-        nCheckpoint := 15;
-        IQ_EOM_REPORTING.J_EOM_CUSTOMER_FEES_WBC(p_array_size_start,start_date,end_date,Customer,Op);
-      ElsIf ( Customer = 'TABCORP' ) Then
-        nCheckpoint := 16;
-        IQ_EOM_REPORTING.J_EOM_CUSTOMER_FEES_TAB(p_array_size_start,start_date,end_date,Customer,Op);
-        --ElsIf ( Customer = 'IAG' ) Then
-        --nCheckpoint := 60;
-        --IQ_EOM_REPORTING.Z_EOM_RUN_IAG(p_array_size_start,start_date,end_date,'CGU',Analysis);
-      End If;
+		If ( Customer = 'VHAAUS' ) Then
+			nCheckpoint := 14.1;
+			IQ_EOM_REPORTING.J_EOM_CUSTOMER_FEES_VHA(p_array_size_start,start_date,end_date,Customer,Op);
+		ElsIf ( Customer = 'BEYONDBL' ) Then
+			nCheckpoint := 14.2;
+			IQ_EOM_REPORTING.J_EOM_CUSTOMER_FEES_BB(p_array_size_start,start_date,end_date,Customer,Op);
+		ElsIf ( Customer = 'WBC' ) Then
+			nCheckpoint := 14.3;
+			IQ_EOM_REPORTING.J_EOM_CUSTOMER_FEES_WBC(p_array_size_start,start_date,end_date,Customer,Op);
+		ElsIf ( Customer = 'TABCORP' ) Then
+			nCheckpoint := 14.4;
+			IQ_EOM_REPORTING.J_EOM_CUSTOMER_FEES_TAB(p_array_size_start,start_date,end_date,Customer,Op);
+			--ElsIf ( Customer = 'IAG' ) Then
+			--nCheckpoint := 60;
+			--IQ_EOM_REPORTING.Z_EOM_RUN_IAG(p_array_size_start,start_date,end_date,'CGU',Analysis);
+		End If;
     End IF;
-
-
+	DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');
       
-		nCheckpoint := 99;
+	nCheckpoint := 99;
     If (upper(Inter_Y_OR_No) = 'Y') Then
-      If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
-        v_query := 'TRUNCATE TABLE DEV_ALL_FEES';
-      Else
-        v_query := 'TRUNCATE TABLE TMP_ALL_FEES';
-      End If;
-    Else
-      If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
-        v_query := 'TRUNCATE TABLE DEV_ALL_FEES';
-      Else
-        v_query := 'TRUNCATE TABLE TMP_ALL_FEES';
-      End If;
+		If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
+			v_query := 'TRUNCATE TABLE DEV_ALL_FEES';
+		Else
+			v_query := 'TRUNCATE TABLE TMP_ALL_FEES';
+		End If;
+	Else
+		If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
+			v_query := 'TRUNCATE TABLE DEV_ALL_FEES';
+		Else
+			v_query := 'TRUNCATE TABLE TMP_ALL_FEES';
+		End If;
     End If;
-		EXECUTE IMMEDIATE v_query;
-		COMMIT;
+	EXECUTE IMMEDIATE v_query;
+	COMMIT;
     
     If (upper(Inter_Y_OR_No) = 'Y') Then
-      IQ_EOM_REPORTING.Y_EOM_TMP_MERGE_ALL_FEES2(Op);
+		IQ_EOM_REPORTING.Y_EOM_TMP_MERGE_ALL_FEES2(Op);
     Else
-      IQ_EOM_REPORTING.Y_EOM_TMP_MERGE_ALL_FEES2(Op);
+		IQ_EOM_REPORTING.Y_EOM_TMP_MERGE_ALL_FEES2(Op);
     End If;
-     
-		nCheckpoint := 100;
+    DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');
+		
+	nCheckpoint := 100;
     If (upper(Inter_Y_OR_No) = 'Y') Then
-      If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
-        v_query := 'TRUNCATE TABLE DEV_ALL_FEES_F';
-      Else
-        v_query := 'TRUNCATE TABLE TMP_ALL_FEES_F';
-      End If;
+		If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
+			v_query := 'TRUNCATE TABLE DEV_ALL_FEES_F';
+		Else
+			v_query := 'TRUNCATE TABLE TMP_ALL_FEES_F';
+		End If;
+	Else
+		If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
+			v_query := 'TRUNCATE TABLE DEV_ALL_FEES_F';
+		Else
+			v_query := 'TRUNCATE TABLE TMP_ALL_FEES_F';
+		End If;
+    End If;
+	EXECUTE IMMEDIATE v_query;
+	COMMIT;
+    If (upper(Inter_Y_OR_No) = 'Y') Then
+		EOM_INTERCO_REPORTING.Y_EOM_TMP_MERGE_ALL_FEES_FINAL(Customer,Op,Analysis);
     Else
-      If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
-        v_query := 'TRUNCATE TABLE DEV_ALL_FEES_F';
-      Else
-        v_query := 'TRUNCATE TABLE TMP_ALL_FEES_F';
-      End If;
+		IQ_EOM_REPORTING.Y_EOM_TMP_MERGE_ALL_FEES_FINAL(Customer,Op);
     End If;
-		EXECUTE IMMEDIATE v_query;
-		COMMIT;
-    If (upper(Inter_Y_OR_No) = 'Y') Then
-      EOM_INTERCO_REPORTING.Y_EOM_TMP_MERGE_ALL_FEES_FINAL(Customer,Op,Analysis);
-    Else
-      IQ_EOM_REPORTING.Y_EOM_TMP_MERGE_ALL_FEES_FINAL(Customer,Op);
-    End If;
-    
-		nCheckpoint := 101;
-    If (upper(Inter_Y_OR_No) = 'Y') Then
+	DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');
+	
+	nCheckpoint := 101;
+	If (upper(Inter_Y_OR_No) = 'Y') Then
 		----DBMS_OUTPUT.PUT_LINE('START Z TMP_ALL_FEES for ' || sFileName|| ' saved in ' || sPath );
-      If ( Customer = 'V-SUPPAR' ) Then
-        nCheckpoint := 15;
-        EOM_INTERCO_REPORTING.J_EOM_CUSTOMER_FEES_SUP(p_array_size_start,start_date,end_date,Customer,sFileName,Op);
-      Else
-        EOM_INTERCO_REPORTING.Z1_TMP_ALL_FEES_TO_CSV(sFileName,Op);
-      End If;
-    Else
-      If ( Customer = 'V-SUPPAR' ) Then
-        nCheckpoint := 15;
-        IQ_EOM_REPORTING.J_EOM_CUSTOMER_FEES_SUP(p_array_size_start,start_date,end_date,Customer,sFileName,Op);
-      Else
-        IQ_EOM_REPORTING.Z1_TMP_ALL_FEES_TO_CSV(sFileName,Op);
-      End If;
-    End If;
-
-		v_query2 :=  SQL%ROWCOUNT;
-		-- --DBMS_OUTPUT.PUT_LINE('Z EOM Successfully Ran EOM_RUN_ALL for ' || Customer|| ' in ' ||(round((dbms_utility.get_time-l_start)/100, 2) ||
-		--' Seconds...' );
-		v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
+		If ( Customer = 'V-SUPPAR' ) Then
+			nCheckpoint := 101.1;
+			EOM_INTERCO_REPORTING.J_EOM_CUSTOMER_FEES_SUP(p_array_size_start,start_date,end_date,Customer,sFileName,Op);
+		Else
+			EOM_INTERCO_REPORTING.Z1_TMP_ALL_FEES_TO_CSV(sFileName,Op);
+		End If;
+	Else
+		If ( Customer = 'V-SUPPAR' ) Then
+			nCheckpoint := 101.2;
+			IQ_EOM_REPORTING.J_EOM_CUSTOMER_FEES_SUP(p_array_size_start,start_date,end_date,Customer,sFileName,Op);
+		Else
+			IQ_EOM_REPORTING.Z1_TMP_ALL_FEES_TO_CSV(sFileName,Op);
+		End If;
+	End If;
+	v_query2 :=  SQL%ROWCOUNT;
+	-- --DBMS_OUTPUT.PUT_LINE('Z EOM Successfully Ran EOM_RUN_ALL for ' || Customer|| ' in ' ||(round((dbms_utility.get_time-l_start)/100, 2) ||
+	--' Seconds...' );
+	v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
     If (upper(Inter_Y_OR_No) = 'Y') Then
-      If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
-        EOM_INTERCO_REPORTING.EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'Z_EOM_RUN_ALL','MERGE','DEV',v_time_taken,SYSTIMESTAMP,Customer);
-      Else
-        EOM_INTERCO_REPORTING.EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'Z_EOM_RUN_ALL','MERGE','TMP',v_time_taken,SYSTIMESTAMP,Customer);
-      End If;
-    Else
-      If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
-        IQ_EOM_REPORTING.EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'Z_EOM_RUN_ALL','MERGE','DEV',v_time_taken,SYSTIMESTAMP,Customer);
-      Else
-        IQ_EOM_REPORTING.EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'Z_EOM_RUN_ALL','MERGE','TMP',v_time_taken,SYSTIMESTAMP,Customer);
-      End If;
-    End If;
+		If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
+			EOM_INTERCO_REPORTING.EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'Z_EOM_RUN_ALL','MERGE','DEV',v_time_taken,SYSTIMESTAMP,Customer);
+		Else
+			EOM_INTERCO_REPORTING.EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'Z_EOM_RUN_ALL','MERGE','TMP',v_time_taken,SYSTIMESTAMP,Customer);
+		End If;
+	Else
+		If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
+			IQ_EOM_REPORTING.EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'Z_EOM_RUN_ALL','MERGE','DEV',v_time_taken,SYSTIMESTAMP,Customer);
+		Else
+			IQ_EOM_REPORTING.EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'Z_EOM_RUN_ALL','MERGE','TMP',v_time_taken,SYSTIMESTAMP,Customer);
+		End If;
+	End If;
     --DBMS_OUTPUT.PUT_LINE('LAST EOM Successfully Ran EOM_RUN_ALL for the date range '
-		-- || start_date || ' -- ' || end_date || ' - ' || v_query2 || ' records inserted in ' ||  (round((dbms_utility.get_time-l_start)/100, 6) ||
-		-- ' Seconds... for customer '|| Customer ));
+	-- || start_date || ' -- ' || end_date || ' - ' || v_query2 || ' records inserted in ' ||  (round((dbms_utility.get_time-l_start)/100, 6) ||
+	-- ' Seconds... for customer '|| Customer ));
+	DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');	
 	COMMIT;
     RETURN;
 	EXCEPTION
