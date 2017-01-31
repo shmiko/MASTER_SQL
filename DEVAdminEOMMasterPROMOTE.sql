@@ -2,6 +2,7 @@
   /* EOM_INVOICING_CREATE_TABLES.sql */
 /*decalre variables These are being declared via the stored procedure - just need to redeclare cust so as we can get the rates*/
 
+--SELECT RM_ANAL FROM RM WHERE RM_CUST = 'G-VICPROMO'
 var cust varchar2(20)
 exec :cust := 'G-VICPROMO'
 var nx NUMBER
@@ -19,16 +20,16 @@ exec SELECT  RM_ANAL INTO :sAnalysis FROM RM where RM_CUST = :cust;
 var anal varchar2(20)
 exec :anal := 'VICP'
 var start_date varchar2(20)
-exec :start_date := To_Date('1-Nov-2016')
+exec :start_date := To_Date('1-Jan-2017')
 var end_date varchar2(20)
-exec :end_date := To_Date('30-Nov-2016')
+exec :end_date := To_Date('31-Jan-2017')
 
 
 
     --run this first
     TRUNCATE TABLE  dev_AdminData;
     --run this first
-    --EXECUTE EOM_REPORT_PKG.DEV_CREATE_TEMP_DATA_BIND('VICP','1-Nov-2016','30-Nov-2016');   --15 minutes  for all customers
+    --EXECUTE EOM_REPORT_PKG.DEV_CREATE_TEMP_DATA_BIND('VICP','1-Jan-2017','31-Jan-2017');   --15 minutes  for all customers
     --now run 1 of these -change variables at top first for each run
     --EXECUTE DEV_TEMP_LOCN_ALL_CUST();         --  1:25 minutes
     --  The Below for one client LINK in the middle of a business day took 1:09 minutes
@@ -160,29 +161,29 @@ exec :end_date := To_Date('30-Nov-2016')
     var nRM_XX_ADMIN_CHG NUMBER /*Shelf Slow Moving Secured Fee*/
     exec SELECT To_Number(regexp_substr(RM_XX_ADMIN_CHG,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) INTO :nRM_XX_ADMIN_CHG FROM RM where RM_CUST = :cust;
 
-    var nRM_XX_PALLET_CHG NUMBER /*Return Per Pallet Fee*/
-    exec SELECT To_Number(regexp_substr(RM_XX_PALLET_CHG,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) INTO :nRM_XX_PALLET_CHG FROM RM where RM_CUST = :cust;
+   -- var nRM_XX_PALLET_CHG NUMBER /*Return Per Pallet Fee*/
+   -- exec SELECT To_Number(regexp_substr(RM_XX_PALLET_CHG,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) INTO :nRM_XX_PALLET_CHG FROM RM where RM_CUST = :cust;
 
-    var nRM_XX_SHELF_CHG NUMBER /*Return Per Shelf Fee*/
-    exec SELECT To_Number(regexp_substr(RM_XX_SHELF_CHG,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) INTO :nRM_XX_SHELF_CHG FROM RM where RM_CUST = :cust;
+   -- var nRM_XX_SHELF_CHG NUMBER /*Return Per Shelf Fee*/
+   -- exec SELECT To_Number(regexp_substr(RM_XX_SHELF_CHG,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) INTO :nRM_XX_SHELF_CHG FROM RM where RM_CUST = :cust;
 
-    var nRM_XX_FEE31_1 NUMBER /*Minimun Monthly Charge Fee*/
-    exec SELECT To_Number(regexp_substr(RM_XX_FEE31_1,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) INTO :nRM_XX_FEE31_1 FROM RM where RM_CUST = :cust;
+   -- var nRM_XX_FEE31_1 NUMBER /*Minimun Monthly Charge Fee*/
+   -- exec SELECT To_Number(regexp_substr(RM_XX_FEE31_1,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) INTO :nRM_XX_FEE31_1 FROM RM where RM_CUST = :cust;
 
-    var nRM_XX_FEE32_1 NUMBER /*UnallocatedFee*/
-    exec SELECT To_Number(regexp_substr(RM_XX_FEE32_1,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) INTO :nRM_XX_FEE32_1 FROM RM where RM_CUST = :cust;
+  --  var nRM_XX_FEE32_1 NUMBER /*UnallocatedFee*/
+   -- exec SELECT To_Number(regexp_substr(RM_XX_FEE32_1,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) INTO :nRM_XX_FEE32_1 FROM RM where RM_CUST = :cust;
 
-    var nRM_XX_FEE33_1 NUMBER /*UnallocatedFee*/
-    exec SELECT To_Number(regexp_substr(RM_XX_FEE33_1,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) INTO :nRM_XX_FEE33_1 FROM RM where RM_CUST = :cust;
+   -- var nRM_XX_FEE33_1 NUMBER /*UnallocatedFee*/
+   -- exec SELECT To_Number(regexp_substr(RM_XX_FEE33_1,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) INTO :nRM_XX_FEE33_1 FROM RM where RM_CUST = :cust;
 
-    var nRM_XX_FEE34_1 NUMBER /*UnallocatedFee*/
-    exec SELECT To_Number(regexp_substr(RM_XX_FEE34_1,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) INTO :nRM_XX_FEE34_1 FROM RM where RM_CUST = :cust;
+   -- var nRM_XX_FEE34_1 NUMBER /*UnallocatedFee*/
+   -- exec SELECT To_Number(regexp_substr(RM_XX_FEE34_1,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) INTO :nRM_XX_FEE34_1 FROM RM where RM_CUST = :cust;
 
-    var nRM_XX_FEE35_1 NUMBER /*UnallocatedFee*/
-    exec SELECT To_Number(regexp_substr(RM_XX_FEE35_1,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) INTO :nRM_XX_FEE35_1 FROM RM where RM_CUST = :cust;
+   -- var nRM_XX_FEE35_1 NUMBER /*UnallocatedFee*/
+   -- exec SELECT To_Number(regexp_substr(RM_XX_FEE35_1,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) INTO :nRM_XX_FEE35_1 FROM RM where RM_CUST = :cust;
 
-    var nRM_XX_FEE36_1 NUMBER /*UnallocatedFee*/
-    exec SELECT To_Number(regexp_substr(RM_XX_FEE36_1,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) INTO :nRM_XX_FEE36_1 FROM RM where RM_CUST = :cust;
+    --var nRM_XX_FEE36_1 NUMBER /*UnallocatedFee*/
+   -- exec SELECT To_Number(regexp_substr(RM_XX_FEE36_1,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) INTO :nRM_XX_FEE36_1 FROM RM where RM_CUST = :cust;
   /*decalre variables*/
 
 
@@ -302,10 +303,10 @@ exec :end_date := To_Date('30-Nov-2016')
            d.SD_COST_PRICE As   Cost,
            NULL AS PaymentType
 
-	  FROM      PWIN175.SD d
-			    INNER JOIN PWIN175.SH s  ON s.SH_ORDER  = d.SD_ORDER
-			    INNER JOIN PWIN175.ST t  ON LTRIM(RTRIM(t.ST_PICK))  = LTRIM(RTRIM(d.SD_XX_PICKLIST_NUM))
-			    INNER JOIN PWIN175.RM r  ON r.RM_CUST  = s.SH_CUST
+	  FROM      PWIN171.SD d
+			    INNER JOIN PWIN171.SH s  ON s.SH_ORDER  = d.SD_ORDER
+			    INNER JOIN PWIN171.ST t  ON LTRIM(RTRIM(t.ST_PICK))  = LTRIM(RTRIM(d.SD_XX_PICKLIST_NUM))
+			    INNER JOIN PWIN171.RM r  ON r.RM_CUST  = s.SH_CUST
 	  WHERE     s.SH_ORDER = d.SD_ORDER
 	  AND       r.RM_ANAL = :sAnalysis
 	  	AND       d.SD_STOCK IN ('COURIERM','COURIERS','COURIER')
@@ -416,10 +417,10 @@ exec :end_date := To_Date('30-Nov-2016')
            NULL AS PaymentType
 
 
-           FROM      PWIN175.SD d
-			    INNER JOIN PWIN175.SH s  ON s.SH_ORDER  = d.SD_ORDER
-			          INNER JOIN PWIN175.ST t  ON LTRIM(RTRIM(t.ST_PICK))  = LTRIM(RTRIM(d.SD_XX_PICKLIST_NUM))
-			          INNER JOIN PWIN175.RM r  ON r.RM_CUST  = s.SH_CUST
+           FROM      PWIN171.SD d
+			    INNER JOIN PWIN171.SH s  ON s.SH_ORDER  = d.SD_ORDER
+			          INNER JOIN PWIN171.ST t  ON LTRIM(RTRIM(t.ST_PICK))  = LTRIM(RTRIM(d.SD_XX_PICKLIST_NUM))
+			          INNER JOIN PWIN171.RM r  ON r.RM_CUST  = s.SH_CUST
 	        WHERE     s.SH_ORDER = d.SD_ORDER
 	  AND       r.RM_ANAL = :sAnalysis
     --	AND       (r.RM_PARENT = :cust OR r.RM_CUST = :cust)
@@ -540,12 +541,12 @@ exec :end_date := To_Date('30-Nov-2016')
            s.SH_XX_FEE_WAIVE AS    WaiveFee,
            d.SD_COST_PRICE As   Cost,
            s.SH_SPARE_INT_4 AS PaymentType
-	  FROM      PWIN175.SH s
-			    INNER JOIN PWIN175.SD d ON d.SD_ORDER  = s.SH_ORDER
-			    INNER JOIN PWIN175.IM i ON i.IM_STOCK = d.SD_STOCK
-			    INNER JOIN PWIN175.ST t ON t.ST_ORDER = s.SH_ORDER AND t.ST_PICK = s.SH_LAST_PICK_NUM
-			    INNER JOIN PWIN175.RM r ON r.RM_CUST  = s.SH_CUST
-			    --LEFT JOIN PWIN175.RM r2 ON r2.RM_ANAL = r.RM_ANAL AND r2.RM_CUST = :cust
+	  FROM      PWIN171.SH s
+			    INNER JOIN PWIN171.SD d ON d.SD_ORDER  = s.SH_ORDER
+			    INNER JOIN PWIN171.IM i ON i.IM_STOCK = d.SD_STOCK
+			    INNER JOIN PWIN171.ST t ON t.ST_ORDER = s.SH_ORDER AND t.ST_PICK = s.SH_LAST_PICK_NUM
+			    INNER JOIN PWIN171.RM r ON r.RM_CUST  = s.SH_CUST
+			    --LEFT JOIN PWIN171.RM r2 ON r2.RM_ANAL = r.RM_ANAL AND r2.RM_CUST = :cust
 	  WHERE r.RM_ANAL = :sAnalysis
     AND       t.ST_DESP_DATE >= :start_date AND t.ST_DESP_DATE <= :end_date
 	  AND       LTrim(s.SH_PREV_PSLIP_NUM) IS NULL
@@ -656,12 +657,12 @@ exec :end_date := To_Date('30-Nov-2016')
            s.SH_XX_FEE_WAIVE AS    WaiveFee,
            d.SD_COST_PRICE As   Cost,
            s.SH_SPARE_INT_4 AS PaymentType
-	  FROM      PWIN175.SH s
-			    INNER JOIN PWIN175.SD d ON d.SD_ORDER  = s.SH_ORDER
-			    INNER JOIN PWIN175.IM i ON i.IM_STOCK = d.SD_STOCK
-			    INNER JOIN PWIN175.ST t ON t.ST_ORDER = s.SH_ORDER AND t.ST_PICK = s.SH_LAST_PICK_NUM
-			    INNER JOIN PWIN175.RM r ON r.RM_CUST  = s.SH_CUST
-			    --LEFT JOIN PWIN175.RM r2 ON r2.RM_ANAL = r.RM_ANAL AND r2.RM_CUST = :cust
+	  FROM      PWIN171.SH s
+			    INNER JOIN PWIN171.SD d ON d.SD_ORDER  = s.SH_ORDER
+			    INNER JOIN PWIN171.IM i ON i.IM_STOCK = d.SD_STOCK
+			    INNER JOIN PWIN171.ST t ON t.ST_ORDER = s.SH_ORDER AND t.ST_PICK = s.SH_LAST_PICK_NUM
+			    INNER JOIN PWIN171.RM r ON r.RM_CUST  = s.SH_CUST
+			    --LEFT JOIN PWIN171.RM r2 ON r2.RM_ANAL = r.RM_ANAL AND r2.RM_CUST = :cust
 	  WHERE (r.RM_ANAL = :sAnalysis)
     AND       t.ST_DESP_DATE >= :start_date AND t.ST_DESP_DATE <= :end_date
 	  AND       LTrim(s.SH_PREV_PSLIP_NUM) IS NULL
@@ -773,12 +774,12 @@ exec :end_date := To_Date('30-Nov-2016')
            s.SH_XX_FEE_WAIVE AS    WaiveFee,
            d.SD_COST_PRICE As   Cost,
            s.SH_SPARE_INT_4 AS PaymentType
-	  FROM      PWIN175.SH s
-			    INNER JOIN PWIN175.SD d ON d.SD_ORDER  = s.SH_ORDER
-			    INNER JOIN PWIN175.IM i ON i.IM_STOCK = d.SD_STOCK
-			    INNER JOIN PWIN175.ST t ON t.ST_ORDER = s.SH_ORDER AND t.ST_PICK = s.SH_LAST_PICK_NUM
-			    INNER JOIN PWIN175.RM r ON r.RM_CUST  = s.SH_CUST
-			    --LEFT JOIN PWIN175.RM r2 ON r2.RM_ANAL = r.RM_ANAL AND r2.RM_CUST = :cust
+	  FROM      PWIN171.SH s
+			    INNER JOIN PWIN171.SD d ON d.SD_ORDER  = s.SH_ORDER
+			    INNER JOIN PWIN171.IM i ON i.IM_STOCK = d.SD_STOCK
+			    INNER JOIN PWIN171.ST t ON t.ST_ORDER = s.SH_ORDER AND t.ST_PICK = s.SH_LAST_PICK_NUM
+			    INNER JOIN PWIN171.RM r ON r.RM_CUST  = s.SH_CUST
+			    --LEFT JOIN PWIN171.RM r2 ON r2.RM_ANAL = r.RM_ANAL AND r2.RM_CUST = :cust
 	  WHERE (r.RM_ANAL = :sAnalysis)
     AND       t.ST_DESP_DATE >= :start_date AND t.ST_DESP_DATE <= :end_date
 	  AND       LTrim(s.SH_PREV_PSLIP_NUM) IS NULL
@@ -889,12 +890,12 @@ exec :end_date := To_Date('30-Nov-2016')
            s.SH_XX_FEE_WAIVE AS    WaiveFee,
            d.SD_COST_PRICE As   Cost,
            s.SH_SPARE_INT_4 AS PaymentType
-	  FROM      PWIN175.SH s
-			    INNER JOIN PWIN175.SD d ON d.SD_ORDER  = s.SH_ORDER
-			    INNER JOIN PWIN175.IM i ON i.IM_STOCK = d.SD_STOCK
-			    INNER JOIN PWIN175.ST t ON t.ST_ORDER = s.SH_ORDER AND t.ST_PICK = s.SH_LAST_PICK_NUM
-			    INNER JOIN PWIN175.RM r ON r.RM_CUST  = s.SH_CUST
-			    --LEFT JOIN PWIN175.RM r2 ON r2.RM_ANAL = r.RM_ANAL AND r2.RM_CUST = :cust
+	  FROM      PWIN171.SH s
+			    INNER JOIN PWIN171.SD d ON d.SD_ORDER  = s.SH_ORDER
+			    INNER JOIN PWIN171.IM i ON i.IM_STOCK = d.SD_STOCK
+			    INNER JOIN PWIN171.ST t ON t.ST_ORDER = s.SH_ORDER AND t.ST_PICK = s.SH_LAST_PICK_NUM
+			    INNER JOIN PWIN171.RM r ON r.RM_CUST  = s.SH_CUST
+			    --LEFT JOIN PWIN171.RM r2 ON r2.RM_ANAL = r.RM_ANAL AND r2.RM_CUST = :cust
 	  WHERE (r.RM_ANAL = :sAnalysis)
     AND       t.ST_DESP_DATE >= :start_date AND t.ST_DESP_DATE <= :end_date
 	  AND       LTrim(s.SH_PREV_PSLIP_NUM) IS NULL
@@ -1009,11 +1010,11 @@ exec :end_date := To_Date('30-Nov-2016')
            s.SH_SPARE_INT_4 AS PaymentType
 
 
-	  FROM      PWIN175.SD d
-			    INNER JOIN PWIN175.SH s  ON s.SH_ORDER  = d.SD_ORDER
-			    INNER JOIN PWIN175.ST t  ON t.ST_ORDER  = s.SH_ORDER  --AND t.ST_PICK = d.SD_LAST_PICK_NUM
-			    INNER JOIN PWIN175.RM r  ON r.RM_CUST  = s.SH_CUST
-			    INNER JOIN PWIN175.IM i  ON i.IM_STOCK = d.SD_STOCK
+	  FROM      PWIN171.SD d
+			    INNER JOIN PWIN171.SH s  ON s.SH_ORDER  = d.SD_ORDER
+			    INNER JOIN PWIN171.ST t  ON t.ST_ORDER  = s.SH_ORDER  --AND t.ST_PICK = d.SD_LAST_PICK_NUM
+			    INNER JOIN PWIN171.RM r  ON r.RM_CUST  = s.SH_CUST
+			    INNER JOIN PWIN171.IM i  ON i.IM_STOCK = d.SD_STOCK
 	  /*WHERE     (Select rmP.RM_XX_FEE08
 			    from RM rmP
 			    where To_Number(regexp_substr(rmP.RM_XX_FEE08, '^[-]?[[:digit:]]*\.?[[:digit:]]*$')) > 0 AND rmp.RM_CUST = :cust)  > 0
@@ -1142,11 +1143,11 @@ exec :end_date := To_Date('30-Nov-2016')
            s.SH_SPARE_INT_4 AS PaymentType
 
 
-	  FROM      PWIN175.SD d
-			    INNER JOIN PWIN175.SH s  ON s.SH_ORDER  = d.SD_ORDER
-			    INNER JOIN PWIN175.ST t  ON t.ST_ORDER  = s.SH_ORDER
-			    INNER JOIN PWIN175.RM r  ON r.RM_CUST  = s.SH_CUST
-			    INNER JOIN PWIN175.IM i  ON i.IM_STOCK = d.SD_STOCK
+	  FROM      PWIN171.SD d
+			    INNER JOIN PWIN171.SH s  ON s.SH_ORDER  = d.SD_ORDER
+			    INNER JOIN PWIN171.ST t  ON t.ST_ORDER  = s.SH_ORDER
+			    INNER JOIN PWIN171.RM r  ON r.RM_CUST  = s.SH_CUST
+			    INNER JOIN PWIN171.IM i  ON i.IM_STOCK = d.SD_STOCK
 	  WHERE  :nRM_XX_FEE25 > 0
     AND       (r.RM_ANAL = :sAnalysis)
     AND       (s.SH_NOTE_1 = 'DESTROY' OR s.SH_CAMPAIGN = 'OBSOLETE')
@@ -1271,17 +1272,17 @@ exec :end_date := To_Date('30-Nov-2016')
            s.SH_SPARE_INT_4 AS PaymentType
 
 
-	  FROM      PWIN175.SH s
-			    INNER JOIN PWIN175.SD d ON d.SD_ORDER  = s.SH_ORDER
-			    INNER JOIN PWIN175.IM i ON i.IM_STOCK = d.SD_STOCK
-			    INNER JOIN PWIN175.ST t ON t.ST_ORDER = s.SH_ORDER AND t.ST_PICK = s.SH_LAST_PICK_NUM
-			    INNER JOIN PWIN175.RM r ON r.RM_CUST  = s.SH_CUST
+	  FROM      PWIN171.SH s
+			    INNER JOIN PWIN171.SD d ON d.SD_ORDER  = s.SH_ORDER
+			    INNER JOIN PWIN171.IM i ON i.IM_STOCK = d.SD_STOCK
+			    INNER JOIN PWIN171.ST t ON t.ST_ORDER = s.SH_ORDER AND t.ST_PICK = s.SH_LAST_PICK_NUM
+			    INNER JOIN PWIN171.RM r ON r.RM_CUST  = s.SH_CUST
 	  WHERE     s.SH_ORDER = d.SD_ORDER
 	  AND       (d.SD_STOCK = 'EMERQSRFEE' AND s.SH_CAMPAIGN = 'TABSPEC')
 	  AND       s.SH_STATUS <> 3
     AND       (r.RM_ANAL = :sAnalysis)
 	  AND       t.ST_DESP_DATE >= :start_date AND t.ST_DESP_DATE <= :end_date
-	  AND       LTrim(s.SH_PREV_PSLIP_NUM) IS NULL --(SELECT Count(tt.ST_ORDER) FROM PWIN175.ST tt WHERE LTrim(tt.ST_ORDER) = LTrim(s.SH_ORDER)) = 1
+	  AND       LTrim(s.SH_PREV_PSLIP_NUM) IS NULL --(SELECT Count(tt.ST_ORDER) FROM PWIN171.ST tt WHERE LTrim(tt.ST_ORDER) = LTrim(s.SH_ORDER)) = 1
 	  GROUP BY  s.SH_CUST,
 			    s.SH_NOTE_1,
 			    s.SH_CAMPAIGN,
@@ -1398,11 +1399,11 @@ exec :end_date := To_Date('30-Nov-2016')
            s.SH_XX_FEE_WAIVE AS    WaiveFee,
            d.SD_COST_PRICE As   Cost,
            s.SH_SPARE_INT_4 AS PaymentType
-	  FROM      PWIN175.SD d
-			    INNER JOIN PWIN175.SH s  ON s.SH_ORDER  = d.SD_ORDER
-			    INNER JOIN PWIN175.ST t  ON t.ST_ORDER  = s.SH_ORDER
-			    INNER JOIN PWIN175.RM r  ON r.RM_CUST  = s.SH_CUST
-			    INNER JOIN PWIN175.IM i  ON i.IM_STOCK = d.SD_STOCK
+	  FROM      PWIN171.SD d
+			    INNER JOIN PWIN171.SH s  ON s.SH_ORDER  = d.SD_ORDER
+			    INNER JOIN PWIN171.ST t  ON t.ST_ORDER  = s.SH_ORDER
+			    INNER JOIN PWIN171.RM r  ON r.RM_CUST  = s.SH_CUST
+			    INNER JOIN PWIN171.IM i  ON i.IM_STOCK = d.SD_STOCK
 	  WHERE :nRM_XX_FEE17 > 0
 	  AND       s.SH_STATUS <> 3
 	  AND      (r.RM_ANAL = :sAnalysis)
@@ -1524,11 +1525,11 @@ exec :end_date := To_Date('30-Nov-2016')
            s.SH_XX_FEE_WAIVE AS    WaiveFee,
            d.SD_COST_PRICE As   Cost,
            s.SH_SPARE_INT_4 AS PaymentType
-	  FROM      PWIN175.SD d
-			    INNER JOIN PWIN175.SH s  ON s.SH_ORDER  = d.SD_ORDER
-			    INNER JOIN PWIN175.ST t  ON t.ST_ORDER  = s.SH_ORDER
-			    INNER JOIN PWIN175.RM r  ON r.RM_CUST  = s.SH_CUST
-			    INNER JOIN PWIN175.IM i  ON i.IM_STOCK = d.SD_STOCK
+	  FROM      PWIN171.SD d
+			    INNER JOIN PWIN171.SH s  ON s.SH_ORDER  = d.SD_ORDER
+			    INNER JOIN PWIN171.ST t  ON t.ST_ORDER  = s.SH_ORDER
+			    INNER JOIN PWIN171.RM r  ON r.RM_CUST  = s.SH_CUST
+			    INNER JOIN PWIN171.IM i  ON i.IM_STOCK = d.SD_STOCK
 	  WHERE  :nRM_XX_FEE15 > 0
 	  AND       s.SH_STATUS <> 3
 	  AND       (r.RM_ANAL = :sAnalysis)
@@ -1651,11 +1652,11 @@ exec :end_date := To_Date('30-Nov-2016')
            s.SH_XX_FEE_WAIVE AS    WaiveFee,
            d.SD_COST_PRICE As   Cost,
            s.SH_SPARE_INT_4 AS PaymentType
-	  FROM      PWIN175.SD d
-			    INNER JOIN PWIN175.SH s  ON s.SH_ORDER  = d.SD_ORDER
-			    INNER JOIN PWIN175.ST t  ON t.ST_ORDER  = s.SH_ORDER
-			    INNER JOIN PWIN175.RM r  ON r.RM_CUST  = s.SH_CUST
-			    INNER JOIN PWIN175.IM i  ON i.IM_STOCK = d.SD_STOCK
+	  FROM      PWIN171.SD d
+			    INNER JOIN PWIN171.SH s  ON s.SH_ORDER  = d.SD_ORDER
+			    INNER JOIN PWIN171.ST t  ON t.ST_ORDER  = s.SH_ORDER
+			    INNER JOIN PWIN171.RM r  ON r.RM_CUST  = s.SH_CUST
+			    INNER JOIN PWIN171.IM i  ON i.IM_STOCK = d.SD_STOCK
 	  WHERE  :nRM_XX_FEE18 > 0
 	  AND       s.SH_STATUS <> 3
 	  AND       (r.RM_ANAL = :sAnalysis)
@@ -1771,12 +1772,12 @@ exec :end_date := To_Date('30-Nov-2016')
            NULL As   Cost,
            NULL AS PaymentType
 
-	  FROM      PWIN175.IM
-			    INNER JOIN PWIN175.NA  ON NA_STOCK = IM_STOCK
-			    INNER JOIN PWIN175.IL  ON IL_UID = NA_EXT_KEY
-			    INNER JOIN PWIN175.NE  ON NE_ACCOUNT  = NA_ACCOUNT
-			    INNER JOIN PWIN175.NI  ON NI_ENTRY = NE_ENTRY
-			    INNER JOIN PWIN175.RM  ON RM_CUST  = IM_CUST
+	  FROM      PWIN171.IM
+			    INNER JOIN PWIN171.NA  ON NA_STOCK = IM_STOCK
+			    INNER JOIN PWIN171.IL  ON IL_UID = NA_EXT_KEY
+			    INNER JOIN PWIN171.NE  ON NE_ACCOUNT  = NA_ACCOUNT
+			    INNER JOIN PWIN171.NI  ON NI_ENTRY = NE_ENTRY
+			    INNER JOIN PWIN171.RM  ON RM_CUST  = IM_CUST
 	  WHERE  :nRM_XX_FEE14 > 0
 	  AND     IM_CUST IN (SELECT RM_CUST FROM RM WHERE RM_ANAL = :sAnalysis AND RM_TYPE = 0 AND RM_ACTIVE = 1 )
 	  AND       NA_EXT_TYPE = 1210067
@@ -1867,12 +1868,12 @@ exec :end_date := To_Date('30-Nov-2016')
            NULL AS PaymentType
 
 
-	  FROM      PWIN175.IM
-			    INNER JOIN PWIN175.NA  ON NA_STOCK = IM_STOCK
-			    INNER JOIN PWIN175.IL  ON IL_UID = NA_EXT_KEY
-			    INNER JOIN PWIN175.NE  ON NE_ACCOUNT  = NA_ACCOUNT
-			    INNER JOIN PWIN175.NI  ON NI_ENTRY = NE_ENTRY
-			    INNER JOIN PWIN175.RM  ON RM_CUST  = IM_CUST
+	  FROM      PWIN171.IM
+			    INNER JOIN PWIN171.NA  ON NA_STOCK = IM_STOCK
+			    INNER JOIN PWIN171.IL  ON IL_UID = NA_EXT_KEY
+			    INNER JOIN PWIN171.NE  ON NE_ACCOUNT  = NA_ACCOUNT
+			    INNER JOIN PWIN171.NI  ON NI_ENTRY = NE_ENTRY
+			    INNER JOIN PWIN171.RM  ON RM_CUST  = IM_CUST
 	  WHERE :nRM_XX_FEE13 > 0
 	  AND     IM_CUST IN (SELECT RM_CUST FROM RM WHERE RM_ANAL = :sAnalysis AND RM_TYPE = 0 AND RM_ACTIVE = 1 )
 	  AND       NA_EXT_TYPE = 1210067
@@ -1978,7 +1979,7 @@ exec :end_date := To_Date('30-Nov-2016')
            NULL As   Cost,
            s.SH_SPARE_INT_4 AS PaymentType
 
-	  FROM  Dev_Admin_Data_Pick_LineCounts t LEFT JOIN PWIN175.SH s ON  LTrim(s.SH_ORDER) = t.vSLOrderNum
+	  FROM  Dev_Admin_Data_Pick_LineCounts t LEFT JOIN PWIN171.SH s ON  LTrim(s.SH_ORDER) = t.vSLOrderNum
 	  INNER JOIN RM r ON r.RM_CUST = s.SH_CUST
 	  WHERE  :nRM_XX_FEE16 > 0
 	  AND  s.SH_STATUS <> 3
@@ -2090,7 +2091,7 @@ exec :end_date := To_Date('30-Nov-2016')
 
 
 
-	  FROM  Dev_Admin_Data_Pick_LineCounts t LEFT JOIN PWIN175.SH s ON  LTrim(s.SH_ORDER) = LTrim(t.vSLOrderNum)
+	  FROM  Dev_Admin_Data_Pick_LineCounts t LEFT JOIN PWIN171.SH s ON  LTrim(s.SH_ORDER) = LTrim(t.vSLOrderNum)
 	  INNER JOIN RM r ON r.RM_CUST = s.SH_CUST
 		  WHERE  :nRM_XX_FEE06 > 0
 	  AND  s.SH_STATUS <> 3
@@ -2226,13 +2227,13 @@ exec :end_date := To_Date('30-Nov-2016')
            d.SD_COST_PRICE As   Cost,
           NULL AS PaymentType
 
-	  FROM      PWIN175.SD d
-			    INNER JOIN PWIN175.SH s  ON s.SH_ORDER  = d.SD_ORDER
-			    INNER JOIN PWIN175.ST t  ON t.ST_ORDER  = s.SH_ORDER
-          INNER JOIN PWIN175.SL l  ON l.SL_PICK   = t.ST_PICK
-			    INNER JOIN PWIN175.RM r  ON r.RM_CUST  = s.SH_CUST
-			    INNER JOIN PWIN175.IM i  ON i.IM_STOCK = d.SD_STOCK
-          INNER JOIN PWIN175.NI n  ON n.NI_NV_EXT_KEY = l.SL_UID
+	  FROM      PWIN171.SD d
+			    INNER JOIN PWIN171.SH s  ON s.SH_ORDER  = d.SD_ORDER
+			    INNER JOIN PWIN171.ST t  ON t.ST_ORDER  = s.SH_ORDER
+          INNER JOIN PWIN171.SL l  ON l.SL_PICK   = t.ST_PICK
+			    INNER JOIN PWIN171.RM r  ON r.RM_CUST  = s.SH_CUST
+			    INNER JOIN PWIN171.IM i  ON i.IM_STOCK = d.SD_STOCK
+          INNER JOIN PWIN171.NI n  ON n.NI_NV_EXT_KEY = l.SL_UID
     WHERE NI_NV_EXT_TYPE = 1810105 AND NI_STRENGTH = 3 AND NI_DATE = t.ST_DESP_DATE AND NI_STOCK = d.SD_STOCK AND NI_STATUS <> 0
 	  AND     s.SH_STATUS <> 3
     AND       s.SH_ORDER = t.ST_ORDER
@@ -2485,14 +2486,14 @@ exec :end_date := To_Date('30-Nov-2016')
 			    END                      AS "FeeType",
 			    'DB Maint'               AS "Item",
 			    'DB Maint fee '                AS "Description",
-          (SELECT Count(RD_CODE) FROM PWIN175.RD WHERE RD_CUST IN ( SELECT RM_CUST FROM PWIN175.RM WHERE (RM_PARENT = :cust) AND SubStr(RD_CODE,0,2) NOT LIKE 'WH'  AND RD_CODE <> 'DIRECT'))  AS "Qty",
+          (SELECT Count(RD_CODE) FROM PWIN171.RD WHERE RD_CUST IN ( SELECT RM_CUST FROM PWIN171.RM WHERE (RM_PARENT = :cust) AND SubStr(RD_CODE,0,2) NOT LIKE 'WH'  AND RD_CODE <> 'DIRECT'))  AS "Qty",
 	    '1'           AS "UOI",
 	    :nRM_XX_FEE21          AS "UnitPrice",
 	    :nRM_XX_FEE21                    AS "OWUnitPrice",
-	    :nRM_XX_FEE21 * (SELECT Count(RD_CODE) FROM PWIN175.RD WHERE RD_CUST IN ( SELECT RM_CUST FROM PWIN175.RM WHERE (RM_PARENT = :cust) AND SubStr(RD_CODE,0,2) NOT LIKE 'WH'  AND RD_CODE <> 'DIRECT'))         AS "DExcl",
-	    :nRM_XX_FEE21 * (SELECT Count(RD_CODE) FROM PWIN175.RD WHERE RD_CUST IN ( SELECT RM_CUST FROM PWIN175.RM WHERE (RM_PARENT = :cust) AND SubStr(RD_CODE,0,2) NOT LIKE 'WH'  AND RD_CODE <> 'DIRECT'))      AS "Excl_Total",
-		  (:nRM_XX_FEE21 * (SELECT Count(RD_CODE) FROM PWIN175.RD WHERE RD_CUST IN ( SELECT RM_CUST FROM PWIN175.RM WHERE (RM_PARENT = :cust) AND SubStr(RD_CODE,0,2) NOT LIKE 'WH'  AND RD_CODE <> 'DIRECT'))) * 1.1         AS "DIncl",
-	    (:nRM_XX_FEE21 * (SELECT Count(RD_CODE) FROM PWIN175.RD WHERE RD_CUST IN ( SELECT RM_CUST FROM PWIN175.RM WHERE (RM_PARENT = :cust) AND SubStr(RD_CODE,0,2) NOT LIKE 'WH'  AND RD_CODE <> 'DIRECT'))) * 1.1        AS "Incl_Total",
+	    :nRM_XX_FEE21 * (SELECT Count(RD_CODE) FROM PWIN171.RD WHERE RD_CUST IN ( SELECT RM_CUST FROM PWIN171.RM WHERE (RM_PARENT = :cust) AND SubStr(RD_CODE,0,2) NOT LIKE 'WH'  AND RD_CODE <> 'DIRECT'))         AS "DExcl",
+	    :nRM_XX_FEE21 * (SELECT Count(RD_CODE) FROM PWIN171.RD WHERE RD_CUST IN ( SELECT RM_CUST FROM PWIN171.RM WHERE (RM_PARENT = :cust) AND SubStr(RD_CODE,0,2) NOT LIKE 'WH'  AND RD_CODE <> 'DIRECT'))      AS "Excl_Total",
+		  (:nRM_XX_FEE21 * (SELECT Count(RD_CODE) FROM PWIN171.RD WHERE RD_CUST IN ( SELECT RM_CUST FROM PWIN171.RM WHERE (RM_PARENT = :cust) AND SubStr(RD_CODE,0,2) NOT LIKE 'WH'  AND RD_CODE <> 'DIRECT'))) * 1.1         AS "DIncl",
+	    (:nRM_XX_FEE21 * (SELECT Count(RD_CODE) FROM PWIN171.RD WHERE RD_CUST IN ( SELECT RM_CUST FROM PWIN171.RM WHERE (RM_PARENT = :cust) AND SubStr(RD_CODE,0,2) NOT LIKE 'WH'  AND RD_CODE <> 'DIRECT'))) * 1.1        AS "Incl_Total",
 		  :nRM_XX_FEE21                     AS "ReportingPrice",
 			    NULL                     AS "Address",
 			    NULL                     AS "Address2",
@@ -2516,10 +2517,10 @@ exec :end_date := To_Date('30-Nov-2016')
            NULL AS PaymentType
 
 
-	  FROM  PWIN175.RM INNER JOIN RD  ON RD_CUST  = RM_CUST
+	  FROM  PWIN171.RM INNER JOIN RD  ON RD_CUST  = RM_CUST
 	  WHERE  :nRM_XX_FEE21 > 0
 	  AND    RM_PARENT IN (SELECT RM_CUST FROM RM WHERE RM_PARENT = ' '  AND RM_ANAL = :sAnalysis AND RM_TYPE = 0 AND RM_ACTIVE = 1 )
-    --AND (SELECT Count(RD_CODE) FROM PWIN175.RD WHERE RD_CUST IN ( SELECT RM_CUST FROM PWIN175.RM WHERE RM_PARENT = :cust  AND SubStr(RD_CODE,0,2) NOT LIKE 'WH') AND RD_CODE <> 'DIRECT' > 0)
+    --AND (SELECT Count(RD_CODE) FROM PWIN171.RD WHERE RD_CUST IN ( SELECT RM_CUST FROM PWIN171.RM WHERE RM_PARENT = :cust  AND SubStr(RD_CODE,0,2) NOT LIKE 'WH') AND RD_CODE <> 'DIRECT' > 0)
     GROUP BY  RM_CUST,
 			    RM_PARENT,
 			    RD_CUST,
@@ -2578,7 +2579,7 @@ exec :end_date := To_Date('30-Nov-2016')
            NULL As   Cost,
            NULL AS PaymentType
 
-	  FROM  PWIN175.RM
+	  FROM  PWIN171.RM
 	  WHERE   :nRM_XX_FEE20 > 0
 	  AND     RM_CUST IN (SELECT RM_CUST FROM RM WHERE RM_ANAL = :sAnalysis)
     GROUP BY  RM_CUST
@@ -2637,7 +2638,7 @@ exec :end_date := To_Date('30-Nov-2016')
            NULL As   Cost,
            NULL AS PaymentType
 
-	  FROM  PWIN175.RM
+	  FROM  PWIN171.RM
 	  WHERE     :nRM_XX_FEE19 > 0
 	  AND     RM_CUST IN (SELECT RM_CUST FROM RM WHERE RM_ANAL = :sAnalysis AND RM_TYPE = 0 AND RM_ACTIVE = 1 )
   GROUP BY  RM_CUST
@@ -2695,7 +2696,7 @@ exec :end_date := To_Date('30-Nov-2016')
            NULL As   Cost,
            NULL AS PaymentType
 
-	  FROM  PWIN175.YN INNER JOIN RM ON RM_CUST = YN_OBJECT
+	  FROM  PWIN171.YN INNER JOIN RM ON RM_CUST = YN_OBJECT
 	  WHERE     :nRM_XX_FEE34 > 0
     AND YN_ADD_DATE >= :start_date AND YN_ADD_DATE <= :end_date
     AND YN_TYPE = 'MANREPORTF'
@@ -2782,11 +2783,11 @@ exec :end_date := To_Date('30-Nov-2016')
            s.SH_SPARE_INT_4 AS PaymentType
 
 
-	  FROM      PWIN175.SD d
-			    INNER JOIN PWIN175.SH s  ON s.SH_ORDER  = d.SD_ORDER
-			    INNER JOIN PWIN175.ST t  ON t.ST_ORDER  = s.SH_ORDER  --AND t.ST_PICK = d.SD_LAST_PICK_NUM
-			    INNER JOIN PWIN175.RM r  ON r.RM_CUST  = s.SH_CUST
-			    INNER JOIN PWIN175.IM i  ON i.IM_STOCK = d.SD_STOCK
+	  FROM      PWIN171.SD d
+			    INNER JOIN PWIN171.SH s  ON s.SH_ORDER  = d.SD_ORDER
+			    INNER JOIN PWIN171.ST t  ON t.ST_ORDER  = s.SH_ORDER  --AND t.ST_PICK = d.SD_LAST_PICK_NUM
+			    INNER JOIN PWIN171.RM r  ON r.RM_CUST  = s.SH_CUST
+			    INNER JOIN PWIN171.IM i  ON i.IM_STOCK = d.SD_STOCK
 
 	  WHERE     Upper(i.IM_XX_QTY_PER_PACK) IN ('INNER','OUTER')
 	  AND       i.IM_CUST = :cust
@@ -2836,5 +2837,5 @@ exec :end_date := To_Date('30-Nov-2016')
     /*SELECT * FROM TMP_ALL_FEES
   ORDER BY OrderNum,Pickslip Asc  */
 
-  --SELECT * FROM Tmp_Admin_Data_Pick_LineCounts
+  --SELECT * FROM Dev_Admin_Data_Pick_LineCounts
 

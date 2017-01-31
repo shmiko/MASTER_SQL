@@ -3,7 +3,7 @@
 /*decalre variables These are being declared via the stored procedure - just need to redeclare cust so as we can get the rates*/
 
 var cust varchar2(20)
-exec :cust := 'LINK14'
+exec :cust := 'G-VICPROMO'
 var nx NUMBER
 EXEC :nx := 1810105
 var cust2 varchar2(20)
@@ -17,18 +17,18 @@ exec :source := 'BSPRINTN'
 var sAnalysis varchar2(20) /*VerbalOrderEntryFee*/
 exec SELECT  RM_ANAL INTO :sAnalysis FROM RM where RM_CUST = :cust;
 var anal varchar2(20)
-exec :anal := '22NSWP14'
+exec :anal := 'VICP'
 var start_date varchar2(20)
-exec :start_date := To_Date('1-Sep-2016')
+exec :start_date := To_Date('1-Nov-2016')
 var end_date varchar2(20)
-exec :end_date := To_Date('30-Sep-2016')
+exec :end_date := To_Date('30-Nov-2016')
 
 
 
     --run this first
     TRUNCATE TABLE  dev_AdminData;
     --run this first
-    --EXECUTE EOM_REPORT_PKG.DEV_CREATE_TEMP_DATA_BIND('21VICF','1-Sep-2016','30-Sep-2016');   --15 minutes  for all customers
+    --EXECUTE EOM_REPORT_PKG.DEV_CREATE_TEMP_DATA_BIND('VICP','1-Nov-2016','30-Nov-2016');   --15 minutes  for all customers
     --now run 1 of these -change variables at top first for each run
     --EXECUTE DEV_TEMP_LOCN_ALL_CUST();         --  1:25 minutes
     --  The Below for one client LINK in the middle of a business day took 1:09 minutes

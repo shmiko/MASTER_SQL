@@ -3,7 +3,7 @@
 /*decalre variables These are being declared via the stored procedure - just need to redeclare cust so as we can get the rates*/
 
 var cust varchar2(20)
-exec :cust := 'CONNECTVIC'
+exec :cust := 'FINELINE'
 var nx NUMBER
 EXEC :nx := 1810105
 var cust2 varchar2(20)
@@ -17,24 +17,24 @@ exec :source := 'BSPRINTN14'
 var sAnalysis varchar2(20) /*VerbalOrderEntryFee*/
 exec SELECT  RM_ANAL INTO :sAnalysis FROM RM where RM_CUST = :cust;
 var anal varchar2(20)
-exec :anal := '21VICP'
+exec :anal := '21VICF'
 var start_date varchar2(20)
-exec :start_date := To_Date('1-Nov-2016')
+exec :start_date := To_Date('1-Jan-2017')
 var end_date varchar2(20)
-exec :end_date := To_Date('30-Nov-2016')
+exec :end_date := To_Date('31-Jan-2017')
 
 
 
 
-    TRUNCATE TABLE  tbl_AdminData;
+    TRUNCATE TABLE  Dev_AdminData;
     --run this first
     --EXECUTE EOM_REPORT_PKG.DEV_GROUP_CUST_START;
-    --EXECUTE EOM_REPORT_PKG.DEV_CREATE_TEMP_DATA_BIND('21VICP','1-Nov-2016','30-Nov-2016');
+    --EXECUTE EOM_REPORT_PKG.DEV_CREATE_TEMP_DATA_BIND('21VICF','1-Jan-2017','31-Jan-2017');
     --now run 1 of these -change variables at top first for each run
-    --EXECUTE CREATE_TEMP_LOCN_BY_CUST('21VICP');
-    --EXECUTE CREATE_TEMP_LOCN_BY_CUST('21VICF');
-    --EXECUTE CREATE_TEMP_LOCN_BY_CUST('22NSWP');
-    --EXECUTE CREATE_TEMP_LOCN_BY_CUST('22NSWP14');
+    --EXECUTE DEV_CREATE_TEMP_LOCN_BY_CUST('21VICP');
+    --EXECUTE DEV_CREATE_TEMP_LOCN_BY_CUST('21VICF');
+    --EXECUTE DEV_CREATE_TEMP_LOCN_BY_CUST('22NSWP');
+    --EXECUTE DEV_CREATE_TEMP_LOCN_BY_CUST('22NSWP14');
 
   /*SELECT  RM_ANAL FROM RM WHERE RM_CUST = 'LINK' */
 
@@ -2302,7 +2302,7 @@ exec :end_date := To_Date('30-Nov-2016')
 
   /* EOM Storage Fees */
 	 -- SELECT Count(DISTINCT Item) FROM  dev_AdminData  WHERE FeeType LIKE 'PALL%'
-    	  INSERT into tbl_AdminData( --Select * From Tmp_Cust_Reporting )
+    	/*  INSERT into tbl_AdminData( --Select * From Tmp_Cust_Reporting )
 				  Customer,
 				  Parent,
 				  CostCentre,
@@ -2350,7 +2350,7 @@ exec :end_date := To_Date('30-Nov-2016')
 
 				  )
 
-    (
+    (      */
    select
 		  IM_CUST AS "Customer", IM_CUST AS "Parent",
 	    IM_XX_COST_CENTRE01     AS "CostCentre",NULL  AS "Order",NULL   AS "OrderwareNum",

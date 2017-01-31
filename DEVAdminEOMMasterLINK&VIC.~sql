@@ -3,7 +3,7 @@
 /*decalre variables These are being declared via the stored procedure - just need to redeclare cust so as we can get the rates*/
 
 var cust varchar2(20)
-exec :cust := 'LINK14'
+exec :cust := 'CONNECTVIC'
 var nx NUMBER
 EXEC :nx := 1810105
 var cust2 varchar2(20)
@@ -17,11 +17,11 @@ exec :source := 'BSPRINTN14'
 var sAnalysis varchar2(20) /*VerbalOrderEntryFee*/
 exec SELECT  RM_ANAL INTO :sAnalysis FROM RM where RM_CUST = :cust;
 var anal varchar2(20)
-exec :anal := '22NSWP14'
+exec :anal := '21VICP'
 var start_date varchar2(20)
-exec :start_date := To_Date('1-Sep-2016')
+exec :start_date := To_Date('1-Nov-2016')
 var end_date varchar2(20)
-exec :end_date := To_Date('30-Sep-2016')
+exec :end_date := To_Date('30-Nov-2016')
 
 
 
@@ -29,7 +29,7 @@ exec :end_date := To_Date('30-Sep-2016')
     TRUNCATE TABLE  tbl_AdminData;
     --run this first
     --EXECUTE EOM_REPORT_PKG.DEV_GROUP_CUST_START;
-    --EXECUTE EOM_REPORT_PKG.DEV_CREATE_TEMP_DATA_BIND('21VICF','1-Sep-2016','28-Sep-2016');
+    --EXECUTE EOM_REPORT_PKG.DEV_CREATE_TEMP_DATA_BIND('21VICP','1-Nov-2016','30-Nov-2016');
     --now run 1 of these -change variables at top first for each run
     --EXECUTE CREATE_TEMP_LOCN_BY_CUST('21VICP');
     --EXECUTE CREATE_TEMP_LOCN_BY_CUST('21VICF');
@@ -2301,8 +2301,8 @@ exec :end_date := To_Date('30-Sep-2016')
   /*Stocks*/
 
   /* EOM Storage Fees */
-	 -- SELECT Count(DISTINCT Item) FROM  tbl_AdminData  WHERE FeeType LIKE 'PALL%'
-    /*	  INSERT into tbl_AdminData( --Select * From Tmp_Cust_Reporting )
+	 -- SELECT Count(DISTINCT Item) FROM  dev_AdminData  WHERE FeeType LIKE 'PALL%'
+    	  INSERT into tbl_AdminData( --Select * From Tmp_Cust_Reporting )
 				  Customer,
 				  Parent,
 				  CostCentre,
@@ -2350,7 +2350,7 @@ exec :end_date := To_Date('30-Sep-2016')
 
 				  )
 
-    (*/
+    (
    select
 		  IM_CUST AS "Customer", IM_CUST AS "Parent",
 	    IM_XX_COST_CENTRE01     AS "CostCentre",NULL  AS "Order",NULL   AS "OrderwareNum",
@@ -2445,7 +2445,7 @@ exec :end_date := To_Date('30-Sep-2016')
 
 	/*  FROM NI n1 INNER JOIN IM ON IM_STOCK = n1.NI_STOCK
 	  INNER JOIN IL l1 ON l1.IL_LOCN = n1.NI_LOCN
-    INNER JOIN Tmp_Locn_Cnt_By_Cust ON sLocn = l1.IL_LOCN  AND sCust = IM_CUST
+    INNER JOIDev_Locn_Cnt_By_Cust ON sLocn = l1.IL_LOCN  AND sCust = IM_CUST
     --WHERE IM_CUST = 'NSWFIRE' /*IN (SELECT RM_CUST FROM RM WHERE RM_ANAL = '22NSWP') */ /*AND    */
   /*  WHERE IM_ACTIVE = 1
 	  AND IM_CUST IN (SELECT RM_CUST FROM RM WHERE RM_PARENT = ' '  AND RM_ANAL = :sAnalysis AND RM_TYPE = 0 AND RM_ACTIVE = 1 )
@@ -2833,7 +2833,7 @@ exec :end_date := To_Date('30-Sep-2016')
 
   --DROP TABLE Tmp_Admin_Data2
 
-  /*SELECT * FROM tbl_AdminData
+  /*SELECT * FROM Dev_AdminData
   ORDER BY OrderNum,Pickslip Asc  */
 
     /*SELECT * FROM TMP_ALL_FEES
