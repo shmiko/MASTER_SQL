@@ -10,7 +10,11 @@ SET @JavelinLetter = 'W'
 SET @OWNumber = 'W1719524'					-- Note: Use this to get a single javelin Order - Tested W1719524
 
 /* Item */
-SELECT
+SELECT '3',
+	--ABS(Checksum(NewID()) % 4) + 3					as Tag,
+	--(SELECT CAST(RAND() * 10 AS INT))				as Tag,
+	SO_LINE_ITEM.ITEM_DESCRIPTION					as Description,
+	SO_LINE_ITEM_PRICE.UNIT_PRICE					as UnitPrice,
 	DEBTOR.[DATAFLEX RECNUM ONE]					as ID,
 	DEBTOR.[AC NO]									as Customer,
 	SALES_ORDER.BILL_TO_ID							as CustomerId, 
@@ -26,17 +30,16 @@ SELECT
 	 FROM [LiveData].[dbo].PACKAGE 
 	 WHERE PICK_ID=SO_LINE_ITEM.PICK_ID)			as DespDate, 
 	'Item'											as FeeType, 
-	CAST(PAPSIZE.[INVENTORY CODE] as nvarchar)						as Item, 
-	SO_LINE_ITEM.ITEM_DESCRIPTION					as Description, 
+	CAST(PAPSIZE.[INVENTORY CODE] as nvarchar)		as Item, 
+	 
 	SO_LINE_ITEM.PACK_QTY							as Qty,
 	PAPSIZE.[UNIT OF ISSUE]							as UOI,
 	PAPSIZE.[UNIT ISSUE DESC]						as UnitOfIssDesc, 
-	SO_LINE_ITEM_PRICE.UNIT_PRICE					as UnitPrice, 
+	 
+	((SO_LINE_ITEM_PRICE.UNIT_PRICE * SO_LINE_ITEM.PACK_QTY))		
+													as SellExcl, 
 	((SO_LINE_ITEM_PRICE.UNIT_PRICE * SO_LINE_ITEM.PACK_QTY) 
-		+ SO_LINE_ITEM_PRICE.SHIPPING_HANDLING)		as SellExcl, 
-	((SO_LINE_ITEM_PRICE.UNIT_PRICE * SO_LINE_ITEM.PACK_QTY) 
-		+ SO_LINE_ITEM_PRICE.SHIPPING_HANDLING 
-		+ ISNULL(SO_LINE_ITEM_PRICE.SALES_TAX,0))	as SellIncl, 
+		* 1.1)										as SellIncl, 
 	RECIPIENT.COMPANY_NAME							as DeliverTo, 
 	(RECIPIENT.FIRST_NAME 
 		+ ' ' 
@@ -81,6 +84,9 @@ UNION
 
 /* Pickfees  */
 SELECT TOP 1
+	'1'												as Tag,
+	'Line Picking Fee'																as "Description",
+	Trans.ACT_PPU																	as UnitPrice,
 	DEBTOR.[DATAFLEX RECNUM ONE]													as ID,
 	DEBTOR.[AC NO]																	as Customer,
 	SALES_ORDER.BILL_TO_ID															as CustomerId, 
@@ -96,14 +102,14 @@ SELECT TOP 1
 	'Pick Fee'																		as FeeType, 
 	CAST('FEEPICK'	as nvarchar)													as Item, 
 	--''																				as InventoryCode,
-	'Line Picking Fee'																as "Description", 
-	[bsg_support].[dbo].[ufnGetPickLineCount](SALES_ORDER.SO_ID)					as Qty,
+	 
+	[LiveData].[dbo].[ufnGetPickLineCount](SALES_ORDER.SO_ID)					as Qty,
 	--[bsg_support].[dbo].[ufnGetPickLineCount](SALES_ORDER.SO_ID)					as OrderQty,
 	'1'																				as UOI, 
 	'Each'																			as UnitOfIssDesc, 
-	Trans.ACT_PPU																	as UnitPrice, 
-	(Trans.ACT_PPU * [bsg_support].[dbo].[ufnGetPickLineCount](SALES_ORDER.SO_ID))	as SellExcl, 
-	((Trans.ACT_PPU * [bsg_support].[dbo].[ufnGetPickLineCount](SALES_ORDER.SO_ID)) *   1.1)														as SellIncl, 
+	 
+	(Trans.ACT_PPU * [LiveData].[dbo].[ufnGetPickLineCount](SALES_ORDER.SO_ID))	as SellExcl, 
+	((Trans.ACT_PPU * [LiveData].[dbo].[ufnGetPickLineCount](SALES_ORDER.SO_ID)) *   1.1)														as SellIncl, 
 	--RECIPIENT.CUST_RECIP_ID															as OrderByCustomerRecipientID, 
 	ISNULL(Recipient.COMPANY_NAME,'')												as DeliverTo, 
 	ISNULL((RECIPIENT.FIRST_NAME 
@@ -148,6 +154,9 @@ WHERE --(SO_LINE_ITEM.CREATED_DATE		>=		@FromShipDate
 	UNION 
 /* handling fees */
 SELECT TOP 1
+	'2'												as Tag,
+	'Despatch Handeling Fee'														as "Description",
+	Trans.ACT_PPU																	as UnitPrice,
 	DEBTOR.[DATAFLEX RECNUM ONE]													as ID,
 	DEBTOR.[AC NO]																	as Customer,
 	SALES_ORDER.BILL_TO_ID															as CustomerId, 
@@ -163,12 +172,12 @@ SELECT TOP 1
 	'Handeling Fee'																	as FeeType, 
 	CAST('FEEHANDLING'	as nvarchar)												as Item, 
 	--''																				as InventoryCode,
-	'Despatch Handeling Fee'														as "Description", 
+	 
 	'1'																				as Qty,
 	--[bsg_support].[dbo].[ufnGetPickLineCount](SALES_ORDER.SO_ID)					as OrderQty,
 	'1'																				as UOI, 
 	'Each'																			as UnitOfIssDesc, 
-	Trans.ACT_PPU																	as UnitPrice, 
+	 
 	Trans.ACT_PPU 	as SellExcl, 
 	(Trans.ACT_PPU *  1.1)															as SellIncl, 
 	--RECIPIENT.CUST_RECIP_ID															as OrderByCustomerRecipientID, 
@@ -218,6 +227,9 @@ UNION
 
 /* Shipping */
 SELECT 
+	'7'				as Tag,
+	'Ship Ref:' + PACKAGE.TRACKING_NO				as Description,
+	SO_CHARGE.AMOUNT								as UnitPrice, 
 	DEBTOR.[DATAFLEX RECNUM ONE]					as ID,
 	DEBTOR.[AC NO]									as Customer,
 	SALES_ORDER.BILL_TO_ID							as CustomerId, 
@@ -231,12 +243,10 @@ SELECT
 	''												as DespNote, 
 	PACKAGE.SHIP_DATE								as DespDate, 
 	'Shipping'										as FeeType, 
-	cast('COURIER' as nvarchar)												as Item, 
-	'Ship Ref:' + PACKAGE.TRACKING_NO					as Description, 
+	cast('COURIER' as nvarchar)						as Item, 
 	'1'												as Qty,
 	'1'												as UOI	, 
-	'Each'												as UnitOfIssDesc, 
-	SO_CHARGE.AMOUNT								as UnitPrice, 
+	'Each'											as UnitOfIssDesc, 
 	SO_CHARGE.AMOUNT								as SellExcl, 
 	(SO_CHARGE.AMOUNT *  1.1)						as SellIncl, 
 	ISNULL(Recipient.COMPANY_NAME,'')				as DeliverTo, 
@@ -270,7 +280,7 @@ WHERE ISNULL(SO_CHARGE.SO_ID, '0')		>		0
 	OR  SALES_ORDER.CUST_SO_ID			LIKE		@OWNumber)
 	and PICKS.PICK_STATUS = '21'
 
-ORDER BY SALES_ORDER.SO_ID Desc
+ORDER BY 10, 1	 Asc
 
 
 -- All other activity based core complexities need to be added -- 
