@@ -8,7 +8,7 @@ SELECT @FromShipDate = '09/01/2016'
 SELECT @ToShipDate = '12/16/2016'			--Note:  Make this +1 days from your last ship date
 SET @JavelinLetter = 'W'
 --SET @JavelinNumber = @JavelinLetter + '%' -- Note: Use this to get all Javelin Orders
-SET @OWNumber = 'W1586060'					-- Note: Use this to get a single javelin Order
+SET @OWNumber = 'W1686439'					-- Note: Use this to get a single javelin Order
 SET @OrdNumber = 2227
 /* Shipping */
 SELECT TOP 1

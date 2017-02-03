@@ -8,7 +8,7 @@ SELECT @FromShipDate = '09/01/2016'
 SELECT @ToShipDate = '12/19/2016'			--Note:  Make this +1 days from your last ship date
 SET @JavelinLetter = 'W'
 --SET @JavelinNumber = @JavelinLetter + '%' -- Note: Use this to get all Javelin Orders
-SET @OWNumber = 'W1693170'					-- Note: Use this to get a single javelin Order
+SET @OWNumber = 'W1686439'					-- Note: Use this to get a single javelin Order
 SET @OrdNumber = 2227
 
 /* Stocks */
@@ -77,11 +77,12 @@ FROM SALES_ORDER Ord
 --WHERE Ord.SO_ID = 2227 
 
 WHERE  --ISNULL(Sol.PICK_ID, '0') >		0 
-	 ISNULL(Sol.ITEM_NO,0)	<>		0 
-	AND (Sol.CREATED_DATE		>=		@FromShipDate 
+	ISNULL(Sol.ITEM_NO,0)	<>		0 
+	AND
+	 (Sol.CREATED_DATE		>=		@FromShipDate 
 	AND Sol.CREATED_DATE		<=		@ToShipDate)
 	--AND Ord.CUST_SO_ID			=	@JavelinNumber
-	AND Ord.SO_ID				=		@OrdNumber
+	--AND Ord.SO_ID				=		@OrdNumber
 	AND  Ord.CUST_SO_ID			=		@OWNumber
 	AND  Trans.[LINE_ITEM_NO]	=		Sol.LINE_ITEM_NO
 	AND Sol.INVENTORY_CODE		NOT IN ('EMERQSRFEE')
