@@ -92,3 +92,4 @@ Group BY SALES_ORDER.SO_ID,
 	ShipToAddress.STATE_CODE,
 	ShipToAddress.ZIP_CODE,
 	ShipToCountry.COUNTRY_NAME
+Order by SALES_ORDER.SO_ID ASC
