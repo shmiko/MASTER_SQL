@@ -65,7 +65,7 @@ WHERE
 	[SO_LINE_ITEM].INVENTORY_CODE	NOT IN	('EMERQSRFEE') -- add other non stock items in here to exclude
 	and PICKS.PICK_STATUS = '21'
 	AND Trans.ACTIVITY_ID = '17'
-	--and (PACKS.SHIP_DATE > = @Datetime1 and PACKS.SHIP_DATE <= @Datetime2)
+	and (PACKS.SHIP_DATE > = @Datetime1 and PACKS.SHIP_DATE <= @Datetime2)
 	and SO_LINE_ITEM.COST_CENTER IS NOT NULL
 Group BY SALES_ORDER.SO_ID,
 	Trans.ACT_PPU,
@@ -148,7 +148,7 @@ WHERE
 	[SO_LINE_ITEM].INVENTORY_CODE	NOT IN	('EMERQSRFEE') -- add other non stock items in here to exclude
 	and PICKS.PICK_STATUS = '21'
 	AND Trans.ACTIVITY_ID LIKE '23'
-	--and (PACKS.SHIP_DATE > = @Datetime1 and PACKS.SHIP_DATE <= @Datetime2)
+	and (PACKS.SHIP_DATE > = @Datetime1 and PACKS.SHIP_DATE <= @Datetime2)
 	and SO_LINE_ITEM.COST_CENTER IS NOT NULL
 Group BY SALES_ORDER.SO_ID,
 	PACKS.PICK_ID,
@@ -233,7 +233,7 @@ FROM  --[SO_LINE_ITEM]
 Where DEBTOR.[AC NO] <> 'HOUSEACC'
 	and SALES_ORDER.SO_ORIGIN_ID <> '0'
 	and po.SOOriginCharge <> '0'
-	--and (SALES_ORDER.CREATED_DATE > = @Datetime1 and SALES_ORDER.CREATED_DATE <= @Datetime2)
+	and (SALES_ORDER.CREATED_DATE > = @Datetime1 and SALES_ORDER.CREATED_DATE <= @Datetime2)
 Group By
 	SALES_ORDER.SO_ID,
 	o.ORIGIN_NAME,
@@ -315,9 +315,8 @@ FROM  --[SO_LINE_ITEM]
 	INNER JOIN [LiveData].[dbo].FF_TIMELINE Timeline								ON Timeline.TIMELINE_ID 		= Trans.TIMELINE_ID
 	LEFT JOIN [LiveData].[dbo].PACKAGE PACKS										ON PACKS.SO_ID					= SALES_ORDER.SO_ID
 	LEFT JOIN livedata.dbo.PICK PICKS												ON PICKS.SO_ID					= SALES_ORDER.SO_ID 
-WHERE -- (SALES_ORDER.CREATED_DATE > = @Datetime1 and SALES_ORDER.CREATED_DATE <= @Datetime2)
-	--AND 
-	[SO_LINE_ITEM].INVENTORY_CODE	=	'EMERQSRFEE' -- add other non stock items in here to exclude
+WHERE  (SALES_ORDER.CREATED_DATE > = @Datetime1 and SALES_ORDER.CREATED_DATE <= @Datetime2)
+	AND [SO_LINE_ITEM].INVENTORY_CODE	=	'EMERQSRFEE' -- add other non stock items in here to exclude
 	--AND Trans.ACTIVITY_ID LIKE '23'
 	--and PICKS.PICK_STATUS = '21'
 	-- Where SO_ID = '9863'
@@ -407,7 +406,7 @@ FROM  [LiveData].[dbo].[SO_LINE_ITEM]
 	LEFT JOIN livedata.dbo.PICK PICKS												ON PICKS.SO_ID					= SALES_ORDER.SO_ID 
 WHERE ISNULL(SO_LINE_ITEM.PICK_ID, '0') >		0 
 	AND ISNULL(SO_LINE_ITEM.ITEM_NO,0)	<>		0 
-	--and (PACKAGE.SHIP_DATE > = @Datetime1 and PACKAGE.SHIP_DATE <= @Datetime2)
+	and (PACKAGE.SHIP_DATE > = @Datetime1 and PACKAGE.SHIP_DATE <= @Datetime2)
 	and PICKS.PICK_STATUS = '21'
 	and SO_LINE_ITEM.[PACK_QTY] >= 1
 
@@ -461,8 +460,8 @@ FROM [LiveData].[dbo].SO_CHARGE
 	LEFT JOIN [LiveData].[dbo].SHIPPING_MODE										ON SHIPPING_MODE.SHIP_MODE_ID	= PACKAGE.SHIP_MODE_ID
 	LEFT JOIN livedata.dbo.PICK PICKS												ON PICKS.SO_ID					= SO_CHARGE.SO_ID 
 WHERE ISNULL(SO_CHARGE.SO_ID, '0')		>		0 
-	--and (PACKAGE.SHIP_DATE > = @Datetime1 and PACKAGE.SHIP_DATE <= @Datetime2)
+	and (PACKAGE.SHIP_DATE > = @Datetime1 and PACKAGE.SHIP_DATE <= @Datetime2)
 	and PICKS.PICK_STATUS = '21'
-	and PACKAGE.SHIP_DATE IS NOT NULL
+
 Order by SALES_ORDER.SO_ID,1 ASC
 
