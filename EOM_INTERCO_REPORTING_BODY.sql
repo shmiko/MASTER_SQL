@@ -11588,6 +11588,8 @@ BEGIN
   i   NUMBER := 0;
   nCheckpoint NUMBER;
   BEGIN
+  
+  
       nCheckpoint := 1;
       --OPEN EOM_CUSTS;
       --LOOP
