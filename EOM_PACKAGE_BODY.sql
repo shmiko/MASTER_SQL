@@ -8,14 +8,14 @@ create or replace PACKAGE BODY EOM AS
 		p_array_size_start IN PLS_INTEGER DEFAULT 100
 		,start_date IN VARCHAR2 
 		,end_date IN VARCHAR2
-		,Customer IN VARCHAR2
+		,check_date IN VARCHAR2-- DEFAULT To_Date(CURRENT_DATE)
+    ,Customer IN VARCHAR2
 		,Analysis IN RM.RM_ANAL%TYPE
 		,FilterBy IN VARCHAR2
 		,Op IN VARCHAR2 DEFAULT 'PAUL'
 		,Inter_Y_OR_No IN VARCHAR2 DEFAULT 'N'
-		,p_dev_bool in boolean
-		,p_intercompany_bool in boolean
 		,Debug_Y_OR_N IN VARCHAR2 DEFAULT 'Y'
+    ,RunAutoALL in VARCHAR2 DEFAULT 'N'
 		)
 	AS
 		nCheckpoint  NUMBER;
@@ -34,36 +34,43 @@ create or replace PACKAGE BODY EOM AS
 		vRetTblCount INT;
 		v_tmp_date VARCHAR2(12) := TO_DATE(end_date, 'DD-MON-YY');     
 	BEGIN
+  --CHECKPOINT 0;
+	nCheckpoint := 0;
+  If (upper(RunAutoALL) = 'Y') Then
+     IQ_EOM_REPORTING.EOM_AUTO_RUN_ALL(p_array_size_start,start_date,end_date,check_date,Customer,Analysis,FilterBy,Op,Debug_Y_OR_N);
+  End If;
+
+
 	--CHECKPOINT 1;
 	nCheckpoint := 1;
     If ((upper(Inter_Y_OR_No) = 'Y') AND (upper(Debug_Y_OR_N) = 'Y')) Then
-		If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
-			DBMS_OUTPUT.PUT_LINE(Op || ' is running this report in the DEV environment for ' );
-			DBMS_OUTPUT.PUT_LINE('date range from ' || start_date || ' to ' || end_date || ' and for ' );
-			DBMS_OUTPUT.PUT_LINE('customer ' || Customer || ' and for ' );
-			DBMS_OUTPUT.PUT_LINE('intercompany analysis ' || Analysis ||'. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
-		Else
-			DBMS_OUTPUT.PUT_LINE(Op || ' is running this report in the TMP environment for '  );
-			DBMS_OUTPUT.PUT_LINE('date range from ' || start_date || ' to ' || end_date || ' and for '  );
-			DBMS_OUTPUT.PUT_LINE('customer ' || Customer || ' and for '  );
-			DBMS_OUTPUT.PUT_LINE( 'intercompany analysis ' || Analysis ||'. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
-		End If;
-		DBMS_OUTPUT.PUT_LINE('**************************************************************************************');
+      If (Op = 'PRJ' or Op = 'DEV') Then
+        DBMS_OUTPUT.PUT_LINE(Op || ' is running this report in the DEV environment for ' );
+        DBMS_OUTPUT.PUT_LINE('date range from ' || start_date || ' to ' || end_date || ' and for ' );
+        DBMS_OUTPUT.PUT_LINE('customer ' || Customer || ' and for ' );
+        DBMS_OUTPUT.PUT_LINE('intercompany analysis ' || Analysis ||'. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
+      Else
+        DBMS_OUTPUT.PUT_LINE(Op || ' is running this report in the TMP environment for '  );
+        DBMS_OUTPUT.PUT_LINE('date range from ' || start_date || ' to ' || end_date || ' and for '  );
+        DBMS_OUTPUT.PUT_LINE('customer ' || Customer || ' and for '  );
+        DBMS_OUTPUT.PUT_LINE( 'intercompany analysis ' || Analysis ||'. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
+      End If;
+      DBMS_OUTPUT.PUT_LINE('**************************************************************************************');
     ElsIf (upper(Debug_Y_OR_N) = 'Y') Then
-		If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
-			DBMS_OUTPUT.PUT_LINE(Op || ' is running this report in the DEV environment for ' );
-			DBMS_OUTPUT.PUT_LINE('date range from ' || start_date || ' to ' || end_date || ' and for ' );
-			DBMS_OUTPUT.PUT_LINE('customer ' || Customer || '. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
-		Else
-			DBMS_OUTPUT.PUT_LINE(Op || ' is running this report in the TMP environment for ' );
-			DBMS_OUTPUT.PUT_LINE('date range from ' || start_date || ' to ' || end_date || ' and for ' );
-			DBMS_OUTPUT.PUT_LINE('customer ' || Customer || '. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
-		End If;
-		DBMS_OUTPUT.PUT_LINE('**************************************************************************************');
+      If (Op = 'PRJ' or Op = 'DEV') Then
+        DBMS_OUTPUT.PUT_LINE(Op || ' is running this report in the DEV environment for ' );
+        DBMS_OUTPUT.PUT_LINE('date range from ' || start_date || ' to ' || end_date || ' and for ' );
+        DBMS_OUTPUT.PUT_LINE('customer ' || Customer || '. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
+      Else
+        DBMS_OUTPUT.PUT_LINE(Op || ' is running this report in the TMP environment for ' );
+        DBMS_OUTPUT.PUT_LINE('date range from ' || start_date || ' to ' || end_date || ' and for ' );
+        DBMS_OUTPUT.PUT_LINE('customer ' || Customer || '. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
+      End If;
+      DBMS_OUTPUT.PUT_LINE('**************************************************************************************');
     End If;
     
     If (upper(Inter_Y_OR_No) = 'Y') Then
-		If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
+		If (Op = 'PRJ' or Op = 'DEV') Then
 			v_query  := 'TRUNCATE TABLE "PWIN175"."DEV_ALL_FEES"';
 			If (upper(Debug_Y_OR_N) = 'Y') Then
 			  DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' TRUNCATE DEV_ALL_FEES. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
@@ -75,7 +82,7 @@ create or replace PACKAGE BODY EOM AS
 			End If;
 		End If;
     Else
-		If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
+		If (Op = 'PRJ' or Op = 'DEV') Then
 			v_query  := 'TRUNCATE TABLE "PWIN175"."DEV_ALL_FEES"';
 			If (upper(Debug_Y_OR_N) = 'Y') Then
 			  DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' TRUNCATE DEV_ALL_FEES. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
@@ -95,7 +102,7 @@ create or replace PACKAGE BODY EOM AS
     --CHECKPOINT 2;
 	nCheckpoint := 2;
     If (upper(Inter_Y_OR_No) = 'Y') Then
-		If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
+		If (Op = 'PRJ' or Op = 'DEV') Then
 			v_query  := 'TRUNCATE TABLE Dev_Group_Cust';
 			If (upper(Debug_Y_OR_N) = 'Y') Then
 				DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' TRUNCATE Dev_Group_Cust. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
@@ -107,7 +114,7 @@ create or replace PACKAGE BODY EOM AS
 			End If;
 		End If; 
     Else
-		If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
+		If (Op = 'PRJ' or Op = 'DEV') Then
 			v_query  := 'TRUNCATE TABLE Dev_Group_Cust';
 			If (upper(Debug_Y_OR_N) = 'Y') Then
 				DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' TRUNCATE Dev_Group_Cust. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
@@ -128,7 +135,7 @@ create or replace PACKAGE BODY EOM AS
 	--Select (F_EOM_CHECK_LOG(v_tmp_date ,'Tmp_Group_Cust','A_EOM_GROUP_CUST')) INTO v_query_logfile From Dual;--v_query := q'{Select EOM_REPORT_PKG.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
 	--If UPPER(v_query_logfile) != UPPER(v_tmp_date) Then
     If (upper(Inter_Y_OR_No) = 'Y') Then
-		If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
+		If (Op = 'PRJ' or Op = 'DEV') Then
 			If F_IS_TABLE_EEMPTY('Dev_Group_Cust',Debug_Y_OR_N) <= 0 Then
 				If (upper(Debug_Y_OR_N) = 'Y') Then
 					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Need to run A_EOM_GROUP_CUST(Op) for all customers as table Dev_Group_Cust is empty. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
@@ -160,7 +167,7 @@ create or replace PACKAGE BODY EOM AS
 			End If;
 		End If;
     Else
-		If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
+		If (Op = 'PRJ' or Op = 'DEV') Then
 			If F_IS_TABLE_EEMPTY('Dev_Group_Cust',Debug_Y_OR_N) <= 0 Then
 				If (upper(Debug_Y_OR_N) = 'Y') Then
 					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Need to run A_EOM_GROUP_CUST(Op) for all customers as table Dev_Group_Cust is empty. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
@@ -201,7 +208,7 @@ create or replace PACKAGE BODY EOM AS
 	--EXECUTE IMMEDIATE v_query INTO vRtnVal;-- USING sCustomerCode;
 	--If F_IS_TABLE_EEMPTY('TMP_ADMIN_DATA_PICK_LINECOUNTS',Debug_Y_OR_N) <= 0 Then
     If (upper(Inter_Y_OR_No) = 'Y') Then
-      If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
+      If (Op = 'PRJ' or Op = 'DEV') Then
         Select (EOM_INTERCO_REPORTING.F_EOM_CHECK_LOG(v_tmp_date ,'DEV_ADMIN_DATA_PICK_LINECOUNTS','B_EOM_START_RUN_ONCE_DATA',Op)) INTO v_query_logfile From Dual;--v_query := q'{Select EOM_REPORT_PKG.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
         If F_IS_TABLE_EEMPTY('DEV_ADMIN_DATA_PICK_LINECOUNTS',Debug_Y_OR_N) <= 0 Then
 			If (upper(Debug_Y_OR_N) = 'Y') Then
@@ -235,7 +242,7 @@ create or replace PACKAGE BODY EOM AS
         End If;
       End If;
     Else
-      If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
+      If (Op = 'PRJ' or Op = 'DEV') Then
         Select (IQ_EOM_REPORTING.F_EOM_CHECK_LOG(v_tmp_date ,'DEV_ADMIN_DATA_PICK_LINECOUNTS','B_EOM_START_RUN_ONCE_DATA',Op)) INTO v_query_logfile From Dual;--v_query := q'{Select EOM_REPORT_PKG.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
         If F_IS_TABLE_EEMPTY('DEV_ADMIN_DATA_PICK_LINECOUNTS',Debug_Y_OR_N) <= 0 Then
           If (upper(Debug_Y_OR_N) = 'Y') Then
@@ -268,7 +275,7 @@ create or replace PACKAGE BODY EOM AS
     
 	nCheckpoint := 4;
 	If (upper(Inter_Y_OR_No) = 'Y') Then
-		If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
+		If (Op = 'PRJ' or Op = 'DEV') Then
 			If F_IS_TABLE_EEMPTY('Dev_Locn_Cnt_By_Cust',Debug_Y_OR_N) <= 0 Then
 				-- Select (F_EOM_CHECK_LOG(v_tmp_date ,'Tmp_Locn_Cnt_By_Cust','C_EOM_START_ALL_TEMP_STOR_DATA')) INTO v_query_logfile From Dual;--v_query := q'{Select EOM_REPORT_PKG.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
 				--If UPPER(v_query_logfile) != UPPER(v_tmp_date) OR F_IS_TABLE_EEMPTY('Tmp_Locn_Cnt_By_Cust',Debug_Y_OR_N) <= 0 Then
@@ -298,7 +305,7 @@ create or replace PACKAGE BODY EOM AS
 			End If;
 		End If;
     Else
-		If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
+		If (Op = 'PRJ' or Op = 'DEV') Then
 			If F_IS_TABLE_EEMPTY('Dev_Locn_Cnt_By_Cust',Debug_Y_OR_N) <= 0 Then
 				-- Select (F_EOM_CHECK_LOG(v_tmp_date ,'Tmp_Locn_Cnt_By_Cust','C_EOM_START_ALL_TEMP_STOR_DATA')) INTO v_query_logfile From Dual;--v_query := q'{Select EOM_REPORT_PKG.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
 				--If UPPER(v_query_logfile) != UPPER(v_tmp_date) OR F_IS_TABLE_EEMPTY('Tmp_Locn_Cnt_By_Cust',Debug_Y_OR_N) <= 0 Then
@@ -364,28 +371,28 @@ create or replace PACKAGE BODY EOM AS
 	End If;
 	
 	nCheckpoint := 6;
-	-- SELECT F_EOM_PROCESS_RUN_CHECK(TO_DATE(end_date, 'DD-MON-YY'),'TMP_STOR_ALL_FEES','H4_EOM_ALL_STOR_FEES','') INTO v_query_logfile FROM DUAL;
-	-- SELECT F_EOM_PROCESS_RUN_CHECK(TO_DATE(end_date, 'DD-MON-YY'),'TMP_STOR_ALL_FEES','H4_EOM_ALL_STOR_FEES',Customer)INTO v_query_result2 FROM DUAL;
+	-- SELECT F_EOM_PROCESS_RUN_CHECK(TO_DATE(end_date, 'DD-MON-YY'),'TMP_STOR_ALL_FEES','H_STOR_FEES_A','') INTO v_query_logfile FROM DUAL;
+	-- SELECT F_EOM_PROCESS_RUN_CHECK(TO_DATE(end_date, 'DD-MON-YY'),'TMP_STOR_ALL_FEES','H_STOR_FEES_A',Customer)INTO v_query_result2 FROM DUAL;
 	--If v_query_logfile = 'RUNBOTH' Then
     If (upper(Inter_Y_OR_No) = 'Y') Then
-      EOM_INTERCO_REPORTING.H4_EOM_ALL_STOR_FEES(p_array_size_start,start_date,end_date,Customer,Analysis,Op);
-      EOM_INTERCO_REPORTING.H4_EOM_ALL_STOR(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
+      EOM_INTERCO_REPORTING.H_STOR_FEES_A(p_array_size_start,start_date,end_date,Customer,Analysis,Op,Debug_Y_OR_N);
+      EOM_INTERCO_REPORTING.H_STOR_FEES_B(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op,Debug_Y_OR_N);
       If (upper(Debug_Y_OR_N) = 'Y') Then
-            DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Running H4_EOM_ALL_STOR_FEES & H4_EOM_ALL_STOR for ALL based on to date from EOM logs - v_query_logfile is ' ||  v_query_logfile || '- for end date being ' || TO_DATE(end_date, 'DD-MON-YY') || ' Customer was ' || Customer || ' and Analysis was ' || Analysis ||
-            ' and process was H4_EOM_ALL_STOR_FEES' );
+            DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Running H_STOR_FEES_A & H_STOR_FEES_B for ALL based on to date from EOM logs - v_query_logfile is ' ||  v_query_logfile || '- for end date being ' || TO_DATE(end_date, 'DD-MON-YY') || ' Customer was ' || Customer || ' and Analysis was ' || Analysis ||
+            ' and process was H_STOR_FEES_A' );
       End If;
     Else
-      IQ_EOM_REPORTING.H4_EOM_ALL_STOR_FEES(p_array_size_start,start_date,end_date,Customer,Analysis,Op);
-      IQ_EOM_REPORTING.H4_EOM_ALL_STOR(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
+      IQ_EOM_REPORTING.H_STOR_FEES_A(p_array_size_start,start_date,end_date,Customer,Analysis,Op,Debug_Y_OR_N);
+      IQ_EOM_REPORTING.H_STOR_FEES_B(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op,Debug_Y_OR_N);
       If (upper(Debug_Y_OR_N) = 'Y') Then
-            DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Running H4_EOM_ALL_STOR_FEES & H4_EOM_ALL_STOR for ALL based on to date from EOM logs - v_query_logfile is ' || v_query_logfile || '- for end date being ' || TO_DATE(end_date, 'DD-MON-YY') || ' Customer was ' || Customer || ' and Analysis was ' || Analysis ||
-          ' and process was H4_EOM_ALL_STOR_FEES' ); 
+            DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Running H_STOR_FEES_A & H_STOR_FEES_B for ALL based on to date from EOM logs - v_query_logfile is ' || v_query_logfile || '- for end date being ' || TO_DATE(end_date, 'DD-MON-YY') || ' Customer was ' || Customer || ' and Analysis was ' || Analysis ||
+          ' and process was H_STOR_FEES_A' ); 
       End If;
     End If;
-	-- DBMS_OUTPUT.PUT_LINE('Running F_EOM_PROCESS_RUN_CHECK for ALL based on to date from EOM logs - v_query_logfile is ' || v_query_logfile || '- for end date being ' || TO_DATE(end_date, 'DD-MON-YY') || ' and process was H4_EOM_ALL_STOR_FEES' );
+	-- DBMS_OUTPUT.PUT_LINE('Running F_EOM_PROCESS_RUN_CHECK for ALL based on to date from EOM logs - v_query_logfile is ' || v_query_logfile || '- for end date being ' || TO_DATE(end_date, 'DD-MON-YY') || ' and process was H_STOR_FEES_A' );
 	--ElsIf v_query_result2 = 'RUNCUST' Then
-	-- IQ_EOM_REPORTING.H4_EOM_ALL_STOR(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy);
-	-- DBMS_OUTPUT.PUT_LINE('Running F_EOM_PROCESS_RUN_CHECK for CUST based on to date from EOM logs - v_query_result2 is ' || v_query_result2 || '-  for end date being ' || TO_DATE(end_date, 'DD-MON-YY') || ' and process was H4_EOM_ALL_STOR_FEES' );
+	-- IQ_EOM_REPORTING.H_STOR_FEES_B(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy);
+	-- DBMS_OUTPUT.PUT_LINE('Running F_EOM_PROCESS_RUN_CHECK for CUST based on to date from EOM logs - v_query_result2 is ' || v_query_result2 || '-  for end date being ' || TO_DATE(end_date, 'DD-MON-YY') || ' and process was H_STOR_FEES_A' );
 	-- Else
 	-- DBMS_OUTPUT.PUT_LINE('Running F_EOM_PROCESS_RUN_CHECK storage nothing' || 'v_query_result2 is ' || v_query_result2 || '-- v_query_logfile is ' || v_query_logfile || '-' );
 	-- End If;
@@ -483,7 +490,7 @@ create or replace PACKAGE BODY EOM AS
       
 	nCheckpoint := 84;
 	If (upper(Inter_Y_OR_No) = 'Y') Then
-		If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
+		If (Op = 'PRJ' or Op = 'DEV') Then
 			Select (EOM_INTERCO_REPORTING.F_EOM_CHECK_CUST_LOG(Customer ,'DEV_HANDLING_FEES','G4_HANDLING_FEES_F',Op)) INTO v_query_result2 From Dual;
 			Select (EOM_INTERCO_REPORTING.F_EOM_CHECK_LOG(v_tmp_date ,'DEV_HANDLING_FEES','G4_HANDLING_FEES_F',Op)) INTO v_query_logfile From Dual;
 		Else
@@ -491,7 +498,7 @@ create or replace PACKAGE BODY EOM AS
 			Select (EOM_INTERCO_REPORTING.F_EOM_CHECK_LOG(v_tmp_date ,'TMP_HANDLING_FEES','G4_HANDLING_FEES_F',Op)) INTO v_query_logfile From Dual;
 		End If;
 	Else
-		If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
+		If (Op = 'PRJ' or Op = 'DEV') Then
 			Select (IQ_EOM_REPORTING.F_EOM_CHECK_CUST_LOG(Customer ,'DEV_HANDLING_FEES','G4_HANDLING_FEES_F',Op)) INTO v_query_result2 From Dual;
 			Select (IQ_EOM_REPORTING.F_EOM_CHECK_LOG(v_tmp_date ,'DEV_HANDLING_FEES','G4_HANDLING_FEES_F',Op)) INTO v_query_logfile From Dual;
 		Else
@@ -500,10 +507,10 @@ create or replace PACKAGE BODY EOM AS
 		End If;      
 	End If;
 	If (upper(Debug_Y_OR_N) = 'Y') Then
-            DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Running F_EOM_CHECK_CUST_LOG & F_EOM_CHECK_LOG for ALL based on to date from EOM logs');
+              DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Running F_EOM_CHECK_CUST_LOG & F_EOM_CHECK_LOG for ALL based on to date from EOM logs');
     End If;
     If (upper(Inter_Y_OR_No) = 'Y') Then
-		If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
+		If (Op = 'PRJ' or Op = 'DEV') Then
 			If F_IS_TABLE_EEMPTY('DEV_HANDLING_FEES',Debug_Y_OR_N) <= 0 Then
 				If (upper(Debug_Y_OR_N) = 'Y') Then
 					DBMS_OUTPUT.PUT_LINE('7th Need to RUN_ONCE G4_HANDLING_FEES_F for all customers as table is empty. result was ' || UPPER(v_query_result2) 
@@ -615,7 +622,7 @@ create or replace PACKAGE BODY EOM AS
 			END IF;
 		End If;
     Else
-		If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
+		If (Op = 'PRJ' or Op = 'DEV') Then
 			If F_IS_TABLE_EEMPTY('DEV_HANDLING_FEES',Debug_Y_OR_N) <= 0 Then
 				If (upper(Debug_Y_OR_N) = 'Y') Then
 					DBMS_OUTPUT.PUT_LINE('7th Need to RUN_ONCE G4_HANDLING_FEES_F for all customers as table is empty. result was ' || UPPER(v_query_result2) 
@@ -732,8 +739,8 @@ create or replace PACKAGE BODY EOM AS
 	End If;
     
 	nCheckpoint := 85;
-    If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
-		If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
+    If (Op = 'PRJ' or Op = 'DEV') Then
+		If (Op = 'PRJ' or Op = 'DEV') Then
 			Select (EOM_INTERCO_REPORTING.F_EOM_CHECK_CUST_LOG(Customer ,'DEV_PICK_FEES','G5_PICK_FEES_F',Op)) INTO v_query_result2 From Dual;--v_query := q'{Select IQ_EOM_REPORTING.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
 			Select (EOM_INTERCO_REPORTING.F_EOM_CHECK_LOG(v_tmp_date ,'DEV_PICK_FEES','G5_PICK_FEES_F',Op)) INTO v_query_logfile From Dual;
 			If F_IS_TABLE_EEMPTY('DEV_PICK_FEES',Debug_Y_OR_N) <= 0 Then
@@ -825,7 +832,7 @@ create or replace PACKAGE BODY EOM AS
 			END IF;
 		End If;
 	Else
-		If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
+		If (Op = 'PRJ' or Op = 'DEV') Then
 			Select (IQ_EOM_REPORTING.F_EOM_CHECK_CUST_LOG(Customer ,'DEV_PICK_FEES','G5_PICK_FEES_F',Op)) INTO v_query_result2 From Dual;--v_query := q'{Select IQ_EOM_REPORTING.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
 			Select (IQ_EOM_REPORTING.F_EOM_CHECK_LOG(v_tmp_date ,'DEV_PICK_FEES','G5_PICK_FEES_F',Op)) INTO v_query_logfile From Dual;
 			If F_IS_TABLE_EEMPTY('DEV_PICK_FEES',Debug_Y_OR_N) <= 0 Then
@@ -1013,13 +1020,13 @@ create or replace PACKAGE BODY EOM AS
       
 	nCheckpoint := 99;
     If (upper(Inter_Y_OR_No) = 'Y') Then
-		If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
+		If (Op = 'PRJ' or Op = 'DEV') Then
 			v_query := 'TRUNCATE TABLE DEV_ALL_FEES';
 		Else
 			v_query := 'TRUNCATE TABLE TMP_ALL_FEES';
 		End If;
 	Else
-		If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
+		If (Op = 'PRJ' or Op = 'DEV') Then
 			v_query := 'TRUNCATE TABLE DEV_ALL_FEES';
 		Else
 			v_query := 'TRUNCATE TABLE TMP_ALL_FEES';
@@ -1039,13 +1046,13 @@ create or replace PACKAGE BODY EOM AS
 		
 	nCheckpoint := 100;
     If (upper(Inter_Y_OR_No) = 'Y') Then
-		If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
+		If (Op = 'PRJ' or Op = 'DEV') Then
 			v_query := 'TRUNCATE TABLE DEV_ALL_FEES_F';
 		Else
 			v_query := 'TRUNCATE TABLE TMP_ALL_FEES_F';
 		End If;
 	Else
-		If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
+		If (Op = 'PRJ' or Op = 'DEV') Then
 			v_query := 'TRUNCATE TABLE DEV_ALL_FEES_F';
 		Else
 			v_query := 'TRUNCATE TABLE TMP_ALL_FEES_F';
@@ -1064,33 +1071,42 @@ create or replace PACKAGE BODY EOM AS
 	
 	nCheckpoint := 101;
 	If (upper(Inter_Y_OR_No) = 'Y') Then
-		----DBMS_OUTPUT.PUT_LINE('START Z TMP_ALL_FEES for ' || sFileName|| ' saved in ' || sPath );
-		If ( Customer = 'V-SUPPAR' ) Then
-			nCheckpoint := 101.1;
-			EOM_INTERCO_REPORTING.J_EOM_CUSTOMER_FEES_SUP(p_array_size_start,start_date,end_date,Customer,sFileName,Op);
-		Else
-			EOM_INTERCO_REPORTING.Z1_TMP_ALL_FEES_TO_CSV(sFileName,Op);
-		End If;
+		DBMS_OUTPUT.PUT_LINE('no customer specific fees needed for intercompany' );
+--		
 	Else
-		If ( Customer = 'V-SUPPAR' ) Then
-			nCheckpoint := 101.2;
-			IQ_EOM_REPORTING.J_EOM_CUSTOMER_FEES_SUP(p_array_size_start,start_date,end_date,Customer,sFileName,Op);
-		Else
+--		If ( Customer = 'V-SUPPAR' ) Then
+--			nCheckpoint := 101.2;
+--			IQ_EOM_REPORTING.J_EOM_CUSTOMER_FEES_SUP(p_array_size_start,start_date,end_date,Customer,sFileName,Op);
+--		Else
+--			IQ_EOM_REPORTING.Z1_TMP_ALL_FEES_TO_CSV(sFileName,Op);
+--		End If;
+    If ( Customer = 'V-SUPPAR' ) Then
+			nCheckpoint := 151;
+			If (Op = 'PRJ' or Op = 'DEV') Then
+        DBMS_OUTPUT.PUT_LINE('Running J_EOM_CUSTOMER_FEES_SUP , date from is  ' || start_date || ' and to date is ' || end_date || ' and customer is ' || Customer  || '.');
+      End If;  
+      IQ_EOM_REPORTING.J_EOM_CUSTOMER_FEES_SUP(p_array_size_start,start_date,end_date,Customer,sFileName,Op);
+		elsIf ( Customer = 'N-AAS' ) Then
+			nCheckpoint := 152;
+			IQ_EOM_REPORTING.J_EOM_CUSTOMER_FEES_AAS(p_array_size_start,start_date,end_date,Customer,sFileName,Op);
+    Else
 			IQ_EOM_REPORTING.Z1_TMP_ALL_FEES_TO_CSV(sFileName,Op);
 		End If;
 	End If;
+  
+  
 	v_query2 :=  SQL%ROWCOUNT;
 	-- --DBMS_OUTPUT.PUT_LINE('Z EOM Successfully Ran EOM_RUN_ALL for ' || Customer|| ' in ' ||(round((dbms_utility.get_time-l_start)/100, 2) ||
 	--' Seconds...' );
 	v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
     If (upper(Inter_Y_OR_No) = 'Y') Then
-		If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
+		If (Op = 'PRJ' or Op = 'DEV') Then
 			EOM_INTERCO_REPORTING.EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'Z_EOM_RUN_ALL','MERGE','DEV',v_time_taken,SYSTIMESTAMP,Customer);
 		Else
 			EOM_INTERCO_REPORTING.EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'Z_EOM_RUN_ALL','MERGE','TMP',v_time_taken,SYSTIMESTAMP,Customer);
 		End If;
 	Else
-		If (Op = 'PRJ' or Op = 'PRJ_TEST') Then
+		If (Op = 'PRJ' or Op = 'DEV') Then
 			IQ_EOM_REPORTING.EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'Z_EOM_RUN_ALL','MERGE','DEV',v_time_taken,SYSTIMESTAMP,Customer);
 		Else
 			IQ_EOM_REPORTING.EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'Z_EOM_RUN_ALL','MERGE','TMP',v_time_taken,SYSTIMESTAMP,Customer);
@@ -1109,5 +1125,6 @@ create or replace PACKAGE BODY EOM AS
 			DBMS_OUTPUT.PUT_LINE('EOM_RUN_ALL failed at checkpoint ' || nCheckpoint || ' with error ' || SQLCODE || ' : ' || SQLERRM);
 			RAISE;
 	END Z3_EOM_RUN_ALL;
-
+  
+  
 END EOM;
