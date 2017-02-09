@@ -13,7 +13,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
     BEGIN
   
       nCheckpoint := 1;
-      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      If (sOp = 'PRJ' or sOp = 'DEV') Then
         EXECUTE IMMEDIATE	'TRUNCATE  TABLE Dev_Group_Cust';
       Else
         EXECUTE IMMEDIATE	'TRUNCATE  TABLE Tmp_Group_Cust';
@@ -87,7 +87,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
       End
           
       */
-      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      If (sOp = 'PRJ' or sOp = 'DEV') Then
       EXECUTE IMMEDIATE 'INSERT into DEV_GROUP_CUST(sCust,sGroupCust,nLevel,AREA,TERR,RMDBL2,ANAL,SOURCE,OW_CAT )
                           SELECT RM_CUST
                             ,(
@@ -126,7 +126,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
       End If;
   
       If (upper(Debug_Y_OR_N) = 'Y') Then
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
           DBMS_OUTPUT.PUT_LINE('INTERCOMPANY - Successfully truncated, recreated AND populated Dev_Group_Cust');
         Else
           DBMS_OUTPUT.PUT_LINE('INTERCOMPANY - Successfully truncated, recreated AND populated Tmp_Group_Cust');
@@ -136,7 +136,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
       -- --DBMS_OUTPUT.PUT_LINE('A EOM Group Cust temp tables  - There was ' || v_query2 || ' records inserted in ' ||  (round((dbms_utility.get_time-l_start)/100, 6) ||
       --  ' Seconds...' ));
       v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      If (sOp = 'PRJ' or sOp = 'DEV') Then
         EOM_INSERT_LOG(SYSTIMESTAMP ,NULL,NULL,'A_EOM_GROUP_CUST','RM','Dev_Group_Cust2',v_time_taken,SYSTIMESTAMP,NULL);
       Else
         EOM_INSERT_LOG(SYSTIMESTAMP ,NULL,NULL,'A_EOM_GROUP_CUST','RM','Tmp_Group_Cust2',v_time_taken,SYSTIMESTAMP,NULL);
@@ -198,7 +198,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
   
   
       /*Insert fresh temp data*/
-      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      If (sOp = 'PRJ' or sOp = 'DEV') Then
          /* Truncate all temp tables*/
       
         nCheckpoint := 1;
@@ -356,7 +356,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
     BEGIN
     
      nCheckpoint := 15;
-     If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+     If (sOp = 'PRJ' or sOp = 'DEV') Then
       v_query2 := 'TRUNCATE TABLE Dev_Locn_Cnt_By_Cust';
      Else
       v_query2 := 'TRUNCATE TABLE Tmp_Locn_Cnt_By_Cust';
@@ -365,7 +365,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
      
      
      nCheckpoint := 151;
-     If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+     If (sOp = 'PRJ' or sOp = 'DEV') Then
      v_query := q'{INSERT INTO Dev_Locn_Cnt_By_Cust
               SELECT Count(DISTINCT NA_STOCK) AS CountOfStocks, IL_LOCN, r.sGroupCust,
                         CASE WHEN Upper(substr(IL_NOTE_2,0,1)) = 'Y' THEN 'E- Pallets'
@@ -410,7 +410,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
       RETURN;
       v_query2 :=  SQL%ROWCOUNT;
       COMMIT;
-      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      If (sOp = 'PRJ' or sOp = 'DEV') Then
         If F_IS_TABLE_EEMPTY('Dev_Locn_Cnt_By_Cust',Debug_Y_OR_N) <= 0 Then
        
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
@@ -454,7 +454,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
         ,sAnalysis IN VARCHAR2
       )
       IS    
-      --If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      --If (sOp = 'PRJ' or sOp = 'DEV') Then
       --  TYPE ARRAY IS TABLE OF DEV_ALL_FREIGHT_ALL%ROWTYPE;
      -- Else
         TYPE ARRAY IS TABLE OF TMP_ALL_FREIGHT_ALL%ROWTYPE;
@@ -472,177 +472,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
       sCourier         VARCHAR2(20) := 'COURIER%';
       sServ8             VARCHAR2(20) := 'SERV8';
       sServ3             VARCHAR2(20) := 'SERV%';
-      CURSOR c
-      IS
-        /* F_EOM_TMP_ALL_FREIGHT_ALL freight fees*/
-      SELECT    s.SH_CUST                AS "Customer",
-          r.sGroupCust              AS "Parent",
-          s.SH_SPARE_STR_4         AS "CostCentre",
-          s.SH_ORDER               AS "Order",
-          s.SH_SPARE_STR_5         AS "OrderwareNum",
-          s.SH_CUST_REF            AS "CustomerRef",
-          t.ST_PICK                AS "PickNum",
-          t.ST_PSLIP               AS "DespNote",
-          substr(To_Char(d.SD_ADD_DATE),0,10)            AS "DespatchDate",
-          substr(To_Char(s.SH_ADD_DATE),0,10) AS "OrderDate",
-          CASE  WHEN  d.SD_SELL_PRICE >= 0.1 AND   d.SD_ADD_OP = 'RV'  THEN 'Manual Freight Fee'
-                WHEN  d.SD_STOCK like 'COURIER%' AND d.SD_SELL_PRICE >= 0.1 AND LTRIM(RTRIM(d.SD_XX_PICKLIST_NUM)) IS NOT NULL AND d.SD_ADD_OP = 'SERV2' THEN 'Freight Fee'
-                WHEN  d.SD_ADD_OP != 'RV' AND   d.SD_ADD_OP != 'SERV2' AND d.SD_XX_FREIGHT_CHG > 0.1 THEN 'XX Manual Freight Fee'
-                WHEN  d.SD_ADD_OP = 'SERV2' AND d.SD_XX_FREIGHT_CHG > 0.1 THEN 'XX? Manual Freight Fee'
-                WHEN  d.SD_ADD_OP != 'RV' AND   d.SD_ADD_OP != 'SERV2' AND d.SD_SELL_PRICE >= 0.1 THEN 'Other Manual Freight Fee'
-                ELSE 'UnPricedManualFreight'
-          END                      AS "FeeType",
-          d.SD_STOCK               AS "Item",
-          REPLACE(d.SD_DESC,',','|')              AS "Description",
-          CASE  WHEN d.SD_LINE IS NOT NULL THEN  1
-                ELSE NULL
-          END                     AS "Qty",
-          CASE  WHEN d.SD_LINE IS NOT NULL THEN  '1'
-                ELSE NULL
-          END                      AS "UOI",
-          CASE  WHEN  d.SD_SELL_PRICE >= 0.1 AND   d.SD_ADD_OP = 'RV'  THEN f_calc_freight_fee(d.SD_SELL_PRICE,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER) 
-                WHEN  d.SD_STOCK like 'COURIER%' AND d.SD_SELL_PRICE >= 0.1 AND LTRIM(RTRIM(d.SD_XX_PICKLIST_NUM)) IS NOT NULL AND d.SD_ADD_OP = 'SERV2' THEN f_calc_freight_fee(d.SD_SELL_PRICE,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER) 
-                WHEN  d.SD_ADD_OP != 'RV' AND   d.SD_ADD_OP != 'SERV2' AND d.SD_XX_FREIGHT_CHG > 0.1 THEN f_calc_freight_fee(d.SD_XX_FREIGHT_CHG,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER)
-                WHEN  d.SD_ADD_OP = 'SERV2' AND d.SD_XX_FREIGHT_CHG > 0.1 THEN f_calc_freight_fee(d.SD_XX_FREIGHT_CHG,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER)
-                WHEN  d.SD_ADD_OP != 'RV' AND   d.SD_ADD_OP != 'SERV2' AND d.SD_SELL_PRICE >= 0.1 THEN f_calc_freight_fee(d.SD_SELL_PRICE,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER) 
-                ELSE TO_NUMBER('999')
-          END AS "UnitPriceMarkedUp", 
-          d.SD_SELL_PRICE  AS "OWUnitPrice",
-          CASE  WHEN  d.SD_SELL_PRICE >= 0.1 AND   d.SD_ADD_OP = 'RV'  THEN f_calc_freight_fee(d.SD_SELL_PRICE,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER) 
-                WHEN  d.SD_STOCK like 'COURIER%' AND d.SD_SELL_PRICE >= 0.1 AND LTRIM(RTRIM(d.SD_XX_PICKLIST_NUM)) IS NOT NULL AND d.SD_ADD_OP = 'SERV2' THEN f_calc_freight_fee(d.SD_SELL_PRICE,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER) 
-                WHEN  d.SD_ADD_OP != 'RV' AND   d.SD_ADD_OP != 'SERV2' AND d.SD_XX_FREIGHT_CHG > 0.1 THEN f_calc_freight_fee(d.SD_XX_FREIGHT_CHG,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER)
-                WHEN  d.SD_ADD_OP = 'SERV2' AND d.SD_XX_FREIGHT_CHG > 0.1 THEN f_calc_freight_fee(d.SD_XX_FREIGHT_CHG,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER)
-                WHEN  d.SD_ADD_OP != 'RV' AND   d.SD_ADD_OP != 'SERV2' AND d.SD_SELL_PRICE >= 0.1 THEN f_calc_freight_fee(d.SD_SELL_PRICE,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER) 
-                ELSE d.SD_EXCL   
-          END AS "DExcl",
-          CASE  WHEN  d.SD_SELL_PRICE >= 0.1 AND   d.SD_ADD_OP = 'RV'  THEN f_calc_freight_fee(d.SD_SELL_PRICE,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER) * 1.1
-                WHEN  d.SD_STOCK like 'COURIER%' AND d.SD_SELL_PRICE >= 0.1 AND LTRIM(RTRIM(d.SD_XX_PICKLIST_NUM)) IS NOT NULL AND d.SD_ADD_OP = 'SERV2' THEN f_calc_freight_fee(d.SD_SELL_PRICE,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER)  * 1.1
-                WHEN  d.SD_ADD_OP != 'RV' AND   d.SD_ADD_OP != 'SERV2' AND d.SD_XX_FREIGHT_CHG > 0.1 THEN f_calc_freight_fee(d.SD_XX_FREIGHT_CHG,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER) * 1.1
-                WHEN  d.SD_ADD_OP = 'SERV2' AND d.SD_XX_FREIGHT_CHG > 0.1 THEN f_calc_freight_fee(d.SD_XX_FREIGHT_CHG,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER) * 1.1
-                WHEN  d.SD_ADD_OP != 'RV' AND   d.SD_ADD_OP != 'SERV2' AND d.SD_SELL_PRICE >= 0.1 THEN f_calc_freight_fee(d.SD_SELL_PRICE,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER)  * 1.1
-                ELSE d.SD_INCL   
-          END AS "DIncl",
-          d.SD_XX_FREIGHT_CHG                   AS "ReportingPrice",
-          CASE  WHEN regexp_substr(SD_NOTE_1,'\d') IS NOT NULL THEN TO_NUMBER(SD_NOTE_1) --TO_NUMBER(d.SD_NOTE_1,'fm999999.99999999','nls_numeric_characters = ''.,''')      
-                ELSE TO_NUMBER('999')
-          END AS "ReportingPrice",
-          d.SD_COST_PRICE           AS "COSTPRICE",
-          REPLACE(s.SH_ADDRESS, ',')             AS "Address",
-          REPLACE(s.SH_SUBURB, ',')              AS "Address2",
-          REPLACE(s.SH_CITY, ',')                AS "Suburb",
-          s.SH_STATE               AS "State",
-          s.SH_POST_CODE           AS "Postcode",
-          REPLACE(s.SH_NOTE_1, ',')              AS "DeliverTo",
-          REPLACE(s.SH_NOTE_2, ',')              AS "AttentionTo" ,
-          t.ST_WEIGHT              AS "Weight",
-          t.ST_PACKAGES            AS "Packages",
-          s.SH_SPARE_DBL_9         AS "OrderSource",
-          r.area AS "Pallet/Shelf Space as area", 
-          r.rmdbl2 AS "Locn_as rmdbl2", 
-          d.SD_LINE, 
-          CASE  WHEN regexp_substr(s.SH_SPARE_STR_3,'[a-z]+', 1, 2) IS NOT NULL THEN  s.SH_SPARE_STR_3 || '@' || s.SH_SPARE_STR_1
-                ELSE ''
-          END AS Email,
-          'N/A' AS Brand,
-          r.terr,null,
-          s.SH_XX_FEE_WAIVE,d.SD_COST_PRICE,
-          s.SH_SPARE_INT_4,s.SH_CAMPAIGN,
-          d.SD_ADD_DATE,d.SD_ADD_OP,
-          d.SD_XX_FREIGHT_CHG
-    FROM  PWIN175.SD d
-          INNER JOIN PWIN175.SH s  ON s.SH_ORDER  = d.SD_ORDER
-          LEFT OUTER JOIN PWIN175.ST t  ON LTRIM(RTRIM(t.ST_PICK))  = LTRIM(RTRIM(d.SD_XX_PICKLIST_NUM))
-          LEFT JOIN Tmp_Group_Cust r ON r.sCust = s.SH_CUST
-    WHERE d.SD_STOCK IN ('COURIERM','COURIERS','COURIER','DETENTIONTIMEM','DETENTIONTIMES','FREIGHTDUTY')
-    AND   d.SD_ADD_DATE >= startdate AND d.SD_ADD_DATE <= enddate
-    GROUP BY  
-          s.SH_CUST,s.SH_SPARE_STR_4,s.SH_CAMPAIGN,s.SH_ORDER,s.SH_XX_FEE_WAIVE,s.SH_SPARE_INT_4,s.SH_CAMPAIGN,
-          s.SH_ADDRESS,s.SH_SUBURB,s.SH_CITY,s.SH_STATE,s.SH_POST_CODE,s.SH_NOTE_1,s.SH_ADD_DATE,s.SH_NOTE_2,
-          s.SH_SPARE_DBL_9,s.SH_SPARE_STR_5,s.SH_CUST_REF,s.SH_SPARE_STR_3,s.SH_SPARE_STR_1,
-          t.ST_PICK,t.ST_PSLIP,t.ST_DESP_DATE,t.ST_WEIGHT,t.ST_PACKAGES,t.ST_SPARE_DBL_1, 
-          d.SD_XX_PICKLIST_NUM,d.SD_QTY_ORDER,d.SD_QTY_ORDER,d.SD_ORDER,d.SD_XX_FREIGHT_CHG,d.SD_COST_PRICE,d.SD_NOTE_1,d.SD_COST_PRICE,
-          d.SD_STOCK,d.SD_ADD_OP,d.SD_DESC,d.SD_LINE,d.SD_EXCL,d.SD_INCL,d.SD_NOTE_1,d.SD_SELL_PRICE,d.SD_XX_OW_UNIT_PRICE,d.SD_XX_FREIGHT_CHG,
-          d.SD_XX_PSLIP_NUM,d.SD_ADD_DATE,
-          r.sGroupCust,r.terr,r.area,r.rmdbl2
-          
-          UNION ALL
-          
-          
-     SELECT    s.SH_CUST                AS "Customer",
-          r.sGroupCust              AS "Parent",
-          s.SH_SPARE_STR_4         AS "CostCentre",
-          s.SH_ORDER               AS "Order",
-          s.SH_SPARE_STR_5         AS "OrderwareNum",
-          s.SH_CUST_REF            AS "CustomerRef",
-          d.SD_XX_PICKLIST_NUM                AS "PickNum",
-          d.SD_XX_PSLIP_NUM               AS "DespNote",
-          substr(To_Char(d.SD_ADD_DATE),0,10)            AS "DespatchDate",
-          substr(To_Char(s.SH_ADD_DATE),0,10) AS "OrderDate",
-          CASE  WHEN d.SD_XX_FREIGHT_CHG >= 0.1  THEN 'XX Van Manual Freight Fee'
-			          ELSE 'UnPricedXXFreight'
-			          END                      AS "FeeType",
-          d.SD_STOCK               AS "Item",
-          REPLACE(d.SD_DESC,',','|')              AS "Description",
-          CASE  WHEN d.SD_LINE IS NOT NULL THEN  1
-                ELSE NULL
-          END                     AS "Qty",
-          CASE  WHEN d.SD_LINE IS NOT NULL THEN  '1'
-                ELSE NULL
-          END                      AS "UOI",
-         f_calc_freight_fee(d.SD_XX_FREIGHT_CHG,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER) AS "UnitPriceMarkedUp", 
-          CASE  WHEN d.SD_SELL_PRICE >= 1 THEN f_calc_freight_fee(d.SD_XX_FREIGHT_CHG,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER)      
-          ELSE d.SD_XX_FREIGHT_CHG   
-          END AS "OWUnitPrice",
-          CASE  WHEN d.SD_XX_FREIGHT_CHG >= 1 THEN f_calc_freight_fee(d.SD_XX_FREIGHT_CHG,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER)      
-          ELSE d.SD_EXCL   
-          END AS "DExcl",
-          CASE  WHEN d.SD_XX_FREIGHT_CHG >= 1 THEN f_calc_freight_fee(d.SD_XX_FREIGHT_CHG,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER) * 1.1     
-          ELSE d.SD_INCL   
-          END AS "DIncl",
-          d.SD_XX_FREIGHT_CHG                   AS "ReportingPrice",
-          CASE  WHEN regexp_substr(SD_NOTE_1,'\d') IS NOT NULL THEN TO_NUMBER(SD_NOTE_1) --TO_NUMBER(d.SD_NOTE_1,'fm999999.99999999','nls_numeric_characters = ''.,''')      
-                ELSE TO_NUMBER('999')
-          END AS "ReportingPrice",
-          d.SD_COST_PRICE           AS "COSTPRICE",
-          REPLACE(s.SH_ADDRESS, ',')             AS "Address",
-          REPLACE(s.SH_SUBURB, ',')              AS "Address2",
-          REPLACE(s.SH_CITY, ',')                AS "Suburb",
-          s.SH_STATE               AS "State",
-          s.SH_POST_CODE           AS "Postcode",
-          REPLACE(s.SH_NOTE_1, ',')              AS "DeliverTo",
-          REPLACE(s.SH_NOTE_2, ',')              AS "AttentionTo" ,
-          NULL              AS "Weight",
-          NULL            AS "Packages",
-          s.SH_SPARE_DBL_9         AS "OrderSource",
-          r.area AS "Pallet/Shelf Space as area", 
-          r.rmdbl2 AS "Locn_as rmdbl2", 
-          d.SD_LINE, 
-          CASE  WHEN regexp_substr(s.SH_SPARE_STR_3,'[a-z]+', 1, 2) IS NOT NULL THEN  s.SH_SPARE_STR_3 || '@' || s.SH_SPARE_STR_1
-                ELSE ''
-          END AS Email,
-          'N/A' AS Brand,
-          r.terr AS "ownedby as terr",null,
-          s.SH_XX_FEE_WAIVE,d.SD_COST_PRICE,
-          s.SH_SPARE_INT_4,s.SH_CAMPAIGN,
-          d.SD_ADD_DATE,d.SD_ADD_OP,
-          d.SD_XX_FREIGHT_CHG
-    FROM      PWIN175.SD d
-			  INNER JOIN PWIN175.SH s  ON s.SH_ORDER  = d.SD_ORDER
-			  LEFT JOIN Tmp_Group_Cust r ON r.sCust = s.SH_CUST
-	WHERE d.SD_STOCK = 'COURIER'--IN ('COURIERM','COURIERS','COURIER','DETENTIONTIMEM','DETENTIONTIMES','FREIGHTDUTY')
-	AND       d.SD_ADD_DATE >= startdate AND d.SD_ADD_DATE <= enddate
-  AND   d.SD_ADD_OP NOT LIKE 'SERV%' 
-  AND   d.SD_ADD_OP != 'RV'
-    GROUP BY  
-          s.SH_CUST,s.SH_SPARE_STR_4,s.SH_CAMPAIGN,s.SH_ORDER,s.SH_XX_FEE_WAIVE,s.SH_SPARE_INT_4,s.SH_CAMPAIGN,
-          s.SH_ADDRESS,s.SH_SUBURB,s.SH_CITY,s.SH_STATE,s.SH_POST_CODE,s.SH_NOTE_1,s.SH_ADD_DATE,s.SH_NOTE_2,
-          s.SH_SPARE_DBL_9,s.SH_SPARE_STR_5,s.SH_CUST_REF,s.SH_SPARE_STR_3,s.SH_SPARE_STR_1,
-          --t.ST_PICK,t.ST_PSLIP,t.ST_DESP_DATE,t.ST_WEIGHT,t.ST_PACKAGES,t.ST_SPARE_DBL_1, 
-          d.SD_XX_PICKLIST_NUM,d.SD_QTY_ORDER,d.SD_QTY_ORDER,d.SD_ORDER,d.SD_XX_FREIGHT_CHG,d.SD_COST_PRICE,d.SD_NOTE_1,d.SD_COST_PRICE,
-          d.SD_STOCK,d.SD_ADD_OP,d.SD_DESC,d.SD_LINE,d.SD_EXCL,d.SD_INCL,d.SD_NOTE_1,d.SD_SELL_PRICE,d.SD_XX_OW_UNIT_PRICE,d.SD_XX_FREIGHT_CHG,
-          d.SD_XX_PSLIP_NUM,d.SD_ADD_DATE,
-          r.sGroupCust,r.rmdbl2,r.terr,r.area;
-          
+     
        CURSOR canal
       IS
         /* F_EOM_TMP_ALL_FREIGHT_ALL freight fees*/
@@ -656,8 +486,8 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
           t.ST_PSLIP               AS "DespNote",
           substr(To_Char(d.SD_ADD_DATE),0,10)            AS "DespatchDate",
           substr(To_Char(s.SH_ADD_DATE),0,10) AS "OrderDate",
-          CASE  WHEN  d.SD_SELL_PRICE >= 0.1 AND   d.SD_ADD_OP = 'RV'  THEN 'Manual Freight Fee'
-                WHEN  d.SD_STOCK like 'COURIER%' AND d.SD_SELL_PRICE >= 0.1 AND LTRIM(RTRIM(d.SD_XX_PICKLIST_NUM)) IS NOT NULL AND d.SD_ADD_OP = 'SERV2' THEN 'Freight Fee'
+          CASE  WHEN  d.SD_STOCK = 'COURIERM' and d.SD_SELL_PRICE >= 0.1 AND   d.SD_ADD_OP = 'RV'  THEN 'Manual Freight Fee'
+                WHEN  d.SD_STOCK = 'COURIER' AND d.SD_SELL_PRICE >= 0.1 AND LTRIM(RTRIM(d.SD_XX_PICKLIST_NUM)) IS NOT NULL AND d.SD_ADD_OP = 'SERV2' THEN 'Freight Fee'
                 WHEN  d.SD_ADD_OP != 'RV' AND   d.SD_ADD_OP != 'SERV2' AND d.SD_XX_FREIGHT_CHG > 0.1 THEN 'XX Manual Freight Fee'
                 WHEN  d.SD_ADD_OP = 'SERV2' AND d.SD_XX_FREIGHT_CHG > 0.1 THEN 'XX? Manual Freight Fee'
                 WHEN  d.SD_ADD_OP != 'RV' AND   d.SD_ADD_OP != 'SERV2' AND d.SD_SELL_PRICE >= 0.1 THEN 'Other Manual Freight Fee'
@@ -725,9 +555,10 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
           LEFT OUTER JOIN PWIN175.ST t  ON LTRIM(RTRIM(t.ST_PICK))  = LTRIM(RTRIM(d.SD_XX_PICKLIST_NUM))
           LEFT JOIN Tmp_Group_Cust r ON r.sCust = s.SH_CUST
           
-    WHERE d.SD_STOCK IN ('COURIERM','COURIERS','COURIER','DETENTIONTIMEM','DETENTIONTIMES','FREIGHTDUTY')
+    WHERE  d.SD_STOCK IN ('COURIERM','COURIERS','COURIER','DETENTIONTIMEM','DETENTIONTIMES','FREIGHTDUTY')
     AND   d.SD_ADD_DATE >= startdate AND d.SD_ADD_DATE <= enddate
-    AND       r.ANAL = sAnalysis
+    AND   r.sCust IN (SELECT RM_CUST FROM RM WHERE RM_ANAL = sAnalysis AND RM_TYPE = 0 AND RM_ACTIVE = 1 )
+    --AND       r.ANAL = sAnalysis
 
     GROUP BY  
           s.SH_CUST,s.SH_SPARE_STR_4,s.SH_CAMPAIGN,s.SH_ORDER,s.SH_XX_FEE_WAIVE,s.SH_SPARE_INT_4,s.SH_CAMPAIGN,
@@ -802,12 +633,14 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
           d.SD_XX_FREIGHT_CHG
     FROM      PWIN175.SD d
 			  INNER JOIN PWIN175.SH s  ON s.SH_ORDER  = d.SD_ORDER
-			  LEFT JOIN Tmp_Group_Cust r ON r.sCust = s.SH_CUST
-	WHERE d.SD_STOCK = 'COURIER'--IN ('COURIERM','COURIERS','COURIER','DETENTIONTIMEM','DETENTIONTIMES','FREIGHTDUTY')
-	AND       d.SD_ADD_DATE >= startdate AND d.SD_ADD_DATE <= enddate
-  AND   d.SD_ADD_OP NOT LIKE 'SERV%' 
+			  INNER JOIN PWIN175.ST t  ON LTRIM(RTRIM(t.ST_PICK))  = LTRIM(RTRIM(d.SD_XX_PICKLIST_NUM))
+			  INNER JOIN Tmp_Group_Cust r ON r.sCust = s.SH_CUST
+	WHERE d.SD_STOCK IN ('COURIERM','COURIERS','COURIER','DETENTIONTIMEM','DETENTIONTIMES','FREIGHTDUTY')
+	AND   d.SD_ADD_DATE >= startdate AND d.SD_ADD_DATE <= enddate
+    AND   r.sCust IN (SELECT RM_CUST FROM RM WHERE RM_ANAL = sAnalysis AND RM_TYPE = 0 AND RM_ACTIVE = 1 )
+    AND   d.SD_ADD_OP NOT LIKE 'SERV%' 
   AND   d.SD_ADD_OP != 'RV'
-  AND       r.ANAL = sAnalysis
+  --AND       r.ANAL = sAnalysis
 
     GROUP BY  
           s.SH_CUST,s.SH_SPARE_STR_4,s.SH_CAMPAIGN,s.SH_ORDER,s.SH_XX_FEE_WAIVE,s.SH_SPARE_INT_4,s.SH_CAMPAIGN,
@@ -819,177 +652,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
           d.SD_XX_PSLIP_NUM,d.SD_ADD_DATE,r.anal,
           r.sGroupCust,r.rmdbl2,r.terr,r.area;
      
-      CURSOR cDEV
-      IS
-        /* F_EOM_TMP_ALL_FREIGHT_ALL freight fees*/
-      SELECT    s.SH_CUST                AS "Customer",
-          r.sGroupCust              AS "Parent",
-          s.SH_SPARE_STR_4         AS "CostCentre",
-          s.SH_ORDER               AS "Order",
-          s.SH_SPARE_STR_5         AS "OrderwareNum",
-          s.SH_CUST_REF            AS "CustomerRef",
-          t.ST_PICK                AS "PickNum",
-          t.ST_PSLIP               AS "DespNote",
-          substr(To_Char(d.SD_ADD_DATE),0,10)            AS "DespatchDate",
-          substr(To_Char(s.SH_ADD_DATE),0,10) AS "OrderDate",
-          CASE  WHEN  d.SD_SELL_PRICE >= 0.1 AND   d.SD_ADD_OP = 'RV'  THEN 'Manual Freight Fee'
-                WHEN  d.SD_STOCK like 'COURIER%' AND d.SD_SELL_PRICE >= 0.1 AND LTRIM(RTRIM(d.SD_XX_PICKLIST_NUM)) IS NOT NULL AND d.SD_ADD_OP = 'SERV2' THEN 'Freight Fee'
-                WHEN  d.SD_ADD_OP != 'RV' AND   d.SD_ADD_OP != 'SERV2' AND d.SD_XX_FREIGHT_CHG > 0.1 THEN 'XX Manual Freight Fee'
-                WHEN  d.SD_ADD_OP = 'SERV2' AND d.SD_XX_FREIGHT_CHG > 0.1 THEN 'XX? Manual Freight Fee'
-                WHEN  d.SD_ADD_OP != 'RV' AND   d.SD_ADD_OP != 'SERV2' AND d.SD_SELL_PRICE >= 0.1 THEN 'Other Manual Freight Fee'
-                ELSE 'UnPricedManualFreight'
-          END                      AS "FeeType",
-          d.SD_STOCK               AS "Item",
-          REPLACE(d.SD_DESC,',','|')              AS "Description",
-          CASE  WHEN d.SD_LINE IS NOT NULL THEN  1
-                ELSE NULL
-          END                     AS "Qty",
-          CASE  WHEN d.SD_LINE IS NOT NULL THEN  '1'
-                ELSE NULL
-          END                      AS "UOI",
-          CASE  WHEN  d.SD_SELL_PRICE >= 0.1 AND   d.SD_ADD_OP = 'RV'  THEN f_calc_freight_fee(d.SD_SELL_PRICE,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER) 
-                WHEN  d.SD_STOCK like 'COURIER%' AND d.SD_SELL_PRICE >= 0.1 AND LTRIM(RTRIM(d.SD_XX_PICKLIST_NUM)) IS NOT NULL AND d.SD_ADD_OP = 'SERV2' THEN f_calc_freight_fee(d.SD_SELL_PRICE,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER) 
-                WHEN  d.SD_ADD_OP != 'RV' AND   d.SD_ADD_OP != 'SERV2' AND d.SD_XX_FREIGHT_CHG > 0.1 THEN f_calc_freight_fee(d.SD_XX_FREIGHT_CHG,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER)
-                WHEN  d.SD_ADD_OP = 'SERV2' AND d.SD_XX_FREIGHT_CHG > 0.1 THEN f_calc_freight_fee(d.SD_XX_FREIGHT_CHG,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER)
-                WHEN  d.SD_ADD_OP != 'RV' AND   d.SD_ADD_OP != 'SERV2' AND d.SD_SELL_PRICE >= 0.1 THEN f_calc_freight_fee(d.SD_SELL_PRICE,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER) 
-                ELSE TO_NUMBER('999')
-          END AS "UnitPriceMarkedUp", 
-          d.SD_SELL_PRICE  AS "OWUnitPrice",
-          CASE  WHEN  d.SD_SELL_PRICE >= 0.1 AND   d.SD_ADD_OP = 'RV'  THEN f_calc_freight_fee(d.SD_SELL_PRICE,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER) 
-                WHEN  d.SD_STOCK like 'COURIER%' AND d.SD_SELL_PRICE >= 0.1 AND LTRIM(RTRIM(d.SD_XX_PICKLIST_NUM)) IS NOT NULL AND d.SD_ADD_OP = 'SERV2' THEN f_calc_freight_fee(d.SD_SELL_PRICE,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER) 
-                WHEN  d.SD_ADD_OP != 'RV' AND   d.SD_ADD_OP != 'SERV2' AND d.SD_XX_FREIGHT_CHG > 0.1 THEN f_calc_freight_fee(d.SD_XX_FREIGHT_CHG,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER)
-                WHEN  d.SD_ADD_OP = 'SERV2' AND d.SD_XX_FREIGHT_CHG > 0.1 THEN f_calc_freight_fee(d.SD_XX_FREIGHT_CHG,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER)
-                WHEN  d.SD_ADD_OP != 'RV' AND   d.SD_ADD_OP != 'SERV2' AND d.SD_SELL_PRICE >= 0.1 THEN f_calc_freight_fee(d.SD_SELL_PRICE,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER) 
-                ELSE d.SD_EXCL   
-          END AS "DExcl",
-          CASE  WHEN  d.SD_SELL_PRICE >= 0.1 AND   d.SD_ADD_OP = 'RV'  THEN f_calc_freight_fee(d.SD_SELL_PRICE,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER) * 1.1
-                WHEN  d.SD_STOCK like 'COURIER%' AND d.SD_SELL_PRICE >= 0.1 AND LTRIM(RTRIM(d.SD_XX_PICKLIST_NUM)) IS NOT NULL AND d.SD_ADD_OP = 'SERV2' THEN f_calc_freight_fee(d.SD_SELL_PRICE,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER)  * 1.1
-                WHEN  d.SD_ADD_OP != 'RV' AND   d.SD_ADD_OP != 'SERV2' AND d.SD_XX_FREIGHT_CHG > 0.1 THEN f_calc_freight_fee(d.SD_XX_FREIGHT_CHG,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER) * 1.1
-                WHEN  d.SD_ADD_OP = 'SERV2' AND d.SD_XX_FREIGHT_CHG > 0.1 THEN f_calc_freight_fee(d.SD_XX_FREIGHT_CHG,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER) * 1.1
-                WHEN  d.SD_ADD_OP != 'RV' AND   d.SD_ADD_OP != 'SERV2' AND d.SD_SELL_PRICE >= 0.1 THEN f_calc_freight_fee(d.SD_SELL_PRICE,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER)  * 1.1
-                ELSE d.SD_INCL   
-          END AS "DIncl",
-          d.SD_XX_FREIGHT_CHG                   AS "ReportingPrice",
-          CASE  WHEN regexp_substr(SD_NOTE_1,'\d') IS NOT NULL THEN TO_NUMBER(SD_NOTE_1) --TO_NUMBER(d.SD_NOTE_1,'fm999999.99999999','nls_numeric_characters = ''.,''')      
-                ELSE TO_NUMBER('999')
-          END AS "ReportingPrice",
-          d.SD_COST_PRICE           AS "COSTPRICE",
-          REPLACE(s.SH_ADDRESS, ',')             AS "Address",
-          REPLACE(s.SH_SUBURB, ',')              AS "Address2",
-          REPLACE(s.SH_CITY, ',')                AS "Suburb",
-          s.SH_STATE               AS "State",
-          s.SH_POST_CODE           AS "Postcode",
-          REPLACE(s.SH_NOTE_1, ',')              AS "DeliverTo",
-          REPLACE(s.SH_NOTE_2, ',')              AS "AttentionTo" ,
-          t.ST_WEIGHT              AS "Weight",
-          t.ST_PACKAGES            AS "Packages",
-          s.SH_SPARE_DBL_9         AS "OrderSource",
-          r.area AS "Pallet/Shelf Space as area", 
-          r.rmdbl2 AS "Locn_as rmdbl2", 
-          d.SD_LINE, 
-          CASE  WHEN regexp_substr(s.SH_SPARE_STR_3,'[a-z]+', 1, 2) IS NOT NULL THEN  s.SH_SPARE_STR_3 || '@' || s.SH_SPARE_STR_1
-                ELSE ''
-          END AS Email,
-          'N/A' AS Brand,
-          r.terr,null,
-          s.SH_XX_FEE_WAIVE,d.SD_COST_PRICE,
-          s.SH_SPARE_INT_4,s.SH_CAMPAIGN,
-          d.SD_ADD_DATE,d.SD_ADD_OP,
-          d.SD_XX_FREIGHT_CHG
-    FROM  PWIN175.SD d
-          INNER JOIN PWIN175.SH s  ON s.SH_ORDER  = d.SD_ORDER
-          LEFT OUTER JOIN PWIN175.ST t  ON LTRIM(RTRIM(t.ST_PICK))  = LTRIM(RTRIM(d.SD_XX_PICKLIST_NUM))
-          LEFT JOIN Dev_Group_Cust r ON r.sCust = s.SH_CUST
-    WHERE d.SD_STOCK IN ('COURIERM','COURIERS','COURIER','DETENTIONTIMEM','DETENTIONTIMES','FREIGHTDUTY')
-    AND   d.SD_ADD_DATE >= startdate AND d.SD_ADD_DATE <= enddate
-    GROUP BY  
-          s.SH_CUST,s.SH_SPARE_STR_4,s.SH_CAMPAIGN,s.SH_ORDER,s.SH_XX_FEE_WAIVE,s.SH_SPARE_INT_4,s.SH_CAMPAIGN,
-          s.SH_ADDRESS,s.SH_SUBURB,s.SH_CITY,s.SH_STATE,s.SH_POST_CODE,s.SH_NOTE_1,s.SH_ADD_DATE,s.SH_NOTE_2,
-          s.SH_SPARE_DBL_9,s.SH_SPARE_STR_5,s.SH_CUST_REF,s.SH_SPARE_STR_3,s.SH_SPARE_STR_1,
-          t.ST_PICK,t.ST_PSLIP,t.ST_DESP_DATE,t.ST_WEIGHT,t.ST_PACKAGES,t.ST_SPARE_DBL_1, 
-          d.SD_XX_PICKLIST_NUM,d.SD_QTY_ORDER,d.SD_QTY_ORDER,d.SD_ORDER,d.SD_XX_FREIGHT_CHG,d.SD_COST_PRICE,d.SD_NOTE_1,d.SD_COST_PRICE,
-          d.SD_STOCK,d.SD_ADD_OP,d.SD_DESC,d.SD_LINE,d.SD_EXCL,d.SD_INCL,d.SD_NOTE_1,d.SD_SELL_PRICE,d.SD_XX_OW_UNIT_PRICE,d.SD_XX_FREIGHT_CHG,
-          d.SD_XX_PSLIP_NUM,d.SD_ADD_DATE,
-          r.sGroupCust,r.terr,r.area,r.rmdbl2
-          
-          UNION ALL
-          
-          
-     SELECT    s.SH_CUST                AS "Customer",
-          r.sGroupCust              AS "Parent",
-          s.SH_SPARE_STR_4         AS "CostCentre",
-          s.SH_ORDER               AS "Order",
-          s.SH_SPARE_STR_5         AS "OrderwareNum",
-          s.SH_CUST_REF            AS "CustomerRef",
-          d.SD_XX_PICKLIST_NUM                AS "PickNum",
-          d.SD_XX_PSLIP_NUM               AS "DespNote",
-          substr(To_Char(d.SD_ADD_DATE),0,10)            AS "DespatchDate",
-          substr(To_Char(s.SH_ADD_DATE),0,10) AS "OrderDate",
-          CASE  WHEN d.SD_XX_FREIGHT_CHG >= 0.1  THEN 'XX Van Manual Freight Fee'
-			          ELSE 'UnPricedXXFreight'
-			          END                      AS "FeeType",
-          d.SD_STOCK               AS "Item",
-          REPLACE(d.SD_DESC,',','|')              AS "Description",
-          CASE  WHEN d.SD_LINE IS NOT NULL THEN  1
-                ELSE NULL
-          END                     AS "Qty",
-          CASE  WHEN d.SD_LINE IS NOT NULL THEN  '1'
-                ELSE NULL
-          END                      AS "UOI",
-         f_calc_freight_fee(d.SD_XX_FREIGHT_CHG,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER) AS "UnitPriceMarkedUp", 
-          CASE  WHEN d.SD_SELL_PRICE >= 1 THEN f_calc_freight_fee(d.SD_XX_FREIGHT_CHG,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER)      
-          ELSE d.SD_XX_FREIGHT_CHG   
-          END AS "OWUnitPrice",
-          CASE  WHEN d.SD_XX_FREIGHT_CHG >= 1 THEN f_calc_freight_fee(d.SD_XX_FREIGHT_CHG,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER)      
-          ELSE d.SD_EXCL   
-          END AS "DExcl",
-          CASE  WHEN d.SD_XX_FREIGHT_CHG >= 1 THEN f_calc_freight_fee(d.SD_XX_FREIGHT_CHG,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER) * 1.1     
-          ELSE d.SD_INCL   
-          END AS "DIncl",
-          d.SD_XX_FREIGHT_CHG                   AS "ReportingPrice",
-          CASE  WHEN regexp_substr(SD_NOTE_1,'\d') IS NOT NULL THEN TO_NUMBER(SD_NOTE_1) --TO_NUMBER(d.SD_NOTE_1,'fm999999.99999999','nls_numeric_characters = ''.,''')      
-                ELSE TO_NUMBER('999')
-          END AS "ReportingPrice",
-          d.SD_COST_PRICE           AS "COSTPRICE",
-          REPLACE(s.SH_ADDRESS, ',')             AS "Address",
-          REPLACE(s.SH_SUBURB, ',')              AS "Address2",
-          REPLACE(s.SH_CITY, ',')                AS "Suburb",
-          s.SH_STATE               AS "State",
-          s.SH_POST_CODE           AS "Postcode",
-          REPLACE(s.SH_NOTE_1, ',')              AS "DeliverTo",
-          REPLACE(s.SH_NOTE_2, ',')              AS "AttentionTo" ,
-          NULL              AS "Weight",
-          NULL            AS "Packages",
-          s.SH_SPARE_DBL_9         AS "OrderSource",
-          r.area AS "Pallet/Shelf Space as area", 
-          r.rmdbl2 AS "Locn_as rmdbl2", 
-          d.SD_LINE, 
-          CASE  WHEN regexp_substr(s.SH_SPARE_STR_3,'[a-z]+', 1, 2) IS NOT NULL THEN  s.SH_SPARE_STR_3 || '@' || s.SH_SPARE_STR_1
-                ELSE ''
-          END AS Email,
-          'N/A' AS Brand,
-          r.terr AS "ownedby as terr",null,
-          s.SH_XX_FEE_WAIVE,d.SD_COST_PRICE,
-          s.SH_SPARE_INT_4,s.SH_CAMPAIGN,
-          d.SD_ADD_DATE,d.SD_ADD_OP,
-          d.SD_XX_FREIGHT_CHG
-    FROM      PWIN175.SD d
-			  INNER JOIN PWIN175.SH s  ON s.SH_ORDER  = d.SD_ORDER
-			  LEFT JOIN Dev_Group_Cust r ON r.sCust = s.SH_CUST
-	WHERE d.SD_STOCK = 'COURIER'--IN ('COURIERM','COURIERS','COURIER','DETENTIONTIMEM','DETENTIONTIMES','FREIGHTDUTY')
-	AND       d.SD_ADD_DATE >= startdate AND d.SD_ADD_DATE <= enddate
-  AND   d.SD_ADD_OP NOT LIKE 'SERV%' 
-  AND   d.SD_ADD_OP != 'RV'
-    GROUP BY  
-          s.SH_CUST,s.SH_SPARE_STR_4,s.SH_CAMPAIGN,s.SH_ORDER,s.SH_XX_FEE_WAIVE,s.SH_SPARE_INT_4,s.SH_CAMPAIGN,
-          s.SH_ADDRESS,s.SH_SUBURB,s.SH_CITY,s.SH_STATE,s.SH_POST_CODE,s.SH_NOTE_1,s.SH_ADD_DATE,s.SH_NOTE_2,
-          s.SH_SPARE_DBL_9,s.SH_SPARE_STR_5,s.SH_CUST_REF,s.SH_SPARE_STR_3,s.SH_SPARE_STR_1,
-          --t.ST_PICK,t.ST_PSLIP,t.ST_DESP_DATE,t.ST_WEIGHT,t.ST_PACKAGES,t.ST_SPARE_DBL_1, 
-          d.SD_XX_PICKLIST_NUM,d.SD_QTY_ORDER,d.SD_QTY_ORDER,d.SD_ORDER,d.SD_XX_FREIGHT_CHG,d.SD_COST_PRICE,d.SD_NOTE_1,d.SD_COST_PRICE,
-          d.SD_STOCK,d.SD_ADD_OP,d.SD_DESC,d.SD_LINE,d.SD_EXCL,d.SD_INCL,d.SD_NOTE_1,d.SD_SELL_PRICE,d.SD_XX_OW_UNIT_PRICE,d.SD_XX_FREIGHT_CHG,
-          d.SD_XX_PSLIP_NUM,d.SD_ADD_DATE,
-          r.sGroupCust,r.rmdbl2,r.terr,r.area;   
-          
+    
           
     CURSOR canalDEV
       IS
@@ -1004,8 +667,8 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
           t.ST_PSLIP               AS "DespNote",
           substr(To_Char(d.SD_ADD_DATE),0,10)            AS "DespatchDate",
           substr(To_Char(s.SH_ADD_DATE),0,10) AS "OrderDate",
-          CASE  WHEN  d.SD_SELL_PRICE >= 0.1 AND   d.SD_ADD_OP = 'RV'  THEN 'Manual Freight Fee'
-                WHEN  d.SD_STOCK like 'COURIER%' AND d.SD_SELL_PRICE >= 0.1 AND LTRIM(RTRIM(d.SD_XX_PICKLIST_NUM)) IS NOT NULL AND d.SD_ADD_OP = 'SERV2' THEN 'Freight Fee'
+          CASE  WHEN  d.SD_STOCK = 'COURIERM' and d.SD_SELL_PRICE >= 0.1 AND   d.SD_ADD_OP != 'SERV2'  THEN 'Manual Freight Fee'
+                WHEN  d.SD_STOCK = 'COURIER' AND d.SD_SELL_PRICE >= 0.1 AND LTRIM(RTRIM(d.SD_XX_PICKLIST_NUM)) IS NOT NULL AND d.SD_ADD_OP like 'SERV%' THEN 'Freight Fee'
                 WHEN  d.SD_ADD_OP != 'RV' AND   d.SD_ADD_OP != 'SERV2' AND d.SD_XX_FREIGHT_CHG > 0.1 THEN 'XX Manual Freight Fee'
                 WHEN  d.SD_ADD_OP = 'SERV2' AND d.SD_XX_FREIGHT_CHG > 0.1 THEN 'XX? Manual Freight Fee'
                 WHEN  d.SD_ADD_OP != 'RV' AND   d.SD_ADD_OP != 'SERV2' AND d.SD_SELL_PRICE >= 0.1 THEN 'Other Manual Freight Fee'
@@ -1072,10 +735,10 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
           INNER JOIN PWIN175.SH s  ON s.SH_ORDER  = d.SD_ORDER
           LEFT OUTER JOIN PWIN175.ST t  ON LTRIM(RTRIM(t.ST_PICK))  = LTRIM(RTRIM(d.SD_XX_PICKLIST_NUM))
           LEFT JOIN Dev_Group_Cust r ON r.sCust = s.SH_CUST
-    WHERE d.SD_STOCK IN ('COURIERM','COURIERS','COURIER','DETENTIONTIMEM','DETENTIONTIMES','FREIGHTDUTY')
+    WHERE  d.SD_STOCK IN ('COURIERM','COURIERS','COURIER','DETENTIONTIMEM','DETENTIONTIMES','FREIGHTDUTY')
     AND   d.SD_ADD_DATE >= startdate AND d.SD_ADD_DATE <= enddate
-    AND       r.ANAL = sAnalysis
-
+    AND   r.sCust IN (SELECT RM_CUST FROM RM WHERE RM_ANAL = sAnalysis AND RM_TYPE = 0 AND RM_ACTIVE = 1 )
+    
     GROUP BY  
           s.SH_CUST,s.SH_SPARE_STR_4,s.SH_CAMPAIGN,s.SH_ORDER,s.SH_XX_FEE_WAIVE,s.SH_SPARE_INT_4,s.SH_CAMPAIGN,
           s.SH_ADDRESS,s.SH_SUBURB,s.SH_CITY,s.SH_STATE,s.SH_POST_CODE,s.SH_NOTE_1,s.SH_ADD_DATE,s.SH_NOTE_2,
@@ -1084,9 +747,9 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
           d.SD_XX_PICKLIST_NUM,d.SD_QTY_ORDER,d.SD_QTY_ORDER,d.SD_ORDER,d.SD_XX_FREIGHT_CHG,d.SD_COST_PRICE,d.SD_NOTE_1,d.SD_COST_PRICE,
           d.SD_STOCK,d.SD_ADD_OP,d.SD_DESC,d.SD_LINE,d.SD_EXCL,d.SD_INCL,d.SD_NOTE_1,d.SD_SELL_PRICE,d.SD_XX_OW_UNIT_PRICE,d.SD_XX_FREIGHT_CHG,
           d.SD_XX_PSLIP_NUM,d.SD_ADD_DATE,r.anal,
-          r.sGroupCust,r.terr,r.area,r.rmdbl2
+          r.sGroupCust,r.terr,r.area,r.rmdbl2;
           
-          UNION ALL
+     /*     UNION ALL
           
           
      SELECT    s.SH_CUST                AS "Customer",
@@ -1149,12 +812,14 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
           d.SD_XX_FREIGHT_CHG
     FROM      PWIN175.SD d
 			  INNER JOIN PWIN175.SH s  ON s.SH_ORDER  = d.SD_ORDER
-			  LEFT JOIN Dev_Group_Cust r ON r.sCust = s.SH_CUST
-	WHERE d.SD_STOCK = 'COURIER'--IN ('COURIERM','COURIERS','COURIER','DETENTIONTIMEM','DETENTIONTIMES','FREIGHTDUTY')
-	AND       d.SD_ADD_DATE >= startdate AND d.SD_ADD_DATE <= enddate
-  AND   d.SD_ADD_OP NOT LIKE 'SERV%' 
+			  INNER JOIN PWIN175.ST t  ON LTRIM(RTRIM(t.ST_PICK))  = LTRIM(RTRIM(d.SD_XX_PICKLIST_NUM))
+        INNER JOIN Dev_Group_Cust r ON r.sCust = s.SH_CUST
+	WHERE d.SD_STOCK IN ('COURIERM','COURIERS','COURIER','DETENTIONTIMEM','DETENTIONTIMES','FREIGHTDUTY')
+	AND  d.SD_ADD_DATE >= startdate AND d.SD_ADD_DATE <= enddate
+    AND   r.sCust IN (SELECT RM_CUST FROM RM WHERE RM_ANAL = sAnalysis AND RM_TYPE = 0 AND RM_ACTIVE = 1 )
+    AND   d.SD_ADD_OP NOT LIKE 'SERV%' 
   AND   d.SD_ADD_OP != 'RV'
-  AND       r.ANAL = sAnalysis
+  --AND       r.ANAL = sAnalysis 
 
     GROUP BY  
           s.SH_CUST,s.SH_SPARE_STR_4,s.SH_CAMPAIGN,s.SH_ORDER,s.SH_XX_FEE_WAIVE,s.SH_SPARE_INT_4,s.SH_CAMPAIGN,
@@ -1164,7 +829,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
           d.SD_XX_PICKLIST_NUM,d.SD_QTY_ORDER,d.SD_QTY_ORDER,d.SD_ORDER,d.SD_XX_FREIGHT_CHG,d.SD_COST_PRICE,d.SD_NOTE_1,d.SD_COST_PRICE,
           d.SD_STOCK,d.SD_ADD_OP,d.SD_DESC,d.SD_LINE,d.SD_EXCL,d.SD_INCL,d.SD_NOTE_1,d.SD_SELL_PRICE,d.SD_XX_OW_UNIT_PRICE,d.SD_XX_FREIGHT_CHG,
           d.SD_XX_PSLIP_NUM,d.SD_ADD_DATE,r.anal,
-          r.sGroupCust,r.rmdbl2,r.terr,r.area;   
+          r.sGroupCust,r.rmdbl2,r.terr,r.area;  */ 
           
     
           
@@ -1176,11 +841,11 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
          
         
         nCheckpoint := 2;
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
           v_query := 'TRUNCATE TABLE DEV_ALL_FREIGHT_ALL';
           EXECUTE IMMEDIATE v_query;
           COMMIT;
-          If (sAnalysis = 'VICP') Then
+          --If (sAnalysis = 'VICP') Then
              OPEN canalDEV;
           ----DBMS_OUTPUT.PUT_LINE(?? || '.' );
           LOOP
@@ -1196,31 +861,12 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
           END LOOP;
           ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
           CLOSE canalDEV;
-        Else
-          OPEN cDEV;
-          ----DBMS_OUTPUT.PUT_LINE(?? || '.' );
-          LOOP
-          FETCH cDEV BULK COLLECT INTO l_data LIMIT p_array_size;
-  
-          FORALL i IN 1..l_data.COUNT
-          ----DBMS_OUTPUT.PUT_LINE(l_data(10) || '.' );
-          
-          INSERT INTO DEV_ALL_FREIGHT_ALL VALUES l_data(i);
-          --USING sCust;
-          EXIT WHEN cDEV%NOTFOUND;
-  
-          END LOOP;
-          ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-          CLOSE cDEV;
-         --FOR i IN l_data.FIRST .. l_data.LAST LOOP
-          ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).unitprice || '.' );
-         --END LOOP;
-        End If;
+       
      Else
           v_query := 'TRUNCATE TABLE TMP_ALL_FREIGHT_ALL';
           EXECUTE IMMEDIATE v_query;
           COMMIT;
-          If (sAnalysis = 'VICP') Then
+         -- If (sAnalysis = 'VICP') Then
              OPEN canal;
           ----DBMS_OUTPUT.PUT_LINE(?? || '.' );
           LOOP
@@ -1236,23 +882,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
           END LOOP;
           ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
           CLOSE canal;
-        Else
-          OPEN c;
-          ----DBMS_OUTPUT.PUT_LINE(?? || '.' );
-          LOOP
-          FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
-  
-          FORALL i IN 1..l_data.COUNT
-          ----DBMS_OUTPUT.PUT_LINE(l_data(10) || '.' );
-          
-          INSERT INTO TMP_ALL_FREIGHT_ALL VALUES l_data(i);
-          --USING sCust;
-          EXIT WHEN c%NOTFOUND;
-  
-          END LOOP;
-          ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-          CLOSE c;
-        End If;
+       
          --FOR i IN l_data.FIRST .. l_data.LAST LOOP
           ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).unitprice || '.' );
          --END LOOP;
@@ -1263,7 +893,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
       IF v_query2 > 0 THEN
           nCheckpoint := 100;
           v_query := '';
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then  
+        If (sOp = 'PRJ' or sOp = 'DEV') Then  
           EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','DEV_FREIGHT','DEV_ALL_FREIGHT_ALL',v_time_taken,SYSTIMESTAMP,NULL);--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
         Else
           EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','TMP_FREIGHT','TMP_ALL_FREIGHT_ALL',v_time_taken,SYSTIMESTAMP,NULL);--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
@@ -1604,7 +1234,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
       ----DBMS_OUTPUT.PUT_LINE('AA EOM Temp Freight table truncated '
       --  || start_date || ' -- ' || end_date);
       nCheckpoint := 2;
-      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      If (sOp = 'PRJ' or sOp = 'DEV') Then
         v_query := 'TRUNCATE TABLE DEV_V_FREIGHT';
         EXECUTE IMMEDIATE v_query;
         COMMIT;
@@ -1705,37 +1335,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
       ----DBMS_OUTPUT.PUT_LINE(start_date || ' - ' || end_date || '.' || sCust );
       sFileName VARCHAR2(560);
       sFileTime VARCHAR2(56)  := TO_CHAR(SYSDATE,'YYYYMMDD HH24MISS');
-        CURSOR c1   
-        IS 
-        /*All freight fees by Parent*/
-        select  *
-        FROM  TMP_ALL_FREIGHT_ALL t
-        WHERE ROWID IN ( SELECT MAX(ROWID) FROM TMP_ALL_FREIGHT_ALL GROUP BY description )
-        AND t.parent = sCustomerCode; --AND trim(FEETYPE) != 'Freight Fee';
-      
-        CURSOR c2        
-        IS       
-        /*All freight fees by RM_DBL_2*/
-        select  *
-        FROM  TMP_ALL_FREIGHT_ALL t
-        WHERE ROWID IN ( SELECT MAX(ROWID) FROM TMP_ALL_FREIGHT_ALL GROUP BY description )
-        AND t.NILOCN = sCustomerCode;
-     
-        CURSOR c3        
-        IS       
-        /*All freight fees by territory*/
-        select DISTINCT *
-        FROM  TMP_ALL_FREIGHT_ALL t
-        WHERE ROWID IN ( SELECT MAX(ROWID) FROM TMP_ALL_FREIGHT_ALL GROUP BY description )
-        AND t.OWNEDBY = sCustomerCode;
-      
-        CURSOR c4        
-        IS       
-        /*All freight fees by area*/
-        select  *
-        FROM  TMP_ALL_FREIGHT_ALL t
-        WHERE ROWID IN ( SELECT MAX(ROWID) FROM TMP_ALL_FREIGHT_ALL GROUP BY description )
-        AND t.ILNOTE2 = sCustomerCode;
+       
         
         CURSOR canal4        
         IS       
@@ -1745,37 +1345,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
         WHERE ROWID IN ( SELECT MAX(ROWID) FROM TMP_ALL_FREIGHT_ALL GROUP BY description )
         AND t.WAIVEFEE = sAnalysis;
         
-        CURSOR c1Dev   
-        IS 
-        /*All freight fees by Parent*/
-        select  *
-        FROM  DEV_ALL_FREIGHT_ALL t
-        WHERE ROWID IN ( SELECT MAX(ROWID) FROM DEV_ALL_FREIGHT_ALL GROUP BY description )
-        AND t.parent = sCustomerCode; --AND trim(FEETYPE) != 'Freight Fee';
-      
-        CURSOR c2Dev        
-        IS       
-        /*All freight fees by RM_DBL_2*/
-        select  *
-        FROM  DEV_ALL_FREIGHT_ALL t
-        WHERE ROWID IN ( SELECT MAX(ROWID) FROM DEV_ALL_FREIGHT_ALL GROUP BY description )
-        AND t.NILOCN = sCustomerCode;
-     
-        CURSOR c3Dev        
-        IS       
-        /*All freight fees by territory*/
-        select DISTINCT *
-        FROM  DEV_ALL_FREIGHT_ALL t
-        WHERE ROWID IN ( SELECT MAX(ROWID) FROM DEV_ALL_FREIGHT_ALL GROUP BY description )
-        AND t.OWNEDBY = sCustomerCode;
-      
-        CURSOR c4Dev        
-        IS       
-        /*All freight fees by area*/
-        select  *
-        FROM  DEV_ALL_FREIGHT_ALL t
-        WHERE ROWID IN ( SELECT MAX(ROWID) FROM DEV_ALL_FREIGHT_ALL GROUP BY description )
-        AND t.ILNOTE2 = sCustomerCode;
+       
         
         CURSOR canal4Dev        
         IS       
@@ -1794,207 +1364,51 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
       ----DBMS_OUTPUT.PUT_LINE('AA EOM Temp Freight table truncated '
       --  || start_date || ' -- ' || end_date);
       nCheckpoint := 2;
-      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      If (sOp = 'PRJ' or sOp = 'DEV') Then
         v_query := 'TRUNCATE TABLE DEV_ALL_FREIGHT_F';
         EXECUTE IMMEDIATE v_query;
         COMMIT;
         
-        If sFilterBy = 'PARENT' 
-        then
-           OPEN c1Dev;
-            ----DBMS_OUTPUT.PUT_LINE(sShary || '.' );
-            LOOP
-            FETCH c1Dev BULK COLLECT INTO l_data LIMIT p_array_size;
-    
-            FORALL i IN 1..l_data.COUNT
-            ----DBMS_OUTPUT.PUT_LINE(l_data(10) || '.' );
-            INSERT INTO DEV_ALL_FREIGHT_F VALUES l_data(i);
-            --USING sCust;
-    
-            EXIT WHEN c1Dev%NOTFOUND;
-    
-            END LOOP;
-            ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-            CLOSE c1Dev;
-            v_query2 :=  SQL%ROWCOUNT;
-        ELSIF sFilterBy = 'RMDBL'
-        then
-         OPEN c2Dev;
-            ----DBMS_OUTPUT.PUT_LINE(sShary || '.' );
-            LOOP
-            FETCH c2Dev BULK COLLECT INTO l_data LIMIT p_array_size;
-    
-            FORALL i IN 1..l_data.COUNT
-            ----DBMS_OUTPUT.PUT_LINE(l_data(10) || '.' );
-            INSERT INTO DEV_ALL_FREIGHT_F VALUES l_data(i);
-            --USING sCust;
-    
-            EXIT WHEN c2Dev%NOTFOUND;
-    
-            END LOOP;
-            ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-            CLOSE c2Dev;
-            v_query2 :=  SQL%ROWCOUNT;
-        ELSIF sFilterBy = 'TERR'
-        then
-         OPEN c3Dev;
-            ----DBMS_OUTPUT.PUT_LINE(sShary || '.' );
-            LOOP
-            FETCH c3Dev BULK COLLECT INTO l_data LIMIT p_array_size;
-    
-            FORALL i IN 1..l_data.COUNT
-            ----DBMS_OUTPUT.PUT_LINE(l_data(10) || '.' );
-            INSERT INTO DEV_ALL_FREIGHT_F VALUES l_data(i);
-            --USING sCust;
-    
-            EXIT WHEN c3Dev%NOTFOUND;
-    
-            END LOOP;
-            ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-            CLOSE c3Dev;
-            v_query2 :=  SQL%ROWCOUNT;
-        ELSIF sFilterBy = 'AREA'
-        then
-          OPEN c4Dev;
-            ----DBMS_OUTPUT.PUT_LINE(sShary || '.' );
-            LOOP
-            FETCH c4Dev BULK COLLECT INTO l_data LIMIT p_array_size;
-    
-            FORALL i IN 1..l_data.COUNT
-            ----DBMS_OUTPUT.PUT_LINE(l_data(10) || '.' );
-            INSERT INTO DEV_ALL_FREIGHT_F VALUES l_data(i);
-            --USING sCust;
-    
-            EXIT WHEN c4Dev%NOTFOUND;
-    
-            END LOOP;
-            ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-            CLOSE c4Dev;
-            v_query2 :=  SQL%ROWCOUNT;
-      ELSE  
         
-        nCheckpoint := 2;
-         
-      
-            OPEN c1;
+           OPEN canal4Dev;
             ----DBMS_OUTPUT.PUT_LINE(sShary || '.' );
             LOOP
-            FETCH c1 BULK COLLECT INTO l_data LIMIT p_array_size;
+            FETCH canal4Dev BULK COLLECT INTO l_data LIMIT p_array_size;
     
             FORALL i IN 1..l_data.COUNT
             ----DBMS_OUTPUT.PUT_LINE(l_data(10) || '.' );
             INSERT INTO DEV_ALL_FREIGHT_F VALUES l_data(i);
             --USING sCust;
     
-            EXIT WHEN c1%NOTFOUND;
+            EXIT WHEN canal4Dev%NOTFOUND;
     
             END LOOP;
             ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-            CLOSE c1;
-           --FOR i IN l_data.FIRST .. l_data.LAST LOOP
-            ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-          --END LOOP;
-          v_query2 :=  SQL%ROWCOUNT;
-       END IF; 
+            CLOSE canal4Dev;
+            v_query2 :=  SQL%ROWCOUNT;
+         
     Else
          v_query := 'TRUNCATE TABLE TMP_ALL_FREIGHT_F';
           EXECUTE IMMEDIATE v_query;
           COMMIT;
-        If sFilterBy = 'PARENT' 
-        then
-           OPEN c1;
+       
+           OPEN canal4;
             ----DBMS_OUTPUT.PUT_LINE(sShary || '.' );
             LOOP
-            FETCH c1 BULK COLLECT INTO l_data LIMIT p_array_size;
+            FETCH canal4 BULK COLLECT INTO l_data LIMIT p_array_size;
     
             FORALL i IN 1..l_data.COUNT
             ----DBMS_OUTPUT.PUT_LINE(l_data(10) || '.' );
             INSERT INTO TMP_ALL_FREIGHT_F VALUES l_data(i);
             --USING sCust;
     
-            EXIT WHEN c1%NOTFOUND;
+            EXIT WHEN canal4%NOTFOUND;
     
             END LOOP;
             ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-            CLOSE c1;
+            CLOSE canal4;
             v_query2 :=  SQL%ROWCOUNT;
-        ELSIF sFilterBy = 'RMDBL'
-        then
-         OPEN c2;
-            ----DBMS_OUTPUT.PUT_LINE(sShary || '.' );
-            LOOP
-            FETCH c2 BULK COLLECT INTO l_data LIMIT p_array_size;
-    
-            FORALL i IN 1..l_data.COUNT
-            ----DBMS_OUTPUT.PUT_LINE(l_data(10) || '.' );
-            INSERT INTO TMP_ALL_FREIGHT_F VALUES l_data(i);
-            --USING sCust;
-    
-            EXIT WHEN c2%NOTFOUND;
-    
-            END LOOP;
-            ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-            CLOSE c2;
-            v_query2 :=  SQL%ROWCOUNT;
-        ELSIF sFilterBy = 'TERR'
-        then
-         OPEN c3;
-            ----DBMS_OUTPUT.PUT_LINE(sShary || '.' );
-            LOOP
-            FETCH c3 BULK COLLECT INTO l_data LIMIT p_array_size;
-    
-            FORALL i IN 1..l_data.COUNT
-            ----DBMS_OUTPUT.PUT_LINE(l_data(10) || '.' );
-            INSERT INTO TMP_ALL_FREIGHT_F VALUES l_data(i);
-            --USING sCust;
-    
-            EXIT WHEN c3%NOTFOUND;
-    
-            END LOOP;
-            ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-            CLOSE c3;
-            v_query2 :=  SQL%ROWCOUNT;
-        ELSIF sFilterBy = 'AREA'
-        then
-          OPEN c4;
-            ----DBMS_OUTPUT.PUT_LINE(sShary || '.' );
-            LOOP
-            FETCH c4 BULK COLLECT INTO l_data LIMIT p_array_size;
-    
-            FORALL i IN 1..l_data.COUNT
-            ----DBMS_OUTPUT.PUT_LINE(l_data(10) || '.' );
-            INSERT INTO TMP_ALL_FREIGHT_F VALUES l_data(i);
-            --USING sCust;
-    
-            EXIT WHEN c4%NOTFOUND;
-    
-            END LOOP;
-            ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-            CLOSE c4;
-            v_query2 :=  SQL%ROWCOUNT;
-      ELSE  
         
-        nCheckpoint := 2;
-            OPEN c1;
-            ----DBMS_OUTPUT.PUT_LINE(sShary || '.' );
-            LOOP
-            FETCH c1 BULK COLLECT INTO l_data LIMIT p_array_size;
-    
-            FORALL i IN 1..l_data.COUNT
-            ----DBMS_OUTPUT.PUT_LINE(l_data(10) || '.' );
-            INSERT INTO TMP_ALL_FREIGHT_F VALUES l_data(i);
-            --USING sCust;
-    
-            EXIT WHEN c1%NOTFOUND;
-    
-            END LOOP;
-            ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-            CLOSE c1;
-           --FOR i IN l_data.FIRST .. l_data.LAST LOOP
-            ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-          --END LOOP;
-          v_query2 :=  SQL%ROWCOUNT;
-       END IF; 
     End if;
     COMMIT;
   
@@ -2002,14 +1416,14 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
        -- If F_IS_TABLE_EEMPTY('TMP_FREIGHT',Debug_Y_OR_N) > 0 Then
           --sFileName := sCustomerCode || '-F8_Z_EOM_RUN_FREIGHT' || startdate || '-TO-' || enddate || '.csv';
           v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-          If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          If (sOp = 'PRJ' or sOp = 'DEV') Then
             EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'F8_Z_EOM_RUN_FREIGHT','DEV_ALL_FREIGHT_ALL','DEV_ALL_FREIGHT_F',v_time_taken,SYSTIMESTAMP,sCustomerCode);
           Else
             EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'F8_Z_EOM_RUN_FREIGHT','TMP_ALL_FREIGHT_ALL','TMP_ALL_FREIGHT_F',v_time_taken,SYSTIMESTAMP,sCustomerCode);
           End If;
           sFileName := sCustomerCode || '-F8_Z_EOM_RUN_FREIGHT-' || startdate || '-TO-' || enddate || '-RunOn-' || sFileTime || '.csv';
           
-          If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          If (sOp = 'PRJ' or sOp = 'DEV') Then
             Z2_TMP_FEES_TO_CSV(sFileName,'DEV_ALL_FREIGHT_F',sOp);
             DBMS_OUTPUT.PUT_LINE('F8_Z_EOM_RUN_FREIGHT for the date range '
             || startdate || ' -- ' || enddate || ' - ' || v_query2
@@ -2320,7 +1734,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
     FROM NI n1 INNER JOIN IM ON IM_STOCK = n1.NI_STOCK --AND IM_CUST = tmp.SCUST
     INNER JOIN IL l1 ON l1.IL_LOCN = n1.NI_LOCN
     INNER JOIN Dev_Locn_Cnt_By_Cust tmp ON tmp.SLOCN = l1.IL_LOCN
-    LEFT JOIN Dev_Group_Cust r ON r.sCust = tmp.SCUST
+    LEFT JOIN Dev_Group_Cust r ON r.sCust = IM_CUST
     WHERE  IM_ACTIVE = 1
     AND n1.NI_AVAIL_ACTUAL >= '1'
     AND n1.NI_STATUS <> 0
@@ -2329,7 +1743,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
     GROUP BY l1.IL_LOCN,IM_CUST,IM_BRAND,IM_OWNED_By,IM_PROFILE,l1.IL_NOTE_2,n1.NI_LOCN,n1.NI_STOCK,r.ANAL,
     tmp.NCOUNTOFSTOCKS,IM_REPORTING_PRICE,r.sGroupCust,IM_LEVEL_UNIT,IM_XX_COST_CENTRE01,IM_STOCK,IM_STD_COST,IM_LAST_COST;
     
-    
+   
   
     QueryTable VARCHAR2(600) := q'{SELECT To_Number(regexp_substr(RM_XX_FEE11,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = :sCustomerCode}';
     sCust_Rates RM.RM_XX_FEE11%TYPE;
@@ -2345,7 +1759,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
             
     
     nCheckpoint := 2;      
-    If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+    If (sOp = 'PRJ' or sOp = 'DEV') Then
           If (upper(Debug_Y_OR_N) = 'Y') Then
             DBMS_OUTPUT.PUT_LINE(sOp || ' - . And sAnalysis is ' || sAnalysis );
           End If;
@@ -2391,7 +1805,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
     End If;
         v_query2 :=  SQL%ROWCOUNT;
         COMMIT;
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
           If F_IS_TABLE_EEMPTY('DEV_STOR_ALL_FEES',Debug_Y_OR_N) > 0 Then
     
             v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
@@ -2475,7 +1889,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
       sFileTime VARCHAR2(56)  := TO_CHAR(SYSDATE,'YYYYMMDD HH24MISS');
       
         /* EOM Storage Fees */
-        --If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        --If (sOp = 'PRJ' or sOp = 'DEV') Then
  
           CURSOR canal1
           IS
@@ -2512,7 +1926,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
           
   
           nCheckpoint := 2;
-          If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          If (sOp = 'PRJ' or sOp = 'DEV') Then
             v_query := 'TRUNCATE TABLE DEV_STOR_FEES';
             EXECUTE IMMEDIATE v_query;
              OPEN cDevAnal;
@@ -2560,7 +1974,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
                 
         v_query2 :=  SQL%ROWCOUNT;
         COMMIT;
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
           If F_IS_TABLE_EEMPTY('DEV_STOR_FEES',Debug_Y_OR_N) > 0 Then
           --add another quick data check to ensure the source data is ok
     
@@ -2652,7 +2066,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
       QueryTable1 VARCHAR2(600) := q'{Select f_get_fee('RM_XX_FEE01',:sCustomerCode) From DUAl}';
       --QueryTable1 VARCHAR2(600) := q'{SELECT To_Number(regexp_substr(RM_XX_FEE01,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = :sCustomerCode}';
       sCust_Rates1 RM.RM_XX_FEE01%TYPE;/*VerbalOrderEntryFee*/
-      CURSOR c
+      CURSOR cAnal
       IS
         /*AllOrderEntryFee*/
       SELECT    s.SH_CUST,r.sGroupCust,
@@ -2739,7 +2153,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
           --//INNER JOIN PWIN175.ST t ON t.ST_ORDER = s.SH_ORDER AND t.ST_PICK = s.SH_LAST_PICK_NUM
           LEFT JOIN Tmp_Group_Cust r ON r.sCust = s.SH_CUST
           --LEFT JOIN PWIN175.RM r2 ON r2.RM_ANAL = r.RM_ANAL AND r2.RM_CUST = :cust
-    WHERE ((r.sGroupCust = sCustomerCode OR r.sCust = sCustomerCode)  AND  (s.SH_CUST != 'WBCMER'))
+    WHERE r.anal = sAnalysis AND  (s.SH_CUST != 'WBCMER')
             --AND       TO_CHAR(t.ST_DESP_DATE,'YYYY-MM-DD') >= start_date AND TO_CHAR(t.ST_DESP_DATE,'YYYY-MM-DD') <= end_date
    --AND       t.ST_DESP_DATE >= startdate AND t.ST_DESP_DATE <= enddate
     AND       s.SH_ADD_DATE >= startdate AND s.SH_ADD_DATE <= enddate
@@ -2760,7 +2174,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
           s.SH_LAST_PICK_NUM,r.sCust,s.SH_PREV_PSLIP_NUM,i.IM_TYPE,s.SH_STATUS,
           i.IM_BRAND,d.SD_LAST_PICK_NUM,s.SH_CAMPAIGN,d.SD_ORDER,d.SD_STOCK;
         
-  CURSOR cDEV
+  CURSOR cDEVAnal
       IS
         /*AllOrderEntryFee*/
       SELECT    s.SH_CUST,r.sGroupCust,
@@ -2847,7 +2261,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
           --//INNER JOIN PWIN175.ST t ON t.ST_ORDER = s.SH_ORDER AND t.ST_PICK = s.SH_LAST_PICK_NUM
           LEFT JOIN Dev_Group_Cust r ON r.sCust = s.SH_CUST
           --LEFT JOIN PWIN175.RM r2 ON r2.RM_ANAL = r.RM_ANAL AND r2.RM_CUST = :cust
-    WHERE ((r.sGroupCust = sCustomerCode OR r.sCust = sCustomerCode)  AND  (s.SH_CUST != 'WBCMER'))
+    WHERE r.anal = sAnalysis AND  (s.SH_CUST != 'WBCMER')
             --AND       TO_CHAR(t.ST_DESP_DATE,'YYYY-MM-DD') >= start_date AND TO_CHAR(t.ST_DESP_DATE,'YYYY-MM-DD') <= end_date
    --AND       t.ST_DESP_DATE >= startdate AND t.ST_DESP_DATE <= enddate
     AND       s.SH_ADD_DATE >= startdate AND s.SH_ADD_DATE <= enddate
@@ -2895,42 +2309,42 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
         --DBMS_OUTPUT.PUT_LINE('E1_MAN_ORD_FEES rates are $' || sCust_Rates2 || '. Prism rate field is RM_XX_FEE01.');
         --DBMS_OUTPUT.PUT_LINE('E1_?_ORD_FEES rates are $' || sCust_Rates1 || '. Prism rate field is RM_XX_FEE01.');
         nCheckpoint := 2;
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
           v_query := 'TRUNCATE TABLE DEV_ALL_ORD_FEES';
           EXECUTE IMMEDIATE v_query;
-          OPEN cDEV;
+          OPEN cDEVAnal;
           ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
           LOOP
-          FETCH cDEV BULK COLLECT INTO l_data LIMIT p_array_size;
+          FETCH cDEVAnal BULK COLLECT INTO l_data LIMIT p_array_size;
   
           FORALL i IN 1..l_data.COUNT
           ----DBMS_OUTPUT.PUT_LINE(i || '.' );
           INSERT INTO DEV_ALL_ORD_FEES VALUES l_data(i);
           --USING sCust;
   
-          EXIT WHEN cDEV%NOTFOUND;
+          EXIT WHEN cDEVAnal%NOTFOUND;
   
           END LOOP;
          -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-          CLOSE cDEV;
+          CLOSE cDEVAnal;
         Else
           v_query := 'TRUNCATE TABLE TMP_ALL_ORD_FEES';
           EXECUTE IMMEDIATE v_query;
-          OPEN c;
+          OPEN cAnal;
           ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
           LOOP
-          FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
+          FETCH cAnal BULK COLLECT INTO l_data LIMIT p_array_size;
   
           FORALL i IN 1..l_data.COUNT
           ----DBMS_OUTPUT.PUT_LINE(i || '.' );
           INSERT INTO TMP_ALL_ORD_FEES VALUES l_data(i);
           --USING sCust;
   
-          EXIT WHEN c%NOTFOUND;
+          EXIT WHEN cAnal%NOTFOUND;
   
           END LOOP;
          -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-          CLOSE c;
+          CLOSE cAnal;
         End If;
           --       FOR i IN l_data.FIRST .. l_data.LAST LOOP
           --        --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
@@ -2939,7 +2353,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
           COMMIT;
       IF v_query2 > 0 THEN
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
           EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'E0_ALL_ORD_FEES','SH','DEV_ALL_ORD_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
         Else
           EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'E0_ALL_ORD_FEES','SH','TMP_ALL_ORD_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
@@ -3005,7 +2419,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
     QueryTable2 VARCHAR2(600) := q'{SELECT To_Number(regexp_substr(RM_XX_FEE27,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = :sCustomerCode}';
     sCust_Rates2 RM.RM_XX_FEE27%TYPE;/*VerbalOrderEntryFee*/
 
-     CURSOR c
+     CURSOR cAnal
     IS
 
   /*VerbalOrderEntryFee*/
@@ -3062,7 +2476,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
 			  --INNER JOIN PWIN175.ST t ON t.ST_ORDER = s.SH_ORDER --AND t.ST_PICK = s.SH_LAST_PICK_NUM
 			  LEFT JOIN Tmp_Group_Cust r ON r.sCust = s.SH_CUST
 			  --LEFT JOIN PWIN175.RM r2 ON r2.RM_ANAL = r.RM_ANAL AND r2.RM_CUST = :cust
-	WHERE ((r.sGroupCust = sCustomerCode OR r.sCust = sCustomerCode)  AND  (s.SH_CUST != 'WBCMER'))
+	WHERE r.anal = sAnalysis AND  (s.SH_CUST != 'WBCMER')
             --AND       t.ST_DESP_DATE >= startdate AND t.ST_DESP_DATE <= enddate
   AND       s.SH_ADD_DATE >= startdate AND s.SH_ADD_DATE <= enddate
 	--AND       LTrim(s.SH_PREV_PSLIP_NUM) IS NULL
@@ -3076,7 +2490,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
         d.SD_ORDER,d.SD_STOCK,t.ST_ORDER,t.ST_PICK,s.SH_LAST_PICK_NUM,r.sCust,s.SH_PREV_PSLIP_NUM,i.IM_TYPE,s.SH_STATUS,
         i.IM_BRAND,t.ST_WEIGHT,t.ST_PACKAGES,d.SD_LAST_PICK_NUM,s.SH_CAMPAIGN;
 */
-     CURSOR cDEV
+     CURSOR cDEVAnal
     IS
 
   /*VerbalOrderEntryFee*/
@@ -3152,44 +2566,44 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
       --DBMS_OUTPUT.PUT_LINE('E4_STD_ORD_FEES rates are $' || sCust_Rates2 || '. Prism rate field is .');
     
     nCheckpoint := 2;
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
           v_query := 'TRUNCATE TABLE DEV_STD_ORD_FEES';
           EXECUTE IMMEDIATE v_query;
           
-          OPEN cDEV;
+          OPEN cDEVAnal;
           --DBMS_OUTPUT.PUT_LINE(sCust || '.' );
           LOOP
-          FETCH cDEV BULK COLLECT INTO l_data LIMIT p_array_size;
+          FETCH cDEVAnal BULK COLLECT INTO l_data LIMIT p_array_size;
   
           FORALL i IN 1..l_data.COUNT
           --DBMS_OUTPUT.PUT_LINE(i || '.' );
           INSERT INTO DEV_STD_ORD_FEES VALUES l_data(i);
           --USING sCust;
   
-          EXIT WHEN cDEV%NOTFOUND;
+          EXIT WHEN cDEVAnal%NOTFOUND;
   
           END LOOP;
          -- DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-          CLOSE cDEV;
+          CLOSE cDEVAnal;
         Else
           v_query := 'TRUNCATE TABLE TMP_STD_ORD_FEES';
           EXECUTE IMMEDIATE v_query;
           
-          OPEN c;
+          OPEN cAnal;
           --DBMS_OUTPUT.PUT_LINE(sCust || '.' );
           LOOP
-          FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
+          FETCH cAnal BULK COLLECT INTO l_data LIMIT p_array_size;
   
           FORALL i IN 1..l_data.COUNT
           --DBMS_OUTPUT.PUT_LINE(i || '.' );
           INSERT INTO TMP_STD_ORD_FEES VALUES l_data(i);
           --USING sCust;
   
-          EXIT WHEN c%NOTFOUND;
+          EXIT WHEN cAnal%NOTFOUND;
   
           END LOOP;
          -- DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-          CLOSE c;
+          CLOSE cAnal;
 
         End If;
     v_query2 :=  SQL%ROWCOUNT;
@@ -3197,7 +2611,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
 
     IF v_query2 > 0 THEN
       v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      If (sOp = 'PRJ' or sOp = 'DEV') Then
         EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'E4_VERBAL_ORD_FEES','SH','DEV_VERBAL_ORD_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
       Else
         EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'E4_VERBAL_ORD_FEES','SH','TMP_VERBAL_ORD_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
@@ -3251,7 +2665,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
       l_start number default dbms_utility.get_time;
       QueryTable VARCHAR2(600) := q'{SELECT To_Number(regexp_substr(RM_XX_FEE25,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = :sCustomerCode1}';
       sCust_Rates RM.RM_XX_FEE25%TYPE;/*Destruction Fee*/
-       CURSOR c
+       CURSOR cAnal
       IS
   
     /*Destruction Fee*/
@@ -3331,7 +2745,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
     WHERE  
    -- SELECT To_Number(regexp_substr(RM_XX_FEE25,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode) > 0
     --AND      
-    (r.sGroupCust = sCustomerCode OR r.sCust = sCustomerCode)
+    r.anal = sAnalysis 
     AND       (s.SH_NOTE_1 = 'DESTROY' OR s.SH_CAMPAIGN = 'OBSOLETE')
     AND       s.SH_STATUS <> 3
     AND       d.SD_LINE = 1
@@ -3339,7 +2753,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
     AND       t.ST_DESP_DATE >= startdate AND t.ST_DESP_DATE <= enddate;
    -- Group By d.SD_STOCK;
     
-      CURSOR cDEV
+      CURSOR cDEVAnal
       IS
   
     /*Destruction Fee*/
@@ -3419,7 +2833,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
     WHERE  
    -- SELECT To_Number(regexp_substr(RM_XX_FEE25,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode) > 0
     --AND      
-    (r.sGroupCust = sCustomerCode OR r.sCust = sCustomerCode)
+    r.anal = sAnalysis AND  (s.SH_CUST != 'WBCMER')
     AND       (s.SH_NOTE_1 = 'DESTROY' OR s.SH_CAMPAIGN = 'OBSOLETE')
     AND       s.SH_STATUS <> 3
     AND       d.SD_LINE = 1
@@ -3438,49 +2852,49 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
       
   
       nCheckpoint := 2;
-          If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          If (sOp = 'PRJ' or sOp = 'DEV') Then
             v_query := 'TRUNCATE TABLE DEV_DESTROY_ORD_FEES';
             EXECUTE IMMEDIATE v_query;
-            OPEN cDEV;
+            OPEN cDEVAnal;
             ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
             LOOP
-            FETCH cDEV BULK COLLECT INTO l_data LIMIT p_array_size;
+            FETCH cDEVAnal BULK COLLECT INTO l_data LIMIT p_array_size;
     
             FORALL i IN 1..l_data.COUNT
             ----DBMS_OUTPUT.PUT_LINE(i || '.' );
             INSERT INTO DEV_DESTROY_ORD_FEES VALUES l_data(i);
             --USING sCust;
     
-            EXIT WHEN cDEV%NOTFOUND;
+            EXIT WHEN cDEVAnal%NOTFOUND;
     
             END LOOP;
            -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-            CLOSE cDEV;
+            CLOSE cDEVAnal;
           Else
             v_query := 'TRUNCATE TABLE TMP_DESTROY_ORD_FEES';
             EXECUTE IMMEDIATE v_query;
-            OPEN c;
+            OPEN cAnal;
             ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
             LOOP
-            FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
+            FETCH cAnal BULK COLLECT INTO l_data LIMIT p_array_size;
     
             FORALL i IN 1..l_data.COUNT
             ----DBMS_OUTPUT.PUT_LINE(i || '.' );
             INSERT INTO TMP_DESTROY_ORD_FEES VALUES l_data(i);
             --USING sCust;
     
-            EXIT WHEN c%NOTFOUND;
+            EXIT WHEN cAnal%NOTFOUND;
     
             END LOOP;
            -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-            CLOSE c;
+            CLOSE cAnal;
         End If;
 
       v_query2 :=  SQL%ROWCOUNT;
       COMMIT;
       IF v_query2 > 0 THEN
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
           EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'E5_DESTOY_ORD_FEES','SH','DEV_DESTROY_ORD_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
         Else
           EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'E5_DESTOY_ORD_FEES','SH','TMP_DESTROY_ORD_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
@@ -3545,131 +2959,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
       --end_date2 ST.ST_DESP_DATE%TYPE := end_date;
       nbreakpoint   NUMBER;
   
-      CURSOR c
-      IS
-      SELECT    s.SH_CUST,
-          r.sGroupCust,
-          CASE    WHEN IM_CUST <> 'TABCORP' THEN s.SH_SPARE_STR_4
-          WHEN IM_CUST = 'TABCORP' THEN IM_XX_COST_CENTRE01
-          ELSE s.SH_SPARE_STR_4
-          END,
-          s.SH_ORDER,s.SH_SPARE_STR_5,s.SH_CUST_REF,
-          t.ST_PICK                AS "PickNum",
-          t.ST_PSLIP               AS "DespNote",
-          substr(To_Char(t.ST_DESP_DATE),0,10)            AS "DespatchDate",
-          substr(To_Char(s.SH_ADD_DATE),0,10) AS "OrderDate",
-          CASE    WHEN t.ST_XX_NUM_PAL_SW >= 1 THEN 'ShrinkWrap Despatch Fee'
-          ELSE NULL
-          END                      AS "FeeType",
-          CASE    WHEN t.ST_XX_NUM_PAL_SW >= 1 THEN  'ShrinkWrap Despatch'
-          ELSE NULL
-          END                     AS "Item",
-          CASE    WHEN t.ST_XX_NUM_PAL_SW >= 1 THEN  'ShrinkWraping Despatch Fee'
-          ELSE NULL
-          END                     AS "Description",
-          CASE    WHEN t.ST_XX_NUM_PAL_SW >= 1 THEN  t.ST_XX_NUM_PAL_SW
-          ELSE NULL
-          END                     AS "Qty",
-          CASE    WHEN t.ST_XX_NUM_PAL_SW >= 1 THEN  '1'
-          ELSE ''
-          END                     AS "UOI",
-          CASE   WHEN t.ST_XX_NUM_PAL_SW >= 1 THEN  f_get_fee('RM_XX_FEE18',sCustomerCode) --(SELECT To_Number(regexp_substr(RM_XX_FEE18,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode)
-          ELSE null
-          END                      AS "UnitPrice",
-          CASE   WHEN t.ST_XX_NUM_PAL_SW >= 1 THEN  f_get_fee('RM_XX_FEE18',sCustomerCode) --(SELECT To_Number(regexp_substr(RM_XX_FEE18,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode)
-          ELSE null
-          END                                           AS "OWUnitPrice",
-          CASE   WHEN t.ST_XX_NUM_PAL_SW >= 1  THEN  f_get_fee('RM_XX_FEE18',sCustomerCode) --(SELECT To_Number(regexp_substr(RM_XX_FEE18,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode)
-          ELSE NULL
-          END                        AS "DExcl",
-          CASE   WHEN t.ST_XX_NUM_PAL_SW >= 1 THEN f_get_fee('RM_XX_FEE18',sCustomerCode)   * 1.1 -- (SELECT To_Number(regexp_substr(RM_XX_FEE18,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode)  * 1.1
-          ELSE NULL
-          END                                           AS "DIncl",
-          CASE   WHEN t.ST_XX_NUM_PAL_SW >= 1 THEN f_get_fee('RM_XX_FEE18',sCustomerCode) -- (SELECT To_Number(regexp_substr(RM_XX_FEE18,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode)
-          ELSE null
-          END                                           AS "ReportingPrice",
-          NULL,
-          NULL,
-          REPLACE(s.SH_ADDRESS, ',')             AS "Address",
-          REPLACE(s.SH_SUBURB, ',')              AS "Address2",
-          REPLACE(s.SH_CITY, ',')                AS "Suburb",
-          s.SH_STATE               AS "State",
-          s.SH_POST_CODE           AS "Postcode",
-          REPLACE(s.SH_NOTE_1, ',')              AS "DeliverTo",
-          REPLACE(s.SH_NOTE_2, ',')              AS "AttentionTo" ,
-          t.ST_WEIGHT              AS "Weight",
-          t.ST_PACKAGES            AS "Packages",
-          s.SH_SPARE_DBL_9         AS "OrderSource",
-          NULL AS "Pallet/Shelf Space",
-          NULL AS "Locn",
-          0 AS "CountOfStocks",
-          CASE  WHEN regexp_substr(s.SH_SPARE_STR_3,'[a-z]+', 1, 2) IS NOT NULL THEN  s.SH_SPARE_STR_3 || '@' || s.SH_SPARE_STR_1
-          ELSE ''
-          END AS Email,
-          i.IM_BRAND AS Brand,
-          i.IM_OWNED_By,i.IM_PROFILE,
-          s.SH_XX_FEE_WAIVE,d.SD_COST_PRICE,
-          s.SH_SPARE_INT_4,s.SH_CAMPAIGN,
-          d.SD_NOTE_1,d.SD_COST_PRICE,
-          d.SD_XX_FREIGHT_CHG
-    FROM      PWIN175.SD d
-          INNER JOIN PWIN175.SH s  ON s.SH_ORDER  = d.SD_ORDER
-          INNER JOIN PWIN175.ST t  ON t.ST_ORDER  = s.SH_ORDER
-          LEFT JOIN Tmp_Group_Cust r ON r.sCust = s.SH_CUST
-          INNER JOIN PWIN175.IM i  ON i.IM_STOCK = d.SD_STOCK
-    WHERE  s.SH_STATUS <> 3
-    AND f_get_fee('RM_XX_FEE18',sCustomerCode) > 0.1
-    AND       (r.sGroupCust = sCustomerCode OR r.sCust = sCustomerCode)
-    AND       t.ST_XX_NUM_PAL_SW >= 1
-    AND       d.SD_LINE = 1
-    AND t.ST_PSLIP != 'CANCELLED'
-  --	AND       TO_CHAR(t.ST_DESP_DATE,'YYYY-MM-DD') >= start_date AND TO_CHAR(t.ST_DESP_DATE,'YYYY-MM-DD') <= end_date
-    AND       t.ST_DESP_DATE >= startdate AND t.ST_DESP_DATE <= enddate
-  
-    GROUP BY  s.SH_CUST,
-          r.sGroupCust,
-          r.sCust,
-          s.SH_NOTE_1,
-          s.SH_CAMPAIGN,
-          s.SH_SPARE_STR_4,
-          s.SH_ORDER,
-          t.ST_PICK,
-          d.SD_XX_PICKLIST_NUM,s.SH_CAMPAIGN,
-          t.ST_PSLIP,
-          t.ST_DESP_DATE,
-          t.ST_XX_NUM_PAL_SW,
-          i.IM_TYPE,
-          IM_CUST,
-          IM_XX_COST_CENTRE01,
-          d.SD_STOCK,
-          d.SD_DESC,
-          d.SD_LINE,
-          d.SD_EXCL,
-          d.SD_INCL,
-          d.SD_SELL_PRICE,
-          d.SD_XX_OW_UNIT_PRICE,s.SH_ADD_DATE,
-          d.SD_QTY_ORDER,
-          d.SD_QTY_ORDER,
-          s.SH_ADDRESS,
-          s.SH_SUBURB,
-          s.SH_CITY, i.IM_OWNED_By,i.IM_PROFILE,
-          s.SH_XX_FEE_WAIVE,d.SD_COST_PRICE,
-          s.SH_SPARE_INT_4,s.SH_CAMPAIGN,
-          d.SD_NOTE_1,d.SD_COST_PRICE,
-          d.SD_XX_FREIGHT_CHG,
-          s.SH_STATE,
-          s.SH_POST_CODE,
-          s.SH_NOTE_1,
-          s.SH_NOTE_2,
-          t.ST_WEIGHT,
-          t.ST_PACKAGES,
-          s.SH_SPARE_DBL_9,
-          r.sGroupCust,
-          s.SH_SPARE_STR_5,
-          s.SH_CUST_REF,s.SH_SPARE_STR_3,s.SH_SPARE_STR_1,
-                i.IM_BRAND,i.IM_OWNED_By,i.IM_PROFILE,s.SH_XX_FEE_WAIVE,d.SD_COST_PRICE,s.SH_SPARE_INT_4;
-                
-                
+     
       CURSOR canal
       IS
       SELECT    s.SH_CUST,
@@ -3794,130 +3084,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
           s.SH_CUST_REF,s.SH_SPARE_STR_3,s.SH_SPARE_STR_1,
                 i.IM_BRAND,i.IM_OWNED_By,i.IM_PROFILE,s.SH_XX_FEE_WAIVE,d.SD_COST_PRICE,s.SH_SPARE_INT_4;
   
-      CURSOR cDEV
-      IS
-      SELECT    s.SH_CUST,
-          r.sGroupCust,
-          CASE    WHEN IM_CUST <> 'TABCORP' THEN s.SH_SPARE_STR_4
-          WHEN IM_CUST = 'TABCORP' THEN IM_XX_COST_CENTRE01
-          ELSE s.SH_SPARE_STR_4
-          END,
-          s.SH_ORDER,s.SH_SPARE_STR_5,s.SH_CUST_REF,
-          t.ST_PICK                AS "PickNum",
-          t.ST_PSLIP               AS "DespNote",
-          substr(To_Char(t.ST_DESP_DATE),0,10)            AS "DespatchDate",
-          substr(To_Char(s.SH_ADD_DATE),0,10) AS "OrderDate",
-          CASE    WHEN t.ST_XX_NUM_PAL_SW >= 1 THEN 'ShrinkWrap Despatch Fee'
-          ELSE NULL
-          END                      AS "FeeType",
-          CASE    WHEN t.ST_XX_NUM_PAL_SW >= 1 THEN  'ShrinkWrap Despatch'
-          ELSE NULL
-          END                     AS "Item",
-          CASE    WHEN t.ST_XX_NUM_PAL_SW >= 1 THEN  'ShrinkWraping Despatch Fee'
-          ELSE NULL
-          END                     AS "Description",
-          CASE    WHEN t.ST_XX_NUM_PAL_SW >= 1 THEN  t.ST_XX_NUM_PAL_SW
-          ELSE NULL
-          END                     AS "Qty",
-          CASE    WHEN t.ST_XX_NUM_PAL_SW >= 1 THEN  '1'
-          ELSE ''
-          END                     AS "UOI",
-          CASE   WHEN t.ST_XX_NUM_PAL_SW >= 1 THEN  f_get_fee('RM_XX_FEE18',sCustomerCode) --(SELECT To_Number(regexp_substr(RM_XX_FEE18,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode)
-          ELSE null
-          END                      AS "UnitPrice",
-          CASE   WHEN t.ST_XX_NUM_PAL_SW >= 1 THEN  f_get_fee('RM_XX_FEE18',sCustomerCode) --(SELECT To_Number(regexp_substr(RM_XX_FEE18,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode)
-          ELSE null
-          END                                           AS "OWUnitPrice",
-          CASE   WHEN t.ST_XX_NUM_PAL_SW >= 1  THEN  f_get_fee('RM_XX_FEE18',sCustomerCode) --(SELECT To_Number(regexp_substr(RM_XX_FEE18,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode)
-          ELSE NULL
-          END                        AS "DExcl",
-          CASE   WHEN t.ST_XX_NUM_PAL_SW >= 1 THEN f_get_fee('RM_XX_FEE18',sCustomerCode)   * 1.1 -- (SELECT To_Number(regexp_substr(RM_XX_FEE18,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode)  * 1.1
-          ELSE NULL
-          END                                           AS "DIncl",
-          CASE   WHEN t.ST_XX_NUM_PAL_SW >= 1 THEN f_get_fee('RM_XX_FEE18',sCustomerCode) -- (SELECT To_Number(regexp_substr(RM_XX_FEE18,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode)
-          ELSE null
-          END                                           AS "ReportingPrice",
-          NULL,
-          NULL,
-          REPLACE(s.SH_ADDRESS, ',')             AS "Address",
-          REPLACE(s.SH_SUBURB, ',')              AS "Address2",
-          REPLACE(s.SH_CITY, ',')                AS "Suburb",
-          s.SH_STATE               AS "State",
-          s.SH_POST_CODE           AS "Postcode",
-          REPLACE(s.SH_NOTE_1, ',')              AS "DeliverTo",
-          REPLACE(s.SH_NOTE_2, ',')              AS "AttentionTo" ,
-          t.ST_WEIGHT              AS "Weight",
-          t.ST_PACKAGES            AS "Packages",
-          s.SH_SPARE_DBL_9         AS "OrderSource",
-          NULL AS "Pallet/Shelf Space",
-          NULL AS "Locn",
-          0 AS "CountOfStocks",
-          CASE  WHEN regexp_substr(s.SH_SPARE_STR_3,'[a-z]+', 1, 2) IS NOT NULL THEN  s.SH_SPARE_STR_3 || '@' || s.SH_SPARE_STR_1
-          ELSE ''
-          END AS Email,
-          i.IM_BRAND AS Brand,
-          i.IM_OWNED_By,i.IM_PROFILE,
-          s.SH_XX_FEE_WAIVE,d.SD_COST_PRICE,
-          s.SH_SPARE_INT_4,s.SH_CAMPAIGN,
-          d.SD_NOTE_1,d.SD_COST_PRICE,
-          d.SD_XX_FREIGHT_CHG
-    FROM      PWIN175.SD d
-          INNER JOIN PWIN175.SH s  ON s.SH_ORDER  = d.SD_ORDER
-          INNER JOIN PWIN175.ST t  ON t.ST_ORDER  = s.SH_ORDER
-          LEFT JOIN Dev_Group_Cust r ON r.sCust = s.SH_CUST
-          INNER JOIN PWIN175.IM i  ON i.IM_STOCK = d.SD_STOCK
-    WHERE  s.SH_STATUS <> 3
-    AND f_get_fee('RM_XX_FEE18',sCustomerCode) > 0.1
-    AND       (r.sGroupCust = sCustomerCode OR r.sCust = sCustomerCode)
-    AND       t.ST_XX_NUM_PAL_SW >= 1
-    AND       d.SD_LINE = 1
-    AND t.ST_PSLIP != 'CANCELLED'
-  --	AND       TO_CHAR(t.ST_DESP_DATE,'YYYY-MM-DD') >= start_date AND TO_CHAR(t.ST_DESP_DATE,'YYYY-MM-DD') <= end_date
-    AND       t.ST_DESP_DATE >= startdate AND t.ST_DESP_DATE <= enddate
-  
-    GROUP BY  s.SH_CUST,
-          r.sGroupCust,
-          r.sCust,
-          s.SH_NOTE_1,
-          s.SH_CAMPAIGN,
-          s.SH_SPARE_STR_4,
-          s.SH_ORDER,
-          t.ST_PICK,
-          d.SD_XX_PICKLIST_NUM,s.SH_CAMPAIGN,
-          t.ST_PSLIP,
-          t.ST_DESP_DATE,
-          t.ST_XX_NUM_PAL_SW,
-          i.IM_TYPE,
-          IM_CUST,
-          IM_XX_COST_CENTRE01,
-          d.SD_STOCK,
-          d.SD_DESC,
-          d.SD_LINE,
-          d.SD_EXCL,
-          d.SD_INCL,
-          d.SD_SELL_PRICE,
-          d.SD_XX_OW_UNIT_PRICE,s.SH_ADD_DATE,
-          d.SD_QTY_ORDER,
-          d.SD_QTY_ORDER,
-          s.SH_ADDRESS,
-          s.SH_SUBURB,
-          s.SH_CITY, i.IM_OWNED_By,i.IM_PROFILE,
-          s.SH_XX_FEE_WAIVE,d.SD_COST_PRICE,
-          s.SH_SPARE_INT_4,s.SH_CAMPAIGN,
-          d.SD_NOTE_1,d.SD_COST_PRICE,
-          d.SD_XX_FREIGHT_CHG,
-          s.SH_STATE,
-          s.SH_POST_CODE,
-          s.SH_NOTE_1,
-          s.SH_NOTE_2,
-          t.ST_WEIGHT,
-          t.ST_PACKAGES,
-          s.SH_SPARE_DBL_9,
-          r.sGroupCust,
-          s.SH_SPARE_STR_5,
-          s.SH_CUST_REF,s.SH_SPARE_STR_3,s.SH_SPARE_STR_1,
-                i.IM_BRAND,i.IM_OWNED_By,i.IM_PROFILE,s.SH_XX_FEE_WAIVE,d.SD_COST_PRICE,s.SH_SPARE_INT_4;
-                
+    
        CURSOR canalDEV
       IS
       SELECT    s.SH_CUST,
@@ -4057,11 +3224,11 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
           --DBMS_OUTPUT.PUT_LINE('G1_SHRINKWRAP_FEES rates are $' || sCust_Rates || '. Prism rate field is RM_XX_FEE18');
           
           nCheckpoint := 2;
-           If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+           If (sOp = 'PRJ' or sOp = 'DEV') Then
             v_query := 'TRUNCATE TABLE DEV_SHRINKWRAP_FEES';
             EXECUTE IMMEDIATE v_query;
             
-            If (sAnalysis = 'VICP') Then
+           
                OPEN canalDEV;
               ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
               LOOP
@@ -4075,25 +3242,11 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
               END LOOP;
              -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
               CLOSE canalDEV;
-            Else
-              OPEN cDEV;
-              ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
-              LOOP
-              FETCH cDEV BULK COLLECT INTO l_data LIMIT p_array_size;
-      
-              FORALL i IN 1..l_data.COUNT
-              ----DBMS_OUTPUT.PUT_LINE(i || '.' );
-              INSERT INTO DEV_SHRINKWRAP_FEES VALUES l_data(i);
-              --USING sCust;
-              EXIT WHEN cDEV%NOTFOUND;
-              END LOOP;
-             -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-              CLOSE cDEV;
-            End If;
+           
           Else
             v_query := 'TRUNCATE TABLE TMP_SHRINKWRAP_FEES';
             EXECUTE IMMEDIATE v_query;
-            If (sAnalysis = 'VICP') Then
+           
              OPEN canal;
               ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
               LOOP
@@ -4107,21 +3260,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
               END LOOP;
              -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
               CLOSE canal;
-            Else
-              OPEN c;
-              ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
-              LOOP
-              FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
-      
-              FORALL i IN 1..l_data.COUNT
-              ----DBMS_OUTPUT.PUT_LINE(i || '.' );
-              INSERT INTO TMP_SHRINKWRAP_FEES VALUES l_data(i);
-              --USING sCust;
-              EXIT WHEN c%NOTFOUND;
-              END LOOP;
-             -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-              CLOSE c;
-            End If;
+           
           End If;
            --FOR i IN l_data.FIRST .. l_data.LAST LOOP
           --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
@@ -4132,7 +3271,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
   
        IF v_query2 > 0 THEN
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
           EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'G1_SHRINKWRAP_FEES','ST','DEV_SHRINKWRAP_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
         Else
           EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'G1_SHRINKWRAP_FEES','ST','TMP_SHRINKWRAP_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
@@ -4183,99 +3322,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
       v_query2          VARCHAR2(32767);
       nCheckpoint       NUMBER;
       nbreakpoint   NUMBER;
-      CURSOR c
-      IS
-      /*Stocks*/
-      SELECT 
-            s.SH_CUST                AS "Customer",
-            i.IM_CUST              AS "Parent",
-            CASE   WHEN i.IM_CUST <> 'TABCORP' AND s.SH_SPARE_STR_4 IS NULL THEN s.SH_CUST
-            WHEN i.IM_CUST <> 'TABCORP' THEN s.SH_SPARE_STR_4
-            WHEN i.IM_CUST = 'TABCORP' THEN i.IM_XX_COST_CENTRE01
-            ELSE i.IM_XX_COST_CENTRE01
-            END                      AS "CostCentre",
-            s.SH_ORDER               AS "Order",
-            s.SH_SPARE_STR_5         AS "OrderwareNum",
-            s.SH_CUST_REF            AS "CustomerRef",
-            t.ST_PICK                AS "PickNum",
-          t.ST_PSLIP               AS "DespNote",
-          substr(To_Char(t.ST_DESP_DATE),0,10)            AS "DespatchDate",
-          substr(To_Char(s.SH_ADD_DATE),0,10) AS "OrderDate",
-            CASE    WHEN d.SD_STOCK IS NOT NULL THEN 'Stock'
-            ELSE NULL
-            END                      AS "FeeType",
-            d.SD_STOCK               AS "Item",
-            REPLACE(d.SD_DESC, ',')                AS "Description",
-            l.SL_PSLIP_QTY           AS "Qty",
-            d.SD_QTY_UNIT            AS "UOI",
-            CASE   WHEN d.SD_STOCK IS NOT NULL AND i.IM_CUST <> 'TABCORP' AND i.IM_OWNED_BY = 0 THEN TO_NUMBER(d.SD_SELL_PRICE)--n.NI_SELL_VALUE/n.NI_NX_QUANTITY --TO_NUMBER(d.SD_SELL_PRICE)
-            WHEN d.SD_STOCK IS NOT NULL AND i.IM_CUST <> 'TABCORP' AND i.IM_OWNED_BY = 1 THEN TO_NUMBER(d.SD_SELL_PRICE) --n.NI_SELL_VALUE/n.NI_NX_QUANTITY
-            WHEN d.SD_STOCK IS NOT NULL AND i.IM_CUST = 'TABCORP' AND IU_TO_METRIC = 1 THEN (SELECT To_Number(regexp_substr(RM_XX_FEE08,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode) --* d.SD_QTY_DESP --EOM_REPORT_PKG.F_BREAK_UNIT_PRICE(r.sGroupCust,d.SD_STOCK) IS NOT NULL THEN EOM_REPORT_PKG.F_BREAK_UNIT_PRICE(r.sGroupCust,d.SD_STOCK)
-            WHEN d.SD_STOCK IS NOT NULL AND i.IM_CUST = 'TABCORP' AND IU_TO_METRIC != 1 THEN (SELECT To_Number(regexp_substr(RM_XX_FEE09,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode) --* d.SD_QTY_DESP -- d.SD_XX_OW_UNIT_PRICE
-            ELSE NULL -- 43/50
-            END                        AS "Batch/UnitPrice",
-            CASE   WHEN d.SD_STOCK IS NOT NULL AND i.IM_CUST <> 'TABCORP' THEN To_Number(i.IM_REPORTING_PRICE)
-            WHEN d.SD_STOCK IS NOT NULL AND i.IM_CUST = 'TABCORP' THEN NULL
-            ELSE NULL
-            END                        AS "OWUnitPrice", -- fix this for tabcorp
-            CASE  WHEN d.SD_STOCK IS NOT NULL AND i.IM_CUST <> 'TABCORP' AND i.IM_OWNED_BY = 0 THEN d.SD_SELL_PRICE * l.SL_PSLIP_QTY
-            WHEN d.SD_STOCK IS NOT NULL AND i.IM_CUST <> 'TABCORP' AND i.IM_OWNED_BY = 1 THEN TO_NUMBER(d.SD_SELL_PRICE) * l.SL_PSLIP_QTY--(n.NI_SELL_VALUE/n.NI_NX_QUANTITY)
-            WHEN d.SD_STOCK IS NOT NULL AND i.IM_CUST = 'TABCORP' AND IU_TO_METRIC = 1 THEN (SELECT To_Number(regexp_substr(RM_XX_FEE08,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode) * l.SL_PSLIP_QTY --EOM_REPORT_PKG.F_BREAK_UNIT_PRICE(r.sGroupCust,d.SD_STOCK) IS NOT NULL THEN EOM_REPORT_PKG.F_BREAK_UNIT_PRICE(r.sGroupCust,d.SD_STOCK)
-            WHEN d.SD_STOCK IS NOT NULL AND i.IM_CUST = 'TABCORP' AND IU_TO_METRIC != 1 THEN (SELECT To_Number(regexp_substr(RM_XX_FEE09,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode) * l.SL_PSLIP_QTY -- d.SD_XX_OW_UNIT_PRICE
-            ELSE NULL
-            END          AS "DExcl", 
-            CASE    WHEN d.SD_STOCK IS NOT NULL AND i.IM_CUST <> 'TABCORP' AND i.IM_OWNED_BY = 0 THEN (d.SD_SELL_PRICE * l.SL_PSLIP_QTY) * 1.1
-            WHEN d.SD_STOCK IS NOT NULL AND i.IM_CUST <> 'TABCORP' AND i.IM_OWNED_BY = 1  THEN  (TO_NUMBER(d.SD_SELL_PRICE) * l.SL_PSLIP_QTY) * 1.1
-            WHEN d.SD_STOCK IS NOT NULL AND i.IM_CUST = 'TABCORP' AND IU_TO_METRIC = 1 THEN (((SELECT To_Number(regexp_substr(RM_XX_FEE08,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode) * l.SL_PSLIP_QTY) * 1.1) --EOM_REPORT_PKG.F_BREAK_UNIT_PRICE(r.sGroupCust,d.SD_STOCK) IS NOT NULL THEN EOM_REPORT_PKG.F_BREAK_UNIT_PRICE(r.sGroupCust,d.SD_STOCK)
-            WHEN d.SD_STOCK IS NOT NULL AND i.IM_CUST = 'TABCORP' AND IU_TO_METRIC != 1 THEN (((SELECT To_Number(regexp_substr(RM_XX_FEE09,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode) * l.SL_PSLIP_QTY) * 1.1) -- d.SD_XX_OW_UNIT_PRICE
-            ELSE NULL
-            END          AS "DIncl",
-            CASE WHEN sCustomerCode = 'TABCORP' Then EOM_REPORT_PKG.F_BREAK_UNIT_PRICE(r.OW_CAT,d.SD_STOCK)
-                 WHEN sCustomerCode = 'TABCORP' AND EOM_REPORT_PKG.F_BREAK_UNIT_PRICE(r.OW_CAT,d.SD_STOCK) IS NULL Then To_Number(i.IM_REPORTING_PRICE)
-            Else To_Number(i.IM_REPORTING_PRICE)      
-            END AS "ReportingPrice", -- break 
-            IM_STD_COST,
-            IM_LAST_COST,
-            REPLACE(s.SH_ADDRESS, ',')             AS "Address",
-            REPLACE(s.SH_SUBURB, ',')              AS "Address2",
-            REPLACE(s.SH_CITY, ',')                AS "Suburb",
-            s.SH_STATE               AS "State",
-            s.SH_POST_CODE           AS "Postcode",
-            REPLACE(s.SH_NOTE_1, ',')              AS "DeliverTo",
-            REPLACE(s.SH_NOTE_2, ',')              AS "AttentionTo" ,
-            t.ST_WEIGHT              AS "Weight",
-            t.ST_PACKAGES            AS "Packages",
-            s.SH_SPARE_DBL_9         AS "OrderSource", --nedd function to return text value
-            IM_XX_QTY_PER_PACK AS "Inner", /*Pallet/Space*/
-            IM_XX_QTY_PER_PACK AS "Outer", /*Locn*/
-            0 AS "CountOfStocks",
-            CASE   WHEN regexp_substr(s.SH_SPARE_STR_3,'[a-z]+', 1, 2) IS NOT NULL THEN  s.SH_SPARE_STR_3 || '@' || s.SH_SPARE_STR_1
-            ELSE ''
-            END AS Email,
-            i.IM_BRAND AS Brand,
-            r.OW_CAT AS OwnedBy,
-            i.IM_OWNED_BY AS sProfile,
-            NULL AS WaiveFee,
-            NULL AS Cost,
-            NULL AS PaymentType,s.SH_CAMPAIGN,NULL,NULL,SD_XX_ARIBA_LINE_NO
-      FROM      SD d
-         INNER JOIN SH s  ON s.SH_ORDER  = d.SD_ORDER
-          --INNER JOIN ST t  ON t.ST_PICK  = d.SD_LAST_PICK_NUM
-          INNER JOIN SL l  ON l.SL_ORDER  = d.SD_ORDER  AND SL_ORDER_LINE = SD_LINE
-          INNER JOIN ST t  ON t.ST_PICK  = l.SL_PICK
-          INNER JOIN Tmp_Group_Cust r ON r.sCust = s.SH_CUST
-          INNER JOIN IM i  ON i.IM_STOCK = d.SD_STOCK
-          --INNER JOIN NE n  ON n.NE_STOCK = l.SL_UID
-          INNER JOIN IU ON IU_UNIT = i.IM_LEVEL_UNIT
-          WHERE SD_STATUS != 3
-          AND SL_PSLIP_QTY >= 1
-          AND (r.sGroupCust = sCustomerCode OR r.sCust = sCustomerCode)
-          AND t.ST_PSLIP != 'CANCELLED'
-          --AND       s.SH_ORDER = t.ST_ORDER
-          --AND       TO_CHAR(t.ST_DESP_DATE,'YYYY-MM-DD') >= start_date AND TO_CHAR(t.ST_DESP_DATE,'YYYY-MM-DD') <= end_date
-          AND       t.ST_DESP_DATE >= startdate AND t.ST_DESP_DATE <= enddate;
-          --AND       d.SD_LAST_PICK_NUM = t.ST_PICK;
-          
+     
           
       CURSOR canal
       IS
@@ -4370,99 +3417,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
           AND       t.ST_DESP_DATE >= startdate AND t.ST_DESP_DATE <= enddate;
           --AND       d.SD_LAST_PICK_NUM = t.ST_PICK;
           
-      CURSOR cDEV
-      IS
-      /*Stocks*/
-      SELECT 
-            s.SH_CUST                AS "Customer",
-            i.IM_CUST              AS "Parent",
-            CASE   WHEN i.IM_CUST <> 'TABCORP' AND s.SH_SPARE_STR_4 IS NULL THEN s.SH_CUST
-            WHEN i.IM_CUST <> 'TABCORP' THEN s.SH_SPARE_STR_4
-            WHEN i.IM_CUST = 'TABCORP' THEN i.IM_XX_COST_CENTRE01
-            ELSE i.IM_XX_COST_CENTRE01
-            END                      AS "CostCentre",
-            s.SH_ORDER               AS "Order",
-            s.SH_SPARE_STR_5         AS "OrderwareNum",
-            s.SH_CUST_REF            AS "CustomerRef",
-            t.ST_PICK                AS "PickNum",
-          t.ST_PSLIP               AS "DespNote",
-          substr(To_Char(t.ST_DESP_DATE),0,10)            AS "DespatchDate",
-          substr(To_Char(s.SH_ADD_DATE),0,10) AS "OrderDate",
-            CASE    WHEN d.SD_STOCK IS NOT NULL THEN 'Stock'
-            ELSE NULL
-            END                      AS "FeeType",
-            d.SD_STOCK               AS "Item",
-            REPLACE(d.SD_DESC, ',')                AS "Description",
-            l.SL_PSLIP_QTY           AS "Qty",
-            d.SD_QTY_UNIT            AS "UOI",
-            CASE   WHEN d.SD_STOCK IS NOT NULL AND i.IM_CUST <> 'TABCORP' AND i.IM_OWNED_BY = 0 THEN TO_NUMBER(d.SD_SELL_PRICE)--n.NI_SELL_VALUE/n.NI_NX_QUANTITY --TO_NUMBER(d.SD_SELL_PRICE)
-            WHEN d.SD_STOCK IS NOT NULL AND i.IM_CUST <> 'TABCORP' AND i.IM_OWNED_BY = 1 THEN TO_NUMBER(d.SD_SELL_PRICE) --n.NI_SELL_VALUE/n.NI_NX_QUANTITY
-            WHEN d.SD_STOCK IS NOT NULL AND i.IM_CUST = 'TABCORP' AND IU_TO_METRIC = 1 THEN (SELECT To_Number(regexp_substr(RM_XX_FEE08,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode) --* d.SD_QTY_DESP --EOM_REPORT_PKG.F_BREAK_UNIT_PRICE(r.sGroupCust,d.SD_STOCK) IS NOT NULL THEN EOM_REPORT_PKG.F_BREAK_UNIT_PRICE(r.sGroupCust,d.SD_STOCK)
-            WHEN d.SD_STOCK IS NOT NULL AND i.IM_CUST = 'TABCORP' AND IU_TO_METRIC != 1 THEN (SELECT To_Number(regexp_substr(RM_XX_FEE09,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode) --* d.SD_QTY_DESP -- d.SD_XX_OW_UNIT_PRICE
-            ELSE NULL -- 43/50
-            END                        AS "Batch/UnitPrice",
-            CASE   WHEN d.SD_STOCK IS NOT NULL AND i.IM_CUST <> 'TABCORP' THEN To_Number(i.IM_REPORTING_PRICE)
-            WHEN d.SD_STOCK IS NOT NULL AND i.IM_CUST = 'TABCORP' THEN NULL
-            ELSE NULL
-            END                        AS "OWUnitPrice", -- fix this for tabcorp
-            CASE  WHEN d.SD_STOCK IS NOT NULL AND i.IM_CUST <> 'TABCORP' AND i.IM_OWNED_BY = 0 THEN d.SD_SELL_PRICE * l.SL_PSLIP_QTY
-            WHEN d.SD_STOCK IS NOT NULL AND i.IM_CUST <> 'TABCORP' AND i.IM_OWNED_BY = 1 THEN TO_NUMBER(d.SD_SELL_PRICE) * l.SL_PSLIP_QTY--(n.NI_SELL_VALUE/n.NI_NX_QUANTITY)
-            WHEN d.SD_STOCK IS NOT NULL AND i.IM_CUST = 'TABCORP' AND IU_TO_METRIC = 1 THEN (SELECT To_Number(regexp_substr(RM_XX_FEE08,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode) * l.SL_PSLIP_QTY --EOM_REPORT_PKG.F_BREAK_UNIT_PRICE(r.sGroupCust,d.SD_STOCK) IS NOT NULL THEN EOM_REPORT_PKG.F_BREAK_UNIT_PRICE(r.sGroupCust,d.SD_STOCK)
-            WHEN d.SD_STOCK IS NOT NULL AND i.IM_CUST = 'TABCORP' AND IU_TO_METRIC != 1 THEN (SELECT To_Number(regexp_substr(RM_XX_FEE09,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode) * l.SL_PSLIP_QTY -- d.SD_XX_OW_UNIT_PRICE
-            ELSE NULL
-            END          AS "DExcl", 
-            CASE    WHEN d.SD_STOCK IS NOT NULL AND i.IM_CUST <> 'TABCORP' AND i.IM_OWNED_BY = 0 THEN (d.SD_SELL_PRICE * l.SL_PSLIP_QTY) * 1.1
-            WHEN d.SD_STOCK IS NOT NULL AND i.IM_CUST <> 'TABCORP' AND i.IM_OWNED_BY = 1  THEN  (TO_NUMBER(d.SD_SELL_PRICE) * l.SL_PSLIP_QTY) * 1.1
-            WHEN d.SD_STOCK IS NOT NULL AND i.IM_CUST = 'TABCORP' AND IU_TO_METRIC = 1 THEN (((SELECT To_Number(regexp_substr(RM_XX_FEE08,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode) * l.SL_PSLIP_QTY) * 1.1) --EOM_REPORT_PKG.F_BREAK_UNIT_PRICE(r.sGroupCust,d.SD_STOCK) IS NOT NULL THEN EOM_REPORT_PKG.F_BREAK_UNIT_PRICE(r.sGroupCust,d.SD_STOCK)
-            WHEN d.SD_STOCK IS NOT NULL AND i.IM_CUST = 'TABCORP' AND IU_TO_METRIC != 1 THEN (((SELECT To_Number(regexp_substr(RM_XX_FEE09,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode) * l.SL_PSLIP_QTY) * 1.1) -- d.SD_XX_OW_UNIT_PRICE
-            ELSE NULL
-            END          AS "DIncl",
-            CASE WHEN sCustomerCode = 'TABCORP' Then EOM_REPORT_PKG.F_BREAK_UNIT_PRICE(r.OW_CAT,d.SD_STOCK)
-                 WHEN sCustomerCode = 'TABCORP' AND EOM_REPORT_PKG.F_BREAK_UNIT_PRICE(r.OW_CAT,d.SD_STOCK) IS NULL Then To_Number(i.IM_REPORTING_PRICE)
-            Else To_Number(i.IM_REPORTING_PRICE)      
-            END AS "ReportingPrice", -- break 
-            IM_STD_COST,
-            IM_LAST_COST,
-            REPLACE(s.SH_ADDRESS, ',')             AS "Address",
-            REPLACE(s.SH_SUBURB, ',')              AS "Address2",
-            REPLACE(s.SH_CITY, ',')                AS "Suburb",
-            s.SH_STATE               AS "State",
-            s.SH_POST_CODE           AS "Postcode",
-            REPLACE(s.SH_NOTE_1, ',')              AS "DeliverTo",
-            REPLACE(s.SH_NOTE_2, ',')              AS "AttentionTo" ,
-            t.ST_WEIGHT              AS "Weight",
-            t.ST_PACKAGES            AS "Packages",
-            s.SH_SPARE_DBL_9         AS "OrderSource", --nedd function to return text value
-            IM_XX_QTY_PER_PACK AS "Inner", /*Pallet/Space*/
-            IM_XX_QTY_PER_PACK AS "Outer", /*Locn*/
-            0 AS "CountOfStocks",
-            CASE   WHEN regexp_substr(s.SH_SPARE_STR_3,'[a-z]+', 1, 2) IS NOT NULL THEN  s.SH_SPARE_STR_3 || '@' || s.SH_SPARE_STR_1
-            ELSE ''
-            END AS Email,
-            i.IM_BRAND AS Brand,
-            r.OW_CAT AS OwnedBy,
-            i.IM_OWNED_BY AS sProfile,
-            NULL AS WaiveFee,
-            NULL AS Cost,
-            NULL AS PaymentType,s.SH_CAMPAIGN,NULL,NULL,SD_XX_ARIBA_LINE_NO
-      FROM      SD d
-         INNER JOIN SH s  ON s.SH_ORDER  = d.SD_ORDER
-          --INNER JOIN ST t  ON t.ST_PICK  = d.SD_LAST_PICK_NUM
-          INNER JOIN SL l  ON l.SL_ORDER  = d.SD_ORDER  AND SL_ORDER_LINE = SD_LINE
-          INNER JOIN ST t  ON t.ST_PICK  = l.SL_PICK
-          INNER JOIN Dev_Group_Cust r ON r.sCust = s.SH_CUST
-          INNER JOIN IM i  ON i.IM_STOCK = d.SD_STOCK
-          --INNER JOIN NE n  ON n.NE_STOCK = l.SL_UID
-          INNER JOIN IU ON IU_UNIT = i.IM_LEVEL_UNIT
-          WHERE SD_STATUS != 3
-          AND SL_PSLIP_QTY >= 1
-          AND (r.sGroupCust = sCustomerCode OR r.sCust = sCustomerCode)
-          AND t.ST_PSLIP != 'CANCELLED'
-          --AND       s.SH_ORDER = t.ST_ORDER
-          --AND       TO_CHAR(t.ST_DESP_DATE,'YYYY-MM-DD') >= start_date AND TO_CHAR(t.ST_DESP_DATE,'YYYY-MM-DD') <= end_date
-          AND       t.ST_DESP_DATE >= startdate AND t.ST_DESP_DATE <= enddate;
-          --AND       d.SD_LAST_PICK_NUM = t.ST_PICK;
-          
+     
           
       CURSOR canalDEV
       IS
@@ -4564,10 +3519,10 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
           
   
           nCheckpoint := 2;
-          If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          If (sOp = 'PRJ' or sOp = 'DEV') Then
             v_query := 'TRUNCATE TABLE DEV_STOCK_FEES';
             EXECUTE IMMEDIATE v_query;
-            If (sAnalysis = 'VICP') Then
+           
               OPEN canalDEV;
               ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
               LOOP
@@ -4581,25 +3536,11 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
               END LOOP;
              -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
               CLOSE canalDEV;
-            Else
-               OPEN cDEV;
-                ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
-                LOOP
-                FETCH cDEV BULK COLLECT INTO l_data LIMIT p_array_size;
-        
-                FORALL i IN 1..l_data.COUNT
-                ----DBMS_OUTPUT.PUT_LINE(i || '.' );
-                INSERT INTO DEV_STOCK_FEES VALUES l_data(i);
-                --USING sCust;
-                EXIT WHEN cDEV%NOTFOUND;
-                END LOOP;
-               -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-                CLOSE cDEV;
-          End If;
+           
           Else
             v_query := 'TRUNCATE TABLE TMP_STOCK_FEES';
             EXECUTE IMMEDIATE v_query;
-            If (sAnalysis = 'VICP') Then
+            
               OPEN canal;
               ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
               LOOP
@@ -4613,21 +3554,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
               END LOOP;
              -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
               CLOSE canal;
-            Else
-              OPEN c;
-              ----DBMS_OUTPUT.PUT_LINE(sCustomerCode || '.' );
-              LOOP
-              FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
-      
-              FORALL i IN 1..l_data.COUNT
-              ----DBMS_OUTPUT.PUT_LINE(i || '.' );
-              INSERT INTO TMP_STOCK_FEES VALUES l_data(i);
-              --USING sCust;
-              EXIT WHEN c%NOTFOUND;
-              END LOOP;
-             -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-              CLOSE c;
-            End If;
+           
           End If;
           -- FOR i IN l_data.FIRST .. l_data.LAST LOOP
          -- DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
@@ -4640,7 +3567,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
   
        IF v_query2 > 0 THEN
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
           EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'G2_STOCK_FEES','SD','DEV_STOCK_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
         Else
           EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'G2_STOCK_FEES','SD','TMP_STOCK_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
@@ -4787,7 +3714,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
          
   
           nCheckpoint := 2;
-          If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          If (sOp = 'PRJ' or sOp = 'DEV') Then
              v_query := 'TRUNCATE TABLE DEV_STOCK_FEES';
             EXECUTE IMMEDIATE v_query;
             OPEN c;
@@ -4828,7 +3755,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
   
        IF v_query2 > 0 THEN
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
           EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'G2_STOCK_FEES','SD','DEV_STOCK_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
         Else
           EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'G2_STOCK_FEES','SD','TMP_STOCK_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
@@ -5061,7 +3988,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
           ----DBMS_OUTPUT.PUT_LINE('G3_PACKING_FEES Inner rates are $' || sCust_Rates || '. G3_PACKING_FEES Outer rates are $' || sCust_Rates2 || '. Prism rate fields are RM_XX_FEE08 * RM_XX_FEE09.');      
           
           nCheckpoint := 2;
-          If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          If (sOp = 'PRJ' or sOp = 'DEV') Then
             v_query := 'TRUNCATE TABLE DEV_PACKING_FEES';
             EXECUTE IMMEDIATE v_query;
             OPEN cDEV;
@@ -5103,7 +4030,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
   
           IF v_query2 > 0 THEN
             v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-            If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+            If (sOp = 'PRJ' or sOp = 'DEV') Then
               EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'G3_PACKING_FEES','SL','DEV_PACKING_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
             Else
               EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'G3_PACKING_FEES','SL','TMP_PACKING_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
@@ -5427,7 +4354,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
           ----DBMS_OUTPUT.PUT_LINE('G4_HANDLING_FEES rates are $' || sCust_Rates || '. Prism rate field is RM_XX_FEE06.');
           
           nCheckpoint := 2;
-          If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          If (sOp = 'PRJ' or sOp = 'DEV') Then
              v_query := 'TRUNCATE TABLE DEV_HANDLING_FEES';
             EXECUTE IMMEDIATE v_query;
             
@@ -5474,7 +4401,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
   
          IF v_query2 > 0 THEN
             v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-            If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+            If (sOp = 'PRJ' or sOp = 'DEV') Then
               EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'G4_HANDLING_FEES_F','SL','DEV_HANDLING_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
             Else
               EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'G4_HANDLING_FEES_F','SL','TMP_HANDLING_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
@@ -5961,7 +4888,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
           ----DBMS_OUTPUT.PUT_LINE('G4_HANDLING_FEES rates are $' || sCust_Rates || '. Prism rate field is RM_XX_FEE06.');
           
           nCheckpoint := 2;
-          If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          If (sOp = 'PRJ' or sOp = 'DEV') Then
             v_query := 'TRUNCATE TABLE DEV_PICK_FEES';
             EXECUTE IMMEDIATE v_query;
             If (sAnalysis = 'VICP') Then
@@ -6035,7 +4962,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
   
          IF v_query2 > 0 THEN
             v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-            If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+            If (sOp = 'PRJ' or sOp = 'DEV') Then
               EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'G4_HANDLING_FEES_F2','SL','DEV_PICK_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
             Else
               EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'G4_HANDLING_FEES_F2','SL','TMP_PICK_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
@@ -6405,7 +5332,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
           
   
           nCheckpoint := 2;
-           If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+           If (sOp = 'PRJ' or sOp = 'DEV') Then
             v_query := 'TRUNCATE TABLE DEV_PICK_FEES';
             EXECUTE IMMEDIATE v_query;
           
@@ -6450,7 +5377,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
   
       IF v_query2 > 0 THEN
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
           EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'G5_PICK_FEES_F','ST','DEV_PICK_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
         Else
           EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'G5_PICK_FEES_F','ST','TMP_PICK_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
@@ -6627,7 +5554,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
         
 
         nCheckpoint := 2;
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
           v_query := 'TRUNCATE TABLE DEV_PICK_FEES';
           EXECUTE IMMEDIATE v_query;
           OPEN c;
@@ -6668,7 +5595,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
 
     IF v_query2 > 0 THEN
       v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      If (sOp = 'PRJ' or sOp = 'DEV') Then
         EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'G5_PICK_FEES_F','ST','DEV_PICK_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
       Else
         EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'G5_PICK_FEES_F','ST','TMP_PICK_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
@@ -6914,7 +5841,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
        
   
       nCheckpoint := 2;
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
            v_query := 'TRUNCATE TABLE DEV_MISC_FEES';
           EXECUTE IMMEDIATE v_query;
           OPEN c;
@@ -6959,7 +5886,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
   
       IF v_query2 > 0 THEN
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
           EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'I_EOM_MISC_FEES','RM','DEV_MISC_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
         Else
           EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'I_EOM_MISC_FEES','RM','TMP_MISC_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
@@ -7456,7 +6383,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
         
   
       nCheckpoint := 2;
-      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      If (sOp = 'PRJ' or sOp = 'DEV') Then
           v_query := 'TRUNCATE TABLE DEV_CUSTOMER_FEES';
           EXECUTE IMMEDIATE v_query;
           OPEN c;
@@ -7500,7 +6427,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
     COMMIT;
     --RETURN;
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
           EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'J_EOM_CUSTOMER_FEES','RM','DEV_CUSTOMER_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
         Else
           EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'J_EOM_CUSTOMER_FEES','RM','TMP_CUSTOMER_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
@@ -7751,7 +6678,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
         
   
       nCheckpoint := 2;
-      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      If (sOp = 'PRJ' or sOp = 'DEV') Then
           v_query := 'TRUNCATE TABLE DEV_CUSTOMER_FEES';
           EXECUTE IMMEDIATE v_query;
           OPEN c;
@@ -7796,7 +6723,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
   
      IF v_query2 > 0 THEN
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
           EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'J_EOM_CUSTOMER_FEES_TAB','RM','DEV_CUSTOMER_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
         Else
           EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'J_EOM_CUSTOMER_FEES_TAB','RM','TMP_CUSTOMER_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
@@ -8022,7 +6949,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
       
   
       nCheckpoint := 2;
-       If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+       If (sOp = 'PRJ' or sOp = 'DEV') Then
            nCheckpoint := 11;
             v_query := 'TRUNCATE TABLE DEV_PAL_IN_FEES';
             EXECUTE IMMEDIATE v_query;
@@ -8078,7 +7005,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
         --' Seconds...for customer ' || sCustomerCode);
     IF v_query2 > 0 THEN
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
           EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'J_EOM_CUSTOMER_FEES_BB','RM','DEV_CUSTOMER_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
         Else
           EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'J_EOM_CUSTOMER_FEES_BB','RM','TMP_CUSTOMER_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
@@ -8192,7 +7119,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
        nCheckpoint := 2;
          EXECUTE IMMEDIATE QueryTable INTO sCust_Rates USING sCustomerCodeWBC;--Merch Ord Fee
        nCheckpoint := 3;
-         If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+         If (sOp = 'PRJ' or sOp = 'DEV') Then
            v_query := 'TRUNCATE TABLE DEV_CUSTOMER_FEES';
           EXECUTE IMMEDIATE v_query;
           OPEN c;
@@ -8233,7 +7160,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
     COMMIT;  
     IF v_query2 > 0 THEN
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
           EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'J_EOM_CUSTOMER_FEES_WBC','RM','DEV_CUSTOMER_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
         Else
           EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'J_EOM_CUSTOMER_FEES_WBC','RM','TMP_CUSTOMER_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
@@ -8405,7 +7332,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
         
   
       nCheckpoint := 2;
-          If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          If (sOp = 'PRJ' or sOp = 'DEV') Then
             v_query := 'TRUNCATE TABLE DEV_CUSTOMER_FEES';
           EXECUTE IMMEDIATE v_query;
           OPEN c;
@@ -8447,7 +7374,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
        -- END LOOP;
        
        nCheckpoint := 3;
-       If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+       If (sOp = 'PRJ' or sOp = 'DEV') Then
           OPEN o;
           ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
           LOOP
@@ -8489,7 +7416,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
   
     IF v_query2 > 0 THEN
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
           EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'J_EOM_CUSTOMER_FEES_VHA','RM','DEV_CUSTOMER_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
         Else
           EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'J_EOM_CUSTOMER_FEES_VHA','RM','TMP_CUSTOMER_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
@@ -8565,7 +7492,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
 --        EXECUTE IMMEDIATE v_query;
   
       nCheckpoint := 2;
-      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      If (sOp = 'PRJ' or sOp = 'DEV') Then
           --run specific formatting query for superpartners
            l_query := q'{Select  f1.DESPDATE,f1.ORDERNUM,f1.DESPNOTE,f1.CUSTOMER,
             f1.ATTENTIONTO,f1.ADDRESS,f1.ADDRESS2,f1.SUBURB,f1.STATE,f1.POSTCODE,
@@ -9006,7 +7933,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
   
     IF v_query2 > 0 THEN
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
           EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'J_EOM_CUSTOMER_FEES_SUP','RM','DEV_CUSTOMER_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
         Else
           EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'J_EOM_CUSTOMER_FEES_SUP','RM','TMP_CUSTOMER_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
@@ -9053,9 +7980,91 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
       v_query2          VARCHAR2(32767);
       nCheckpoint       NUMBER;
       l_start number default dbms_utility.get_time;
+    CURSOR cDEVAnal
   
+       IS
+    SELECT    s.SH_CUST                AS "Customer",
+          r.sGroupCust              AS "Parent",
+          CASE    WHEN IM_CUST <> 'TABCORP' THEN s.SH_SPARE_STR_4
+          WHEN IM_CUST = 'TABCORP' THEN IM_XX_COST_CENTRE01
+          ELSE s.SH_SPARE_STR_4
+          END                      AS "CostCentre",
+          s.SH_ORDER               AS "Order",
+          s.SH_SPARE_STR_5         AS "OrderwareNum",
+          s.SH_CUST_REF            AS "CustomerRef",
+          t.ST_PICK                AS "Pickslip",
+          t.ST_PSLIP     AS "PickNum",
+          substr(To_Char(t.ST_DESP_DATE),0,10)               AS "DespatchNote",
+          substr(To_Char(s.SH_ADD_DATE),0,10)            AS "DespatchDate",
+      CASE    WHEN t.ST_XX_NUM_PALLETS >= 1 THEN 'Pallet Despatch Fee is '
+          ELSE NULL
+          END                      AS "FeeType",
+      CASE     WHEN t.ST_XX_NUM_PALLETS >= 1 THEN  'Pallet Despatch'
+          ELSE NULL
+          END                     AS "Item",
+      CASE     WHEN t.ST_XX_NUM_PALLETS >= 1 THEN  'Pallet Despatch Fee'
+          ELSE NULL
+          END                     AS "Description",
+      CASE    WHEN t.ST_XX_NUM_PALLETS >= 1 THEN  t.ST_XX_NUM_PALLETS
+          ELSE NULL
+          END                     AS "Qty",
+      CASE     WHEN t.ST_XX_NUM_PALLETS >= 1 THEN  '1'
+          ELSE ''
+          END                     AS "UOI",
+      CASE   WHEN t.ST_XX_NUM_PALLETS >= 1 THEN (SELECT To_Number(regexp_substr(RM_XX_FEE17,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode) -- (Select To_Number(RM_XX_FEE17) from RM where RM_CUST = sCustomerCode)
+         ELSE NULL
+         END                      AS "UnitPrice",
+      CASE   WHEN t.ST_XX_NUM_PALLETS >= 1 THEN (SELECT To_Number(regexp_substr(RM_XX_FEE17,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode) -- (Select To_Number(RM_XX_FEE17) from RM where RM_CUST = sCustomerCode)
+         ELSE NULL
+         END                                           AS "OWUnitPrice",
+      CASE   WHEN t.ST_XX_NUM_PALLETS >= 1  THEN (SELECT To_Number(regexp_substr(RM_XX_FEE17,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode)* t.ST_XX_NUM_PALLETS -- (Select To_Number(RM_XX_FEE17) from RM where RM_CUST = sCustomerCode)
+         ELSE NULL
+         END                        AS "DExcl",
+     CASE   WHEN t.ST_XX_NUM_PALLETS >= 1 THEN ((SELECT To_Number(regexp_substr(RM_XX_FEE17,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode) * t.ST_XX_NUM_PALLETS) * 1.1-- (Select To_Number(RM_XX_FEE17) from RM where RM_CUST = sCustomerCode)  * 1.1
+         ELSE NULL
+         END                                           AS "DIncl",
+     CASE   WHEN t.ST_XX_NUM_PALLETS >= 1 THEN (SELECT To_Number(regexp_substr(RM_XX_FEE17,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode) -- (Select To_Number(RM_XX_FEE17) from RM where RM_CUST = sCustomerCode)
+         ELSE NULL
+         END                                           AS "ReportingPrice",
+         NULL,
+         NULL,
+          REPLACE(s.SH_ADDRESS, ',')             AS "Address",
+          REPLACE(s.SH_SUBURB, ',')              AS "Address2",
+          REPLACE(s.SH_CITY, ',')                AS "Suburb",
+          s.SH_STATE               AS "State",
+          s.SH_POST_CODE           AS "Postcode",
+          REPLACE(s.SH_NOTE_1, ',')              AS "DeliverTo",
+          REPLACE(s.SH_NOTE_2, ',')              AS "AttentionTo" ,
+          t.ST_WEIGHT              AS "Weight",
+          t.ST_PACKAGES            AS "Packages",
+          s.SH_SPARE_DBL_9         AS "OrderSource",
+          NULL AS "Pallet/Shelf Space",
+          NULL AS "Locn",
+        --	0 AS "AvailSOH",
+          0 AS "CountOfStocks",
+          CASE  WHEN regexp_substr(s.SH_SPARE_STR_3,'[a-z]+', 1, 2) IS NOT NULL THEN  s.SH_SPARE_STR_3 || '@' || s.SH_SPARE_STR_1
+                ELSE ''
+                END AS Email,
+                i.IM_BRAND AS Brand,
+             i.IM_OWNED_By AS    OwnedBy,
+             i.IM_PROFILE AS    sProfile,
+             s.SH_XX_FEE_WAIVE AS    WaiveFee,
+             d.SD_COST_PRICE As   Cost,
+             s.SH_SPARE_INT_4 AS PaymentType,s.SH_CAMPAIGN,NULL,NULL,NULL
+    FROM      PWIN175.SD d
+          INNER JOIN PWIN175.SH s  ON s.SH_ORDER  = d.SD_ORDER
+          INNER JOIN PWIN175.ST t  ON t.ST_ORDER  = s.SH_ORDER
+          LEFT JOIN Dev_Group_Cust r ON r.sCust = s.SH_CUST
+          INNER JOIN PWIN175.IM i  ON i.IM_STOCK = d.SD_STOCK
+    WHERE (SELECT To_Number(regexp_substr(RM_XX_FEE17,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode) > 0
+    AND       s.SH_STATUS <> 3
+    AND      r.anal = sAnalysis
+    AND       s.SH_ORDER = t.ST_ORDER
+    AND       (ST_XX_NUM_PALLETS >= 1)
+    AND       d.SD_LINE = 1
+    AND       t.ST_DESP_DATE >= startdate AND t.ST_DESP_DATE <= enddate;
   
-      CURSOR c
+      CURSOR cAnal
   
        IS
     SELECT    s.SH_CUST                AS "Customer",
@@ -9133,7 +8142,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
           INNER JOIN PWIN175.IM i  ON i.IM_STOCK = d.SD_STOCK
     WHERE (SELECT To_Number(regexp_substr(RM_XX_FEE17,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode) > 0
     AND       s.SH_STATUS <> 3
-    AND      (r.sGroupCust = sCustomerCode OR r.sCust = sCustomerCode)
+    AND      r.anal = sAnalysis
     AND       s.SH_ORDER = t.ST_ORDER
     AND       (ST_XX_NUM_PALLETS >= 1)
     AND       d.SD_LINE = 1
@@ -9153,42 +8162,42 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
         ----DBMS_OUTPUT.PUT_LINE('K1_PAL_DESP_FEES rates are $' || sCust_Rates || '. Prism rate field is RM_XX_FEE17');
        
       nCheckpoint := 2;
-      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      If (sOp = 'PRJ' or sOp = 'DEV') Then
           v_query := 'TRUNCATE TABLE DEV_PAL_DESP_FEES';
         EXECUTE IMMEDIATE v_query;
-          OPEN c;
+          OPEN cDEVAnal;
           ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
           LOOP
-          FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
+          FETCH cDEVAnal BULK COLLECT INTO l_data LIMIT p_array_size;
   
           FORALL i IN 1..l_data.COUNT
           ----DBMS_OUTPUT.PUT_LINE(i || '.' );
           INSERT INTO DEV_PAL_DESP_FEES VALUES l_data(i);
           --USING sCust;
   
-          EXIT WHEN c%NOTFOUND;
+          EXIT WHEN cDEVAnal%NOTFOUND;
   
           END LOOP;
          -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-          CLOSE c;
+          CLOSE cDEVAnal;
         Else
           v_query := 'TRUNCATE TABLE TMP_PAL_DESP_FEES';
           EXECUTE IMMEDIATE v_query;
-           OPEN c;
+           OPEN cAnal;
           ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
           LOOP
-          FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
+          FETCH cAnal BULK COLLECT INTO l_data LIMIT p_array_size;
   
           FORALL i IN 1..l_data.COUNT
           ----DBMS_OUTPUT.PUT_LINE(i || '.' );
           INSERT INTO TMP_PAL_DESP_FEES VALUES l_data(i);
           --USING sCust;
   
-          EXIT WHEN c%NOTFOUND;
+          EXIT WHEN cAnal%NOTFOUND;
   
           END LOOP;
          -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-          CLOSE c;
+          CLOSE cAnal;
         End If;
         -- FOR i IN l_data.FIRST .. l_data.LAST LOOP
         --  --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
@@ -9197,7 +8206,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
       v_query2 :=  SQL%ROWCOUNT;
     COMMIT;
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
           EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'K1_PAL_DESP_FEES','ST','DEV_PAL_DESP_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
         Else
           EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'K1_PAL_DESP_FEES','ST','TMP_PAL_DESP_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
@@ -9254,7 +8263,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
       sServ8             VARCHAR2(20) := 'SERV8';
       sServ3             VARCHAR2(20) := 'SERV%';
       l_start number default dbms_utility.get_time;
-      CURSOR c
+      CURSOR cAnal
        IS
   
   /*Carton In Fee*/
@@ -9321,7 +8330,84 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
           INNER JOIN PWIN175.NI  ON NI_ENTRY = NE_ENTRY
           INNER JOIN PWIN175.RM  ON RM_CUST  = IM_CUST
     WHERE (SELECT To_Number(regexp_substr(RM_XX_FEE13,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode) > 0
-    AND     IM_CUST = sCustomerCode
+    AND     IM_CUST IN (SELECT RM_CUST FROM RM WHERE RM_ANAL = sAnalysis AND RM_TYPE = 0 AND RM_ACTIVE = 1 )
+    AND       NA_EXT_TYPE = 1210067
+    AND       NE_TRAN_TYPE = 1
+    AND     NE_NV_EXT_TYPE = 3010144
+  --	AND       IM_MAIN_SUPP <> 'BSPGA'
+    AND       (NE_STATUS = 1 OR NE_STATUS = 3)
+    --AND       TO_CHAR(NE_DATE,'YYYY-MM-DD') >= start_date AND TO_CHAR(NE_DATE,'YYYY-MM-DD') <= end_date
+    AND       Upper(IL_NOTE_2) = 'No' AND IL_PHYSICAL = 1
+    AND       NE_DATE >= startdate AND NE_DATE <= enddate;
+    
+      CURSOR cDEVAnal
+       IS
+  
+  /*Carton In Fee*/
+    SELECT    IM_CUST                AS "Customer",
+          RM_PARENT              AS "Parent",
+          IM_XX_COST_CENTRE01       AS "CostCentre",
+          NI_QJ_NUMBER               AS "Order",
+          NULL         AS "OrderwareNum",
+          NULL            AS "CustomerRef",
+          NULL                     AS "Pickslip",
+          NULL                     AS "PickNum",
+          NULL                     AS "DespatchNote",
+          substr(To_Char(NE_ADD_DATE),0,10)                     AS "DespatchDate",
+     CASE    WHEN NE_ENTRY IS NOT NULL THEN 'Carton In Fee '
+          ELSE ''
+          END                      AS "FeeType",
+          IM_STOCK               AS "Item",
+          IM_DESC                AS "Description",
+          1          AS "Qty",
+          IM_LEVEL_UNIT          AS "UOI",
+      CASE    WHEN NE_ENTRY IS NOT NULL THEN (SELECT To_Number(regexp_substr( RM_XX_FEE13,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode) -- (Select To_Number(RM_XX_FEE13) from RM where RM_CUST = sCustomerCode)
+          ELSE NULL
+          END                      AS "UnitPrice",
+       CASE    WHEN NE_ENTRY IS NOT NULL THEN (SELECT To_Number(regexp_substr(RM_XX_FEE13,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode) --  (Select To_Number(RM_XX_FEE13) from RM where RM_CUST = sCustomerCode)
+          ELSE NULL
+          END                      AS "OWUnitPrice",
+       CASE    WHEN NE_ENTRY IS NOT NULL THEN  (SELECT To_Number(regexp_substr(RM_XX_FEE13,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode) * 1-- (Select To_Number(RM_XX_FEE13) from RM where RM_CUST = sCustomerCode)
+          ELSE NULL
+          END                      AS "DExcl",
+       CASE    WHEN NE_ENTRY IS NOT NULL THEN ((SELECT To_Number(regexp_substr(RM_XX_FEE13,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode) * 1 )* 1.1 --  (Select To_Number(RM_XX_FEE13) from RM where RM_CUST = sCustomerCode) * 1.1
+          ELSE NULL
+          END                      AS "DIncl",
+       CASE    WHEN NE_ENTRY IS NOT NULL THEN (SELECT To_Number(regexp_substr(RM_XX_FEE13,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode) -- (Select To_Number(RM_XX_FEE13) from RM where RM_CUST = sCustomerCode)
+          ELSE NULL
+          END                                           AS "ReportingPrice",
+          NULL,NULL,
+          NULL                     AS "Address",
+          NULL                     AS "Address2",
+          NULL                     AS "Suburb",
+          NULL                     AS "State",
+          NULL                     AS "Postcode",
+          NULL                     AS "DeliverTo",
+          NULL                     AS "AttentionTo" ,
+          NULL                     AS "Weight",
+          NULL                     AS "Packages",
+          NULL                     AS "OrderSource",
+          IL_NOTE_2 AS "Pallet/Shelf Space",
+          IL_LOCN AS "Locn",
+          --NE_AVAIL_ACTUAL AS "AvailSOH",
+          0 AS "CountOfStocks",
+          NULL AS Email,
+                IM_BRAND AS Brand,
+             IM_OWNED_By AS    OwnedBy,
+             IM_PROFILE AS    sProfile,
+             NULL AS    WaiveFee,
+             NULL As   Cost,
+             NULL AS PaymentType,NULL,NULL,NULL,NULL
+  
+  
+    FROM      PWIN175.IM
+          INNER JOIN PWIN175.NA  ON NA_STOCK = IM_STOCK
+          INNER JOIN PWIN175.IL  ON IL_UID = NA_EXT_KEY
+          INNER JOIN PWIN175.NE  ON NE_ACCOUNT  = NA_ACCOUNT
+          INNER JOIN PWIN175.NI  ON NI_ENTRY = NE_ENTRY
+          INNER JOIN PWIN175.RM  ON RM_CUST  = IM_CUST
+    WHERE (SELECT To_Number(regexp_substr(RM_XX_FEE13,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode) > 0
+    AND     IM_CUST IN (SELECT RM_CUST FROM RM WHERE RM_ANAL = sAnalysis AND RM_TYPE = 0 AND RM_ACTIVE = 1 )
     AND       NA_EXT_TYPE = 1210067
     AND       NE_TRAN_TYPE = 1
     AND     NE_NV_EXT_TYPE = 3010144
@@ -9344,42 +8430,42 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
       ----DBMS_OUTPUT.PUT_LINE('K2_CTN_IN_FEES rates are $' || sCust_Rates || '. Prism rate field is RM_XX_FEE13');
         
       nCheckpoint := 2;
-      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      If (sOp = 'PRJ' or sOp = 'DEV') Then
            v_query := 'TRUNCATE TABLE DEV_CTN_IN_FEES';
           EXECUTE IMMEDIATE v_query;
-          OPEN c;
+          OPEN cDEVAnal;
           ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
           LOOP
-          FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
+          FETCH cDEVAnal BULK COLLECT INTO l_data LIMIT p_array_size;
   
           FORALL i IN 1..l_data.COUNT
           ----DBMS_OUTPUT.PUT_LINE(i || '.' );
           INSERT INTO DEV_CTN_IN_FEES VALUES l_data(i);
           --USING sCust;
   
-          EXIT WHEN c%NOTFOUND;
+          EXIT WHEN cDEVAnal%NOTFOUND;
   
           END LOOP;
          -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-          CLOSE c;
+          CLOSE cDEVAnal;
       Else
            v_query := 'TRUNCATE TABLE TMP_CTN_IN_FEES';
         EXECUTE IMMEDIATE v_query;
-           OPEN c;
+           OPEN cAnal;
           ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
           LOOP
-          FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
+          FETCH cAnal BULK COLLECT INTO l_data LIMIT p_array_size;
   
           FORALL i IN 1..l_data.COUNT
           ----DBMS_OUTPUT.PUT_LINE(i || '.' );
           INSERT INTO TMP_CTN_IN_FEES VALUES l_data(i);
           --USING sCust;
   
-          EXIT WHEN c%NOTFOUND;
+          EXIT WHEN cAnal%NOTFOUND;
   
           END LOOP;
          -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-          CLOSE c;
+          CLOSE cAnal;
       End If;
         -- FOR i IN l_data.FIRST .. l_data.LAST LOOP
         --  --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
@@ -9388,7 +8474,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
       v_query2 :=  SQL%ROWCOUNT;
     COMMIT;
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
           EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'K2_CTN_IN_FEES','ST','DEV_CTN_IN_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
         Else
           EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'K2_CTN_IN_FEES','ST','TMP_CTN_IN_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
@@ -9437,7 +8523,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
       v_query2          VARCHAR2(32767);
       nCheckpoint       NUMBER;
       l_start number default dbms_utility.get_time;
-      CURSOR c
+      CURSOR cAnal
       IS
     /*Pallet In Fee*/
     SELECT  DISTINCT  IM_CUST                AS "Customer",
@@ -9502,7 +8588,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
           INNER JOIN PWIN175.NI  ON NI_ENTRY = NE_ENTRY
           INNER JOIN PWIN175.RM  ON RM_CUST  = IM_CUST
     WHERE  (SELECT To_Number(regexp_substr(RM_XX_FEE14,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode) > 0
-    AND     IM_CUST = sCustomerCode
+    AND     IM_CUST IN (SELECT RM_CUST FROM RM WHERE RM_ANAL = sAnalysis AND RM_TYPE = 0 AND RM_ACTIVE = 1 )
     AND       NA_EXT_TYPE = 1210067
     AND       NE_TRAN_TYPE = 1
     AND     NE_NV_EXT_TYPE = 3010144
@@ -9526,42 +8612,42 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
        -- --DBMS_OUTPUT.PUT_LINE('K3_PAL_IN_FEES rates are $' || sCust_Rates || '. Prism rate field is RM_XX_FEE14.');
         
       nCheckpoint := 2;
-       If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+       If (sOp = 'PRJ' or sOp = 'DEV') Then
            v_query := 'TRUNCATE TABLE DEV_PAL_IN_FEES';
         EXECUTE IMMEDIATE v_query;
-          OPEN c;
+          OPEN cAnal;
           ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
           LOOP
-          FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
+          FETCH cAnal BULK COLLECT INTO l_data LIMIT p_array_size;
   
           FORALL i IN 1..l_data.COUNT
           ----DBMS_OUTPUT.PUT_LINE(i || '.' );
           INSERT INTO DEV_PAL_IN_FEES VALUES l_data(i);
           --USING sCust;
   
-          EXIT WHEN c%NOTFOUND;
+          EXIT WHEN cAnal%NOTFOUND;
   
           END LOOP;
          -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-          CLOSE c;
+          CLOSE cAnal;
         Else
            v_query := 'TRUNCATE TABLE TMP_PAL_IN_FEES';
         EXECUTE IMMEDIATE v_query;
-             OPEN c;
+             OPEN cAnal;
           ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
           LOOP
-          FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
+          FETCH cAnal BULK COLLECT INTO l_data LIMIT p_array_size;
   
           FORALL i IN 1..l_data.COUNT
           ----DBMS_OUTPUT.PUT_LINE(i || '.' );
           INSERT INTO TMP_PAL_IN_FEES VALUES l_data(i);
           --USING sCust;
   
-          EXIT WHEN c%NOTFOUND;
+          EXIT WHEN cAnal%NOTFOUND;
   
           END LOOP;
          -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-          CLOSE c;
+          CLOSE cAnal;
       End If;
         -- FOR i IN l_data.FIRST .. l_data.LAST LOOP
         --  --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
@@ -9570,7 +8656,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
       v_query2 :=  SQL%ROWCOUNT;
     COMMIT;
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
           EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'K3_PAL_IN_FEES','ST','DEV_PAL_IN_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
         Else
           EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'K3_PAL_IN_FEES','ST','TMP_PAL_IN_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
@@ -9620,7 +8706,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
       v_query2          VARCHAR2(32767);
       nCheckpoint       NUMBER;
       l_start number default dbms_utility.get_time;
-      CURSOR c
+      CURSOR cAnal
       IS
     /*Pallet In Fee*/
     SELECT  DISTINCT  IM_CUST                AS "Customer",
@@ -9685,7 +8771,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
           INNER JOIN PWIN175.NI  ON NI_ENTRY = NE_ENTRY
           INNER JOIN PWIN175.RM  ON RM_CUST  = IM_CUST
     WHERE  (SELECT To_Number(regexp_substr(r.RM_XX_FEE14,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM r where r.RM_CUST = RM_PARENT) > 0
-    --AND     IM_CUST = sCustomerCode
+    AND     IM_CUST IN (SELECT RM_CUST FROM RM WHERE RM_ANAL = sAnalysis AND RM_TYPE = 0 AND RM_ACTIVE = 1 )
     AND       NA_EXT_TYPE = 1210067
     AND       NE_TRAN_TYPE = 1
     AND     NE_NV_EXT_TYPE = 3010144
@@ -9709,42 +8795,42 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
        -- --DBMS_OUTPUT.PUT_LINE('K3_PAL_IN_FEES rates are $' || sCust_Rates || '. Prism rate field is RM_XX_FEE14.');
         
       nCheckpoint := 2;
-      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      If (sOp = 'PRJ' or sOp = 'DEV') Then
           v_query := 'TRUNCATE TABLE DEV_PAL_IN_FEES';
         EXECUTE IMMEDIATE v_query;
-          OPEN c;
+          OPEN cAnal;
           ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
           LOOP
-          FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
+          FETCH cAnal BULK COLLECT INTO l_data LIMIT p_array_size;
   
           FORALL i IN 1..l_data.COUNT
           ----DBMS_OUTPUT.PUT_LINE(i || '.' );
           INSERT INTO DEV_PAL_IN_FEES VALUES l_data(i);
           --USING sCust;
   
-          EXIT WHEN c%NOTFOUND;
+          EXIT WHEN cAnal%NOTFOUND;
   
           END LOOP;
          -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-          CLOSE c;
+          CLOSE cAnal;
       Else
         v_query := 'TRUNCATE TABLE TMP_PAL_IN_FEES';
         EXECUTE IMMEDIATE v_query;
-         OPEN c;
+         OPEN cAnal;
           ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
           LOOP
-          FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
+          FETCH cAnal BULK COLLECT INTO l_data LIMIT p_array_size;
   
           FORALL i IN 1..l_data.COUNT
           ----DBMS_OUTPUT.PUT_LINE(i || '.' );
           INSERT INTO TMP_PAL_IN_FEES VALUES l_data(i);
           --USING sCust;
   
-          EXIT WHEN c%NOTFOUND;
+          EXIT WHEN cAnal%NOTFOUND;
   
           END LOOP;
          -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-          CLOSE c;
+          CLOSE cAnal;
       End If;
         -- FOR i IN l_data.FIRST .. l_data.LAST LOOP
         --  --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
@@ -9753,7 +8839,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
       v_query2 :=  SQL%ROWCOUNT;
     COMMIT;
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
           EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'K3_ALL_PAL_IN_FEES','ST','DEV_PAL_IN_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
         Else
           EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'K3_ALL_PAL_IN_FEES','ST','TMP_PAL_IN_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
@@ -9804,7 +8890,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
       v_query2          VARCHAR2(32767);
       nCheckpoint       NUMBER;
       l_start number default dbms_utility.get_time;
-      CURSOR c
+      CURSOR cAnal
        IS
   /*Carton Despatch Fee*/
     SELECT    s.SH_CUST                AS "Customer",
@@ -9883,7 +8969,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
     --To_Number(f_get_fee('RM_XX_FEE15',sCust)) > 0
    (SELECT To_Number(regexp_substr(RM_XX_FEE15,'^[-]?[[:digit:]]*\.?[[:digit:]]*$')) FROM RM where RM_CUST = sCustomerCode) > 0
     AND       s.SH_STATUS <> 3
-    AND       (r.sGroupCust = sCustomerCode OR r.sCust = sCustomerCode)
+    AND       r.anal = sAnalysis
     AND       s.SH_ORDER = t.ST_ORDER
     AND       (ST_XX_NUM_CARTONS >= 1)
     AND       d.SD_LINE = 1
@@ -9908,42 +8994,42 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
         
   
       nCheckpoint := 2;
-      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      If (sOp = 'PRJ' or sOp = 'DEV') Then
           v_query := 'TRUNCATE TABLE DEV_CTN_DESP_FEES';
         EXECUTE IMMEDIATE v_query;
-          OPEN c;
+          OPEN cAnal;
           ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
           LOOP
-          FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
+          FETCH cAnal BULK COLLECT INTO l_data LIMIT p_array_size;
   
           FORALL i IN 1..l_data.COUNT
           ----DBMS_OUTPUT.PUT_LINE(i || '.' );
           INSERT INTO DEV_CTN_DESP_FEES VALUES l_data(i);
           --USING sCust;
   
-          EXIT WHEN c%NOTFOUND;
+          EXIT WHEN cAnal%NOTFOUND;
   
           END LOOP;
          -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-          CLOSE c;
+          CLOSE cAnal;
       Else
           v_query := 'TRUNCATE TABLE TMP_CTN_DESP_FEES';
         EXECUTE IMMEDIATE v_query;
-           OPEN c;
+           OPEN cAnal;
           ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
           LOOP
-          FETCH c BULK COLLECT INTO l_data LIMIT p_array_size;
+          FETCH cAnal BULK COLLECT INTO l_data LIMIT p_array_size;
   
           FORALL i IN 1..l_data.COUNT
           ----DBMS_OUTPUT.PUT_LINE(i || '.' );
           INSERT INTO TMP_CTN_DESP_FEES VALUES l_data(i);
           --USING sCust;
   
-          EXIT WHEN c%NOTFOUND;
+          EXIT WHEN cAnal%NOTFOUND;
   
           END LOOP;
          -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-          CLOSE c;
+          CLOSE cAnal;
       End If;
         -- FOR i IN l_data.FIRST .. l_data.LAST LOOP
          -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
@@ -9953,7 +9039,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
     v_query2 :=  SQL%ROWCOUNT;
   
       v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      If (sOp = 'PRJ' or sOp = 'DEV') Then
         EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'K4_CTN_DESP_FEES','ST','DEV_CTN_DESP_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
       Else
         EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'K4_CTN_DESP_FEES','ST','TMP_CTN_DESP_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
@@ -10098,7 +9184,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
          
   
      nCheckpoint := 2;
-     If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+     If (sOp = 'PRJ' or sOp = 'DEV') Then
          v_query := 'TRUNCATE TABLE DEV_DESP_REPT';
           EXECUTE IMMEDIATE v_query;
         OPEN c;
@@ -10139,7 +9225,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
         sFileName := 'LINK-L_DESPATCH_REPORT-' || gds_start_date_in || '-TO-' || gds_end_date_in || '-RunOn-' || sFileTime || '_A.csv';
           
-          If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          If (sOp = 'PRJ' or sOp = 'DEV') Then
             EOM_INSERT_LOG(SYSTIMESTAMP ,gds_start_date_in,gds_end_date_in,'L_DESPATCH_REPORT','DEV_DESP_REPT','ST',v_time_taken,SYSTIMESTAMP,'LINK');
             Z2_TMP_FEES_TO_CSV(sFileName,'DEV_DESP_REPT',sOp);
           Else
@@ -10259,7 +9345,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
          
   
      nCheckpoint := 2;
-      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      If (sOp = 'PRJ' or sOp = 'DEV') Then
            v_query := 'TRUNCATE TABLE DEV_DESP_REPT2';
           EXECUTE IMMEDIATE v_query;
           OPEN c;
@@ -10298,7 +9384,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
           v_query2 :=  SQL%ROWCOUNT;
       COMMIT; 
       v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-          If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          If (sOp = 'PRJ' or sOp = 'DEV') Then
             EOM_INSERT_LOG(SYSTIMESTAMP ,gds_start_date_in,gds_end_date_in,'L_DESPATCH_REPORTB','DEV_DESP_REPT2','ST',v_time_taken,SYSTIMESTAMP,'LINK');
             sFileName := 'LINK-L_DESPATCH_REPORTB-' || gds_start_date_in || '-TO-' || gds_end_date_in || '-RunOn-' || sFileTime || '_B.csv';
             Z2_TMP_FEES_TO_CSV(sFileName,'DEV_DESP_REPT2',sOp);
@@ -10501,7 +9587,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
   
       
       nCheckpoint := 2;
-       If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+       If (sOp = 'PRJ' or sOp = 'DEV') Then
           OPEN c2;
           ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
           LOOP
@@ -10541,7 +9627,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
     COMMIT;
     --RETURN;
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
           EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'Y_EOM_TMP_MERGE_ALL_FEES','DEV','DEV_ALL_FEES_F',v_time_taken,SYSTIMESTAMP,NULL);
         Else
           EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'Y_EOM_TMP_MERGE_ALL_FEES','TMP','TMP_ALL_FEES_F',v_time_taken,SYSTIMESTAMP,NULL);
@@ -10669,7 +9755,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
             Select * From DEV_STOR_FEES WHERE FEETYPE != 'UNKNOWN'}';
     
   nCheckpoint := 2;
-      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      If (sOp = 'PRJ' or sOp = 'DEV') Then
         EXECUTE IMMEDIATE v_query2;
       Else
         EXECUTE IMMEDIATE v_query;
@@ -10680,7 +9766,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
     COMMIT;
     --RETURN;
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
           EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'Y_EOM_TMP_MERGE_ALL_FEES2','DEV','DEV_ALL_FEES',v_time_taken,SYSTIMESTAMP,NULL);
         Else
           EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'Y_EOM_TMP_MERGE_ALL_FEES2','TMP','TMP_ALL_FEES',v_time_taken,SYSTIMESTAMP,NULL);
@@ -10721,7 +9807,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
       ----DBMS_OUTPUT.PUT_LINE(start_date || ' - ' || end_date || '.' || sCust );
        l_start number default dbms_utility.get_time;
   BEGIN
-  If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+  If (sOp = 'PRJ' or sOp = 'DEV') Then
     If (sAnalysis = NULL) Then
     v_query := q'{INSERT INTO DEV_ALL_FEES_F
                 Select  * FROM DEV_ALL_FEES
@@ -10757,7 +9843,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
     COMMIT;
     --RETURN;
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
           EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'Y_EOM_TMP_MERGE_ALL_FEES_FINAL','DEV_ALL_FEES','DEV_ALL_FEES_F',v_time_taken,SYSTIMESTAMP,NULL);
         Else
           EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'Y_EOM_TMP_MERGE_ALL_FEES_FINAL','TMP_ALL_FEES','TMP_ALL_FEES_F',v_time_taken,SYSTIMESTAMP,NULL);
@@ -10806,7 +9892,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
 		v_tmp_date VARCHAR2(12) := TO_DATE(end_date, 'DD-MON-YY');     
 	BEGIN
 		nCheckpoint := 1;
-		If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+		If (sOp = 'PRJ' or sOp = 'DEV') Then
 			v_query  := 'TRUNCATE TABLE "PWIN175"."DEV_ALL_FEES"';
       DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' TRUNCATE DEV_ALL_FEES.' );
 		Else
@@ -10818,7 +9904,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
 		sFileName := sCust_start || '-EOM-ADMIN-ORACLE-' || '-RunBy-' || sOp || '-RunOn-' || start_date || '-TO-' || end_date || '-RunAt-' || sFileTime || sFileSuffix;
    
 		nCheckpoint := 2;
-		If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+		If (sOp = 'PRJ' or sOp = 'DEV') Then
 			v_query  := 'TRUNCATE TABLE Dev_Group_Cust';
       DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' TRUNCATE Dev_Group_Cust.' );
 		Else
@@ -10829,7 +9915,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
 		
 		--Select (F_EOM_CHECK_LOG(v_tmp_date ,'Tmp_Group_Cust','A_EOM_GROUP_CUST')) INTO v_query_logfile From Dual;--v_query := q'{Select EOM_REPORT_PKG.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
 		--If UPPER(v_query_logfile) != UPPER(v_tmp_date) Then
-    If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+    If (sOp = 'PRJ' or sOp = 'DEV') Then
       If F_IS_TABLE_EEMPTY('Dev_Group_Cust',Debug_Y_OR_N) <= 0 Then
         DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Need to run A_EOM_GROUP_CUST(sOp) for all customers as table Dev_Group_Cust is empty.' );
         A_EOM_GROUP_CUST(sOp);
@@ -10855,7 +9941,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
 		--v_query := q'{SELECT TO_CHAR(LAST_ANALYZED, 'DD-MON-YY') FROM DBA_TABLES WHERE TABLE_NAME = 'TMP_ADMIN_DATA_PICK_LINECOUNTS'}';
 		--EXECUTE IMMEDIATE v_query INTO vRtnVal;-- USING sCustomerCode;
 		--If F_IS_TABLE_EEMPTY('TMP_ADMIN_DATA_PICK_LINECOUNTS',Debug_Y_OR_N) <= 0 Then
-    If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+    If (sOp = 'PRJ' or sOp = 'DEV') Then
       Select (F_EOM_CHECK_LOG(v_tmp_date ,'DEV_ADMIN_DATA_PICK_LINECOUNTS','B_EOM_START_RUN_ONCE_DATA',sOp)) INTO v_query_logfile From Dual;--v_query := q'{Select EOM_REPORT_PKG.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
       If F_IS_TABLE_EEMPTY('DEV_ADMIN_DATA_PICK_LINECOUNTS',Debug_Y_OR_N) <= 0 Then
         DBMS_OUTPUT.PUT_LINE(nCheckpoint || '  Need to RUN_ONCE B_EOM_START_RUN_ONCE_DATA as DEV_ADMIN_DATA_PICK_LINECOUNTS for all customers as table is empty. result was ' || UPPER(v_query_logfile) || ' and end date was ' ||  UPPER(v_tmp_date) );
@@ -10882,7 +9968,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
     End If;
 		nCheckpoint := 4;
 		--set timing on; Tmp_Locn_Cnt_By_Cust
-    If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+    If (sOp = 'PRJ' or sOp = 'DEV') Then
       If F_IS_TABLE_EEMPTY('Dev_Locn_Cnt_By_Cust',Debug_Y_OR_N) <= 0 Then
       -- Select (F_EOM_CHECK_LOG(v_tmp_date ,'Tmp_Locn_Cnt_By_Cust','C_EOM_START_ALL_TEMP_STOR_DATA')) INTO v_query_logfile From Dual;--v_query := q'{Select EOM_REPORT_PKG.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
       --If UPPER(v_query_logfile) != UPPER(v_tmp_date) OR F_IS_TABLE_EEMPTY('Tmp_Locn_Cnt_By_Cust',Debug_Y_OR_N) <= 0 Then
@@ -10972,7 +10058,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
       
       
 		nCheckpoint := 84;
-    If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+    If (sOp = 'PRJ' or sOp = 'DEV') Then
       Select (F_EOM_CHECK_CUST_LOG(sCust_start ,'DEV_HANDLING_FEES','G4_HANDLING_FEES_F',sOp)) INTO v_query_result2 From Dual;
       Select (F_EOM_CHECK_LOG(v_tmp_date ,'DEV_HANDLING_FEES','G4_HANDLING_FEES_F',sOp)) INTO v_query_logfile From Dual;
     Else
@@ -10980,7 +10066,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
        Select (F_EOM_CHECK_LOG(v_tmp_date ,'TMP_HANDLING_FEES','G4_HANDLING_FEES_F',sOp)) INTO v_query_logfile From Dual;
     End If;
     DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Running F_EOM_CHECK_CUST_LOG & F_EOM_CHECK_LOG for ALL based on to date from EOM logs');
-    If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+    If (sOp = 'PRJ' or sOp = 'DEV') Then
       If F_IS_TABLE_EEMPTY('DEV_HANDLING_FEES',Debug_Y_OR_N) <= 0 Then
         --DBMS_OUTPUT.PUT_LINE('7th Need to RUN_ONCE G4_HANDLING_FEES_F for all customers as table is empty. result was ' || UPPER(v_query_result2) 
         --|| ' and this cust was ' ||  UPPER(sCust_start)
@@ -11068,7 +10154,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
     End If;
       
 		nCheckpoint := 85;
-    If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+    If (sOp = 'PRJ' or sOp = 'DEV') Then
       Select (F_EOM_CHECK_CUST_LOG(sCust_start ,'DEV_PICK_FEES','G5_PICK_FEES_F',sOp)) INTO v_query_result2 From Dual;--v_query := q'{Select IQ_EOM_REPORTING.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
       Select (F_EOM_CHECK_LOG(v_tmp_date ,'DEV_PICK_FEES','G5_PICK_FEES_F',sOp)) INTO v_query_logfile From Dual;
       If F_IS_TABLE_EEMPTY('DEV_PICK_FEES',Debug_Y_OR_N) <= 0 Then
@@ -11183,7 +10269,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
 
       
 		nCheckpoint := 99;
-		If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+		If (sOp = 'PRJ' or sOp = 'DEV') Then
 			v_query := 'TRUNCATE TABLE DEV_ALL_FEES';
 		Else
 			v_query := 'TRUNCATE TABLE TMP_ALL_FEES';
@@ -11193,7 +10279,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
 		Y_EOM_TMP_MERGE_ALL_FEES2(sOp);
      
 		nCheckpoint := 100;
-		If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+		If (sOp = 'PRJ' or sOp = 'DEV') Then
 			v_query := 'TRUNCATE TABLE DEV_ALL_FEES_F';
 		Else
 			v_query := 'TRUNCATE TABLE TMP_ALL_FEES_F';
@@ -11214,7 +10300,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
 		-- --DBMS_OUTPUT.PUT_LINE('Z EOM Successfully Ran EOM_RUN_ALL for ' || sCust_start|| ' in ' ||(round((dbms_utility.get_time-l_start)/100, 2) ||
 		--' Seconds...' );
 		v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-    If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+    If (sOp = 'PRJ' or sOp = 'DEV') Then
       EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'Z_EOM_RUN_ALL','MERGE','DEV',v_time_taken,SYSTIMESTAMP,sCust_start);
 		Else
       EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'Z_EOM_RUN_ALL','MERGE','TMP',v_time_taken,SYSTIMESTAMP,sCust_start);
@@ -11342,7 +10428,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
         sPath VARCHAR2(60) :=  'EOM_ADMIN_ORDERS';
         l_start number default dbms_utility.get_time;
    begin
-         If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+         If (sOp = 'PRJ' or sOp = 'DEV') Then
           l_query  := 'select * from DEV_ALL_FEES_F';
         Else
           l_query  := 'select * from TMP_ALL_FEES_F';
@@ -11588,7 +10674,6 @@ BEGIN
   i   NUMBER := 0;
   nCheckpoint NUMBER;
   BEGIN
-  
       nCheckpoint := 1;
       --OPEN EOM_CUSTS;
       --LOOP
