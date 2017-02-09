@@ -6,16 +6,18 @@ create or replace PACKAGE BODY EOM AS
 	*/
 	PROCEDURE Z3_EOM_RUN_ALL (
 		p_array_size_start IN PLS_INTEGER DEFAULT 100
-		,start_date IN VARCHAR2 
-		,end_date IN VARCHAR2
-		,check_date IN VARCHAR2-- DEFAULT To_Date(CURRENT_DATE)
-    ,Customer IN VARCHAR2
-		,Analysis IN RM.RM_ANAL%TYPE
-		,FilterBy IN VARCHAR2
-		,Op IN VARCHAR2 DEFAULT 'PAUL'
-		,Inter_Y_OR_No IN VARCHAR2 DEFAULT 'N'
-		,Debug_Y_OR_N IN VARCHAR2 DEFAULT 'Y'
-    ,RunAutoALL in VARCHAR2 DEFAULT 'N'
+      ,start_date IN VARCHAR2 
+      ,end_date IN VARCHAR2
+      ,check_date IN VARCHAR2 DEFAULT To_Date(CURRENT_DATE)
+      ,Customer IN VARCHAR2
+      ,Analysis IN RM.RM_ANAL%TYPE
+      ,FilterBy IN VARCHAR2
+      ,Op IN VARCHAR2 DEFAULT 'RV'
+      ,Inter_Y_OR_No IN VARCHAR2 DEFAULT 'N'
+      ,Debug_Y_OR_N IN VARCHAR2 DEFAULT 'N'
+      ,RunAutoALL in VARCHAR2 DEFAULT 'N'
+      ,SaveFreightFile_Y_OR_N IN VARCHAR2 DEFAULT 'N'
+      ,SaveStorageFile_Y_OR_N IN VARCHAR2 DEFAULT 'N'
 		)
 	AS
 		nCheckpoint  NUMBER;
@@ -36,6 +38,7 @@ create or replace PACKAGE BODY EOM AS
 	BEGIN
   --CHECKPOINT 0;
 	nCheckpoint := 0;
+  --execute dbms_output.enable(NULL);
   If (upper(RunAutoALL) = 'Y') Then
      IQ_EOM_REPORTING.EOM_AUTO_RUN_ALL(p_array_size_start,start_date,end_date,check_date,Customer,Analysis,FilterBy,Op,Debug_Y_OR_N);
   End If;
@@ -48,12 +51,12 @@ create or replace PACKAGE BODY EOM AS
         DBMS_OUTPUT.PUT_LINE(Op || ' is running this report in the DEV environment for ' );
         DBMS_OUTPUT.PUT_LINE('date range from ' || start_date || ' to ' || end_date || ' and for ' );
         DBMS_OUTPUT.PUT_LINE('customer ' || Customer || ' and for ' );
-        DBMS_OUTPUT.PUT_LINE('intercompany analysis ' || Analysis ||'. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
+        DBMS_OUTPUT.PUT_LINE('intercompany analysis ' || Analysis ||', and check_date is ' || check_date || '. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
       Else
         DBMS_OUTPUT.PUT_LINE(Op || ' is running this report in the TMP environment for '  );
         DBMS_OUTPUT.PUT_LINE('date range from ' || start_date || ' to ' || end_date || ' and for '  );
         DBMS_OUTPUT.PUT_LINE('customer ' || Customer || ' and for '  );
-        DBMS_OUTPUT.PUT_LINE( 'intercompany analysis ' || Analysis ||'. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
+        DBMS_OUTPUT.PUT_LINE( 'intercompany analysis ' || Analysis ||', and check_date is ' || check_date || '. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
       End If;
       DBMS_OUTPUT.PUT_LINE('**************************************************************************************');
     ElsIf (upper(Debug_Y_OR_N) = 'Y') Then
@@ -345,13 +348,13 @@ create or replace PACKAGE BODY EOM AS
 	--If v_query_logfile = 'RUNBOTH' Then
     If (upper(Inter_Y_OR_No) = 'Y') Then
 		EOM_INTERCO_REPORTING.F_EOM_TMP_ALL_FREIGHT_ALL(p_array_size_start,start_date,end_date,Op,Analysis);
-		EOM_INTERCO_REPORTING.F8_Z_EOM_RUN_FREIGHT(p_array_size_start,start_date,end_date,Customer,FilterBy,Op,Analysis); 
+		EOM_INTERCO_REPORTING.F8_Z_EOM_RUN_FREIGHT(p_array_size_start,start_date,end_date,Customer,FilterBy,Op,Analysis,Debug_Y_OR_N,SaveFreightFile_Y_OR_N); 
 		If (upper(Debug_Y_OR_N) = 'Y') Then
 			DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Running F_EOM_TMP_ALL_FREIGHT_ALL & F8_Z_EOM_RUN_FREIGHT for ALL based on to date from EOM logs - v_query_logfile is ' || v_query_logfile || '- for end date being ' || TO_DATE(end_date, 'DD-MON-YY') || '.' );
 		End If;
     Else
 		IQ_EOM_REPORTING.F_EOM_TMP_ALL_FREIGHT_ALL(p_array_size_start,start_date,end_date,Op);
-		IQ_EOM_REPORTING.F8_Z_EOM_RUN_FREIGHT(p_array_size_start,start_date,end_date,Customer,FilterBy,Op); 
+		IQ_EOM_REPORTING.F8_Z_EOM_RUN_FREIGHT(p_array_size_start,start_date,end_date,Customer,FilterBy,Op,Debug_Y_OR_N,SaveFreightFile_Y_OR_N); 
 		If (upper(Debug_Y_OR_N) = 'Y') Then
 			DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Running F_EOM_TMP_ALL_FREIGHT_ALL & F8_Z_EOM_RUN_FREIGHT for ALL based on to date from EOM logs - v_query_logfile is ' || v_query_logfile || '- for end date being ' || TO_DATE(end_date, 'DD-MON-YY') || '.' );
 		End If;
@@ -376,14 +379,14 @@ create or replace PACKAGE BODY EOM AS
 	--If v_query_logfile = 'RUNBOTH' Then
     If (upper(Inter_Y_OR_No) = 'Y') Then
       EOM_INTERCO_REPORTING.H_STOR_FEES_A(p_array_size_start,start_date,end_date,Customer,Analysis,Op,Debug_Y_OR_N);
-      EOM_INTERCO_REPORTING.H_STOR_FEES_B(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op,Debug_Y_OR_N);
+      EOM_INTERCO_REPORTING.H_STOR_FEES_B(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op,Debug_Y_OR_N,SaveStorageFile_Y_OR_N);
       If (upper(Debug_Y_OR_N) = 'Y') Then
             DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Running H_STOR_FEES_A & H_STOR_FEES_B for ALL based on to date from EOM logs - v_query_logfile is ' ||  v_query_logfile || '- for end date being ' || TO_DATE(end_date, 'DD-MON-YY') || ' Customer was ' || Customer || ' and Analysis was ' || Analysis ||
             ' and process was H_STOR_FEES_A' );
       End If;
     Else
       IQ_EOM_REPORTING.H_STOR_FEES_A(p_array_size_start,start_date,end_date,Customer,Analysis,Op,Debug_Y_OR_N);
-      IQ_EOM_REPORTING.H_STOR_FEES_B(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op,Debug_Y_OR_N);
+      IQ_EOM_REPORTING.H_STOR_FEES_B(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op,Debug_Y_OR_N,SaveStorageFile_Y_OR_N);
       If (upper(Debug_Y_OR_N) = 'Y') Then
             DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Running H_STOR_FEES_A & H_STOR_FEES_B for ALL based on to date from EOM logs - v_query_logfile is ' || v_query_logfile || '- for end date being ' || TO_DATE(end_date, 'DD-MON-YY') || ' Customer was ' || Customer || ' and Analysis was ' || Analysis ||
           ' and process was H_STOR_FEES_A' ); 
@@ -1072,14 +1075,9 @@ create or replace PACKAGE BODY EOM AS
 	nCheckpoint := 101;
 	If (upper(Inter_Y_OR_No) = 'Y') Then
 		DBMS_OUTPUT.PUT_LINE('no customer specific fees needed for intercompany' );
---		
+    EOM_INTERCO_REPORTING.Z1_TMP_ALL_FEES_TO_CSV(sFileName,Op ,Debug_Y_OR_N);	
 	Else
---		If ( Customer = 'V-SUPPAR' ) Then
---			nCheckpoint := 101.2;
---			IQ_EOM_REPORTING.J_EOM_CUSTOMER_FEES_SUP(p_array_size_start,start_date,end_date,Customer,sFileName,Op);
---		Else
---			IQ_EOM_REPORTING.Z1_TMP_ALL_FEES_TO_CSV(sFileName,Op);
---		End If;
+
     If ( Customer = 'V-SUPPAR' ) Then
 			nCheckpoint := 151;
 			If (Op = 'PRJ' or Op = 'DEV') Then
@@ -1090,7 +1088,7 @@ create or replace PACKAGE BODY EOM AS
 			nCheckpoint := 152;
 			IQ_EOM_REPORTING.J_EOM_CUSTOMER_FEES_AAS(p_array_size_start,start_date,end_date,Customer,sFileName,Op);
     Else
-			IQ_EOM_REPORTING.Z1_TMP_ALL_FEES_TO_CSV(sFileName,Op);
+			IQ_EOM_REPORTING.Z1_TMP_ALL_FEES_TO_CSV(sFileName,Op ,Debug_Y_OR_N);
 		End If;
 	End If;
   
