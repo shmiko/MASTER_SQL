@@ -56,50 +56,43 @@ AS BEGIN
 		SkuWeight int,
 		Packages int
 	)
+	/* Pickfees  */
 	Set @PickFeeQuery  = 'SELECT TOP 1' +
 	' ''1''as ''Tag'',' +
-	' ''Line Picking Fee'' as ''Description'',' +
-	/* Pickfees  */
-		
-		Trans.ACT_PPU																	as UnitPrice,
-		DEBTOR.[DATAFLEX RECNUM ONE]													as ID,
-		DEBTOR.[AC NO]																	as Customer,
-		SALES_ORDER.BILL_TO_ID															as CustomerId, 
-		SALES_ORDER.CUST_ID																as ParentId, 
-		DEBTOR.NAMES																	as Parent, 
-		SO_LINE_ITEM.COST_CENTER														as CostCentre,
-		SALES_ORDER.SO_ID																as OrderNum, 
-		SALES_ORDER.CUST_SO_ID															as OrderWareNum, 
-		SO_LINE_ITEM.PO_NO																as CustRef, 
-		PACKS.PICK_ID																	as PickSlip,
-		PACKS.PICK_ID																	as DespNote,
-		Trans.TIME_START																as DespDate, 
-		'Pick Fee'																		as FeeType, 
-		CAST('FEEPICK'	as nvarchar)													as Item, 
-		--''																				as InventoryCode,
-	 
-		[LiveData].[dbo].[ufnGetPickLineCount](SALES_ORDER.SO_ID)					as Qty,
-		--[bsg_support].[dbo].[ufnGetPickLineCount](SALES_ORDER.SO_ID)					as OrderQty,
-		'1'																				as UOI, 
-		'Each'																			as UnitOfIssDesc, 
-	 
-		(Trans.ACT_PPU * [LiveData].[dbo].[ufnGetPickLineCount](SALES_ORDER.SO_ID))	as SellExcl, 
-		((Trans.ACT_PPU * [LiveData].[dbo].[ufnGetPickLineCount](SALES_ORDER.SO_ID)) *   1.1)														as SellIncl, 
-		--RECIPIENT.CUST_RECIP_ID															as OrderByCustomerRecipientID, 
-		ISNULL(Recipient.COMPANY_NAME,'')												as DeliverTo, 
-		ISNULL((RECIPIENT.FIRST_NAME 
+	' ''Line Picking Fee''	as ''Description'',' +
+	' ''Trans.ACT_PPU''		as ''UnitPrice'',' +
+	' ''DEBTOR.[DATAFLEX RECNUM ONE]''		as ''ID'',' +
+	' ''DEBTOR.[AC NO]''		as ''Customer'',' +
+	' ''SALES_ORDER.BILL_TO_ID''		as ''CustomerId'',' + 
+	' ''SALES_ORDER.CUST_ID''		as ''ParentId'',' + 
+	' ''DEBTOR.NAMES''		as ''Parent'',' + 
+	' ''SO_LINE_ITEM.COST_CENTER''		as ''CostCentre'',' +
+	' ''SALES_ORDER.SO_ID''		as ''OrderNum'',' + 
+	' ''SALES_ORDER.CUST_SO_ID''		as ''OrderWareNum'',' + 
+	' ''SO_LINE_ITEM.PO_NO''		as ''CustRef'',' + 
+	' ''PACKS.PICK_ID''		as ''PickSlip'',' +
+	' ''PACKS.PICK_ID''		as ''DespNote'',' +
+	' ''Trans.TIME_START''		as ''DespDate'',' + 
+	' ''Pick Fee''		as ''FeeType'',' + 
+	' ''CAST('FEEPICK'	as nvarchar)''		as ''Item'',' + 
+	' ''[LiveData].[dbo].[ufnGetPickLineCount](SALES_ORDER.SO_ID)''		as ''Qty'',' +
+	' ''1''		as ''UOI'',' + 
+	' ''Each''		as ''UnitOfIssDesc'',' + 
+	' ''(Trans.ACT_PPU * [LiveData].[dbo].[ufnGetPickLineCount](SALES_ORDER.SO_ID))''		as ''SellExcl'',' + 
+	' ''((Trans.ACT_PPU * [LiveData].[dbo].[ufnGetPickLineCount](SALES_ORDER.SO_ID)) *   1.1)	as SellIncl'',' + 
+	' ''ISNULL(Recipient.COMPANY_NAME,'')												as DeliverTo'',' + 
+	' ''ISNULL((RECIPIENT.FIRST_NAME 
 			+ ' ' 
-			+ RECIPIENT.LAST_NAME),'')													as AttentionTo,
-		ISNULL(ShipToAddress.ADDR_1,'') 												as Address1, 
-		ISNULL(ShipToAddress.ADDR_2,'') 												as Address3, 
-		ISNULL(ShipToAddress.ADDR_3,'') 												as Address3, 
-		ISNULL(ShipToAddress.CITY,'') 													as Suburb, 
-		ISNULL(ShipToAddress.STATE_CODE,'') 											as "State", 
-		ISNULL(ShipToAddress.ZIP_CODE,'')												as PostCode, 
-		ISNULL(ShipToCountry.COUNTRY_NAME,'')											as Country,
-		'0'																				as "Weight", 
-		'0'																				as "Packages"
-		--[SO_LINE_ITEM].INVENTORY_CODE
+			+ RECIPIENT.LAST_NAME),'')													as AttentionTo'',' +
+	' ''ISNULL(ShipToAddress.ADDR_1,'') 												as Address1'',' + 
+	' ''ISNULL(ShipToAddress.ADDR_2,'') 												as Address3'',' + 
+	' ''ISNULL(ShipToAddress.ADDR_3,'') 												as Address3'',' + 
+	' ''ISNULL(ShipToAddress.CITY,'') 													as Suburb'',' + 
+	' ''ISNULL(ShipToAddress.STATE_CODE,'') 											as "State"'',' + 
+	' ''ISNULL(ShipToAddress.ZIP_CODE,'')												as PostCode'',' + 
+	' ''ISNULL(ShipToCountry.COUNTRY_NAME,'')											as Country'',' +
+	' '''0'																				as "Weight"'',' + 
+	' '''0'																				as "Packages"''' +
 	FROM  [LiveData].[dbo].[SO_LINE_ITEM]
 		INNER JOIN [LiveData].[dbo].SALES_ORDER					ON SALES_ORDER.SO_ID			= SO_LINE_ITEM.SO_ID
 		INNER JOIN [LiveData].[dbo].CUSTOMER						ON CUSTOMER.CUST_ID				= SO_LINE_ITEM.CUST_ID
