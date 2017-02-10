@@ -427,12 +427,12 @@ create or replace PACKAGE BODY EOM AS
 	
 	nCheckpoint := 74;
     If (upper(Inter_Y_OR_No) = 'Y') Then
-      EOM_INTERCO_REPORTING.E4_STD_ORD_FEES(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
+      EOM_INTERCO_REPORTING.E4_STD_ORD_FEES(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op,Debug_Y_OR_N);
       If (upper(Debug_Y_OR_N) = 'Y') Then
             DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Running E4_STD_ORD_FEES for ALL based on to date from EOM logs');
       End If;
     Else
-      IQ_EOM_REPORTING.E4_STD_ORD_FEES(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
+      IQ_EOM_REPORTING.E4_STD_ORD_FEES(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op,Debug_Y_OR_N);
       If (upper(Debug_Y_OR_N) = 'Y') Then
             DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Running E4_STD_ORD_FEES for ALL based on to date from EOM logs');
       End If;
