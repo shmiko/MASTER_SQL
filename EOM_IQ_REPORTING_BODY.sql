@@ -4,7 +4,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
     /*   1. Tmp_Group_Cust   */
     /*   Runs in about 5 seconds   */
     /*   Tested and Working 17/7/15   */
-    PROCEDURE A_EOM_GROUP_CUST(sOp IN VARCHAR2,Debug_Y_OR_N IN VARCHAR2 DEFAULT 'Y') AS
+    PROCEDURE A_TEMP_CUST_DATA(sOp IN VARCHAR2,Debug_Y_OR_N IN VARCHAR2 DEFAULT 'N') AS
       nCheckpoint  NUMBER;
       l_start number default dbms_utility.get_time;
       v_query2 VARCHAR2(32767);
@@ -13,7 +13,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
     BEGIN
   
       nCheckpoint := 1;
-      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      If (sOp = 'PRJ' or sOp = 'DEV') Then
         EXECUTE IMMEDIATE	'TRUNCATE  TABLE Dev_Group_Cust';
       Else
         EXECUTE IMMEDIATE	'TRUNCATE  TABLE Tmp_Group_Cust';
@@ -87,7 +87,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
       End
           
       */
-      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      If (sOp = 'PRJ' or sOp = 'DEV') Then
       EXECUTE IMMEDIATE 'INSERT into DEV_GROUP_CUST(sCust,sGroupCust,nLevel,AREA,TERR,RMDBL2,ANAL,SOURCE,OW_CAT )
                           SELECT RM_CUST
                             ,(
@@ -125,7 +125,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
                       START WITH Length(RM_PARENT) <= 1';
       End If;
       If (upper(Debug_Y_OR_N) = 'Y') Then
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
           DBMS_OUTPUT.PUT_LINE('Successfully truncated, recreated AND populated Dev_Group_Cust');
         Else
           DBMS_OUTPUT.PUT_LINE('Successfully truncated, recreated AND populated Tmp_Group_Cust');
@@ -134,20 +134,20 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
       v_query2 := SQL%ROWCOUNT;
       
       v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
-        EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,NULL,NULL,'A_EOM_GROUP_CUST','RM','Dev_Group_Cust2',v_time_taken,SYSTIMESTAMP,NULL);
+      If (sOp = 'PRJ' or sOp = 'DEV') Then
+        EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,NULL,NULL,'A_TEMP_CUST_DATA','RM','Dev_Group_Cust2',v_time_taken,SYSTIMESTAMP,NULL);
       Else
-        EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,NULL,NULL,'A_EOM_GROUP_CUST','RM','Tmp_Group_Cust2',v_time_taken,SYSTIMESTAMP,NULL);
+        EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,NULL,NULL,'A_TEMP_CUST_DATA','RM','Tmp_Group_Cust2',v_time_taken,SYSTIMESTAMP,NULL);
       End If;
       If (upper(Debug_Y_OR_N) = 'Y') Then
         DBMS_OUTPUT.PUT_LINE('A EOM Group Cust temp tables  - There was ' || v_query2 || ' records inserted in ' ||  (round((dbms_utility.get_time-l_start)/100, 6) || ' Seconds...for all customers '));
       End If;
     EXCEPTION
       WHEN OTHERS THEN
-        DBMS_OUTPUT.PUT_LINE('A_EOM_GROUP_CUST failed at checkpoint ' || nCheckpoint ||
+        DBMS_OUTPUT.PUT_LINE('A_TEMP_CUST_DATA failed at checkpoint ' || nCheckpoint ||
                             ' with error ' || SQLCODE || ' : ' || SQLERRM);
         RAISE;
-    END A_EOM_GROUP_CUST;
+    END A_TEMP_CUST_DATA;
   
     /*   B Run this once for all customer data */
     /*   This gets Break Prices, Pickslip Data, Pick Line Data, Batch Prices */
@@ -197,7 +197,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
   
   
       /*Insert fresh temp data*/
-      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      If (sOp = 'PRJ' or sOp = 'DEV') Then
          /* Truncate all temp tables*/
       
         nCheckpoint := 1;
@@ -297,7 +297,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
        -- ' Seconds...' ));
       v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
       EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,start_date,end_date,'B_EOM_START_RUN_ONCE_DATA','ST/SL','TMP_ADMIN_DATA_PICK_LINECOUNTS',v_time_taken,SYSTIMESTAMP,NULL);
-      --EOM_INSERT_LOG(SYSTIMESTAMP ,NULL,NULL,'A_EOM_GROUP_CUST','RM','Tmp_Group_Cust2',v_time_taken,SYSTIMESTAMP,NULL,sOp);
+      --EOM_INSERT_LOG(SYSTIMESTAMP ,NULL,NULL,'A_TEMP_CUST_DATA','RM','Tmp_Group_Cust2',v_time_taken,SYSTIMESTAMP,NULL,sOp);
       --EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'ZZ_EOM_CUST_QRY_ALL_TMP','FORMATTING','TMP_ALL_FEES',v_time_taken,SYSTIMESTAMP,NULL);
      
       --DBMS_OUTPUT.PUT_LINE('B_EOM_START_RUN_ONCE_DATA for the date range '
@@ -349,7 +349,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
     BEGIN
     
      nCheckpoint := 15;
-     If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+     If (sOp = 'PRJ' or sOp = 'DEV') Then
       v_query2 := 'TRUNCATE TABLE Dev_Locn_Cnt_By_Cust';
        EXECUTE IMMEDIATE v_query2;
        COMMIT;
@@ -368,7 +368,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
     
     nCheckpoint := 151;
     DBMS_OUTPUT.PUT_LINE('C_EOM_START_ALL_TEMP_STOR_DATA now fill it again using params sOp is ' || sOp || ' and sCust is ' || sCust || ' and sAnalysis is ' || sAnalysis);
-     If (sOp = 'PRJ' or sOp = 'PRJ_TEST') then
+     If (sOp = 'PRJ' or sOp = 'DEV') then
       v_query := q'{INSERT INTO Dev_Locn_Cnt_By_Cust
               SELECT Count(DISTINCT NI_STOCK) AS CountOfStocks, IL_LOCN, r.sGroupCust,
                         CASE WHEN Upper(substr(IL_NOTE_2,0,1)) = 'Y' THEN 'E- Pallets'
@@ -402,7 +402,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
       COMMIT;
       DBMS_OUTPUT.PUT_LINE('11 C_EOM_START_ALL_TEMP_STOR_DATA , check query-- ' || v_query);
 
---     If ((sOp = 'PRJ' or sOp = 'PRJ_TEST') AND (sAnalysis != NULL)) Then
+--     If ((sOp = 'PRJ' or sOp = 'DEV') AND (sAnalysis != NULL)) Then
 --        v_query := q'{INSERT INTO Dev_Locn_Cnt_By_Cust
 --              SELECT Count(DISTINCT NI_STOCK) AS CountOfStocks, IL_LOCN, r.sGroupCust,
 --                        CASE WHEN Upper(substr(IL_NOTE_2,0,1)) = 'Y' THEN 'E- Pallets'
@@ -419,7 +419,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
 --        EXECUTE IMMEDIATE v_query USING sAnalysis;
 --         COMMIT;
 --         DBMS_OUTPUT.PUT_LINE('1 C_EOM_START_ALL_TEMP_STOR_DATA , check query-- ' || v_query);
---    ElsIf ((sOp = 'PRJ' or sOp = 'PRJ_TEST') AND (sAnalysis = NULL)) Then
+--    ElsIf ((sOp = 'PRJ' or sOp = 'DEV') AND (sAnalysis = NULL)) Then
 --        v_query := q'{INSERT INTO Dev_Locn_Cnt_By_Cust
 --              SELECT Count(DISTINCT NI_STOCK) AS CountOfStocks, IL_LOCN, r.sGroupCust,
 --                        CASE WHEN Upper(substr(IL_NOTE_2,0,1)) = 'Y' THEN 'E- Pallets'
@@ -435,7 +435,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
 --        EXECUTE IMMEDIATE v_query;-- USING sAnalysis;
 --        COMMIT;
 --        DBMS_OUTPUT.PUT_LINE('2 C_EOM_START_ALL_TEMP_STOR_DATA , check query-- ' || v_query);
---    ElsIf ((sOp != 'PRJ' or sOp != 'PRJ_TEST') AND (sAnalysis = NULL)) Then
+--    ElsIf ((sOp != 'PRJ' or sOp != 'DEV') AND (sAnalysis = NULL)) Then
 --      
 --       v_query := q'{INSERT INTO Tmp_Locn_Cnt_By_Cust
 --              SELECT Count(DISTINCT NI_STOCK) AS CountOfStocks, IL_LOCN, r.sGroupCust,
@@ -452,7 +452,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
 --        EXECUTE IMMEDIATE v_query;-- USING sAnalysis;
 --        COMMIT;
 --        DBMS_OUTPUT.PUT_LINE('3 C_EOM_START_ALL_TEMP_STOR_DATA , check query-- ' || v_query);
---    ElsIf ((sOp != 'PRJ' or sOp != 'PRJ_TEST') AND (sAnalysis != NULL)) Then
+--    ElsIf ((sOp != 'PRJ' or sOp != 'DEV') AND (sAnalysis != NULL)) Then
 --      --use analysis 
 --       v_query := q'{INSERT INTO Tmp_Locn_Cnt_By_Cust
 --              SELECT Count(DISTINCT NI_STOCK) AS CountOfStocks, IL_LOCN, r.sGroupCust,
@@ -481,7 +481,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
       RETURN;
       v_query3 :=  SQL%ROWCOUNT;
       COMMIT;
-      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      If (sOp = 'PRJ' or sOp = 'DEV') Then
         If F_IS_TABLE_EEMPTY('Dev_Locn_Cnt_By_Cust') > 0 Then
        
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
@@ -522,9 +522,10 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
         ,startdate IN VARCHAR2-- := To_Date('1-Jun-2015') or format date as 01-Jun-15 -- use this when you want the date entered automatically
         ,enddate IN VARCHAR2-- := To_Date('30-Jun-2015')
         ,sOp IN VARCHAR2
+        ,Debug_Y_OR_N IN VARCHAR2 DEFAULT 'N'
       )
       IS    
-      --If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      --If (sOp = 'PRJ' or sOp = 'DEV') Then
       --  TYPE ARRAY IS TABLE OF DEV_ALL_FREIGHT_ALL%ROWTYPE;
      -- Else
         TYPE ARRAY IS TABLE OF TMP_ALL_FREIGHT_ALL%ROWTYPE;
@@ -555,8 +556,8 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           t.ST_PSLIP               AS "DespNote",
           substr(To_Char(d.SD_ADD_DATE),0,10)            AS "DespatchDate",
           substr(To_Char(s.SH_ADD_DATE),0,10) AS "OrderDate",
-          CASE  WHEN  d.SD_SELL_PRICE >= 0.1 AND   d.SD_ADD_OP = 'RV'  THEN 'Manual Freight Fee'
-                WHEN  d.SD_STOCK like 'COURIER%' AND d.SD_SELL_PRICE >= 0.1 AND LTRIM(RTRIM(d.SD_XX_PICKLIST_NUM)) IS NOT NULL AND d.SD_ADD_OP = 'SERV2' THEN 'Freight Fee'
+          CASE  WHEN  d.SD_STOCK = 'COURIERM' AND d.SD_SELL_PRICE >= 0.1 AND   d.SD_ADD_OP = 'RV'  THEN 'Manual Freight Fee'
+                WHEN  d.SD_STOCK = 'COURIER' AND d.SD_SELL_PRICE >= 0.1 AND LTRIM(RTRIM(d.SD_XX_PICKLIST_NUM)) IS NOT NULL AND d.SD_ADD_OP = 'SERV2' THEN 'Freight Fee'
                 WHEN  d.SD_ADD_OP != 'RV' AND   d.SD_ADD_OP != 'SERV2' AND d.SD_XX_FREIGHT_CHG > 0.1 THEN 'XX Manual Freight Fee'
                 WHEN  d.SD_ADD_OP = 'SERV2' AND d.SD_XX_FREIGHT_CHG > 0.1 THEN 'XX? Manual Freight Fee'
                 WHEN  d.SD_ADD_OP != 'RV' AND   d.SD_ADD_OP != 'SERV2' AND d.SD_SELL_PRICE >= 0.1 THEN 'Other Manual Freight Fee'
@@ -892,7 +893,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
          
         
         nCheckpoint := 2;
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
           v_query := 'TRUNCATE TABLE DEV_ALL_FREIGHT_ALL';
           EXECUTE IMMEDIATE v_query;
           COMMIT;
@@ -945,19 +946,23 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
       IF v_query2 > 0 THEN
           nCheckpoint := 100;
           v_query := '';
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then  
+        If (sOp = 'PRJ' or sOp = 'DEV') Then  
           EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','DEV_FREIGHT','DEV_ALL_FREIGHT_ALL',v_time_taken,SYSTIMESTAMP,NULL);--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
+         If (upper(Debug_Y_OR_N) = 'Y') then
+          DBMS_OUTPUT.PUT_LINE('F_EOM_DEV_ALL_FREIGHT_ALL for the date range '
+          || startdate || ' -- ' || enddate || ' - ' || v_query2
+          || ' records inserted into table DEV_ALL_FREIGHT_ALL in ' || round((dbms_utility.get_time-l_start)/100, 6)
+          || ' Seconds...for all customers, log file has been updated ' );
+         End If;
         Else
           EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','TMP_FREIGHT','TMP_ALL_FREIGHT_ALL',v_time_taken,SYSTIMESTAMP,NULL);--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
+          If (upper(Debug_Y_OR_N) = 'Y') then
+            DBMS_OUTPUT.PUT_LINE('F_EOM_TMP_ALL_FREIGHT_ALL for the date range '
+            || startdate || ' -- ' || enddate || ' - ' || v_query2
+            || ' records inserted into table TMP_ALL_FREIGHT_ALL in ' || round((dbms_utility.get_time-l_start)/100, 6)
+            || ' Seconds...for all customers, log file has been updated ' );
+           End If;
         End If;
-        --EXECUTE IMMEDIATE v_query USING startdate,enddate,v_time_taken;
-        DBMS_OUTPUT.PUT_LINE('F_EOM_TMP_ALL_FREIGHT_ALL for the date range '
-        || startdate || ' -- ' || enddate || ' - ' || v_query2
-        || ' records inserted into table TMP_ALL_FREIGHT_ALL in ' || round((dbms_utility.get_time-l_start)/100, 6)
-        || ' Seconds...for all customers, log file has been updated ' );
-      --Else
-        --DBMS_OUTPUT.PUT_LINE('F_EOM_TMP_ALL_FREIGHT_ALL rates are not empty - but there was no data, still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) ||
-       -- ' Seconds...for all customers ');
       END IF;
     EXCEPTION
       WHEN OTHERS THEN
@@ -978,7 +983,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
         ,sOp IN VARCHAR2
       )
       IS    
-      --If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      --If (sOp = 'PRJ' or sOp = 'DEV') Then
       --  TYPE ARRAY IS TABLE OF DEV_ALL_FREIGHT_ALL%ROWTYPE;
      -- Else
         TYPE ARRAY IS TABLE OF TMP_ALL_FREIGHT_ALL%ROWTYPE;
@@ -1314,7 +1319,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
          
         
         nCheckpoint := 2;
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
           v_query := 'TRUNCATE TABLE DEV_ALL_FREIGHT_ALL';
           EXECUTE IMMEDIATE v_query;
           COMMIT;
@@ -1367,7 +1372,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
       IF v_query2 > 0 THEN
           nCheckpoint := 100;
           v_query := '';
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then  
+        If (sOp = 'PRJ' or sOp = 'DEV') Then  
           EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','DEV_FREIGHT','DEV_ALL_FREIGHT_ALL',v_time_taken,SYSTIMESTAMP,NULL);--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
         Else
           EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','TMP_FREIGHT','TMP_ALL_FREIGHT_ALL',v_time_taken,SYSTIMESTAMP,NULL);--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
@@ -1393,6 +1398,9 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
     /*   This gets all the IFS freight and Manual Freight data   */
     /*   Temp Tables Used   */
     /*   1. TMP_V_FREIGHT   TO TEST AS MANUAL*/
+    
+    /*REMOVE*/
+    
     PROCEDURE F_EOM_TMP_VAN_FREIGHT_ALL (
         p_array_size IN PLS_INTEGER DEFAULT 100
         ,startdate IN VARCHAR2-- := To_Date('1-Jun-2015') or format date as 01-Jun-15 -- use this when you want the date entered automatically
@@ -1709,7 +1717,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
       ----DBMS_OUTPUT.PUT_LINE('AA EOM Temp Freight table truncated '
       --  || start_date || ' -- ' || end_date);
       nCheckpoint := 2;
-      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      If (sOp = 'PRJ' or sOp = 'DEV') Then
         v_query := 'TRUNCATE TABLE DEV_V_FREIGHT';
         EXECUTE IMMEDIATE v_query;
         COMMIT;
@@ -1789,6 +1797,8 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
         ,sCustomerCode IN VARCHAR2
         ,sFilterBy IN VARCHAR2
         ,sOp IN VARCHAR2
+        ,Debug_Y_OR_N IN VARCHAR2 DEFAULT 'N'
+        ,SaveFreightFile_Y_OR_N IN VARCHAR2 DEFAULT 'N'
       )
       IS
       TYPE ARRAY IS TABLE OF TMP_ALL_FREIGHT_F%ROWTYPE;
@@ -1815,7 +1825,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
         select  *
         FROM  TMP_ALL_FREIGHT_ALL t
         WHERE ROWID IN ( SELECT MAX(ROWID) FROM TMP_ALL_FREIGHT_ALL GROUP BY description )
-        AND t.parent = sCustomerCode; --AND trim(FEETYPE) != 'Freight Fee';
+        and t.parent = sCustomerCode or t.Customer = sCustomerCode;
       
         CURSOR c2        
         IS       
@@ -1847,7 +1857,8 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
         select  *
         FROM  DEV_ALL_FREIGHT_ALL t
         WHERE ROWID IN ( SELECT MAX(ROWID) FROM DEV_ALL_FREIGHT_ALL GROUP BY description )
-        AND t.parent = sCustomerCode; --AND trim(FEETYPE) != 'Freight Fee';
+        and t.parent = sCustomerCode or t.Customer = sCustomerCode;
+        --AND t.parent = sCustomerCode; --AND trim(FEETYPE) != 'Freight Fee';
       
         CURSOR c2Dev        
         IS       
@@ -1882,13 +1893,12 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
       ----DBMS_OUTPUT.PUT_LINE('AA EOM Temp Freight table truncated '
       --  || start_date || ' -- ' || end_date);
       nCheckpoint := 2;
-      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      If (sOp = 'PRJ' or sOp = 'DEV') Then
         v_query := 'TRUNCATE TABLE DEV_ALL_FREIGHT_F';
         EXECUTE IMMEDIATE v_query;
         COMMIT;
         
-        If sFilterBy = 'PARENT' 
-        then
+        If sFilterBy = 'PARENT' or sFilterBy IS NULL then
            OPEN c1Dev;
             ----DBMS_OUTPUT.PUT_LINE(sShary || '.' );
             LOOP
@@ -1905,8 +1915,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
             ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
             CLOSE c1Dev;
             v_query2 :=  SQL%ROWCOUNT;
-        ELSIF sFilterBy = 'RMDBL'
-        then
+        ELSIF sFilterBy = 'RMDBL' then
          OPEN c2Dev;
             ----DBMS_OUTPUT.PUT_LINE(sShary || '.' );
             LOOP
@@ -1923,8 +1932,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
             ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
             CLOSE c2Dev;
             v_query2 :=  SQL%ROWCOUNT;
-        ELSIF sFilterBy = 'TERR'
-        then
+        ELSIF sFilterBy = 'TERR'then
          OPEN c3Dev;
             ----DBMS_OUTPUT.PUT_LINE(sShary || '.' );
             LOOP
@@ -1941,8 +1949,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
             ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
             CLOSE c3Dev;
             v_query2 :=  SQL%ROWCOUNT;
-        ELSIF sFilterBy = 'AREA'
-        then
+        ELSIF sFilterBy = 'AREA'then
           OPEN c4Dev;
             ----DBMS_OUTPUT.PUT_LINE(sShary || '.' );
             LOOP
@@ -1964,32 +1971,28 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
         nCheckpoint := 2;
          
       
-            OPEN c1;
+         OPEN c1Dev;
             ----DBMS_OUTPUT.PUT_LINE(sShary || '.' );
             LOOP
-            FETCH c1 BULK COLLECT INTO l_data LIMIT p_array_size;
+            FETCH c1Dev BULK COLLECT INTO l_data LIMIT p_array_size;
     
             FORALL i IN 1..l_data.COUNT
             ----DBMS_OUTPUT.PUT_LINE(l_data(10) || '.' );
             INSERT INTO DEV_ALL_FREIGHT_F VALUES l_data(i);
             --USING sCust;
     
-            EXIT WHEN c1%NOTFOUND;
+            EXIT WHEN c1Dev%NOTFOUND;
     
             END LOOP;
             ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-            CLOSE c1;
-           --FOR i IN l_data.FIRST .. l_data.LAST LOOP
-            ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
-          --END LOOP;
-          v_query2 :=  SQL%ROWCOUNT;
+            CLOSE c1Dev;
+            v_query2 :=  SQL%ROWCOUNT;
        END IF; 
     Else
          v_query := 'TRUNCATE TABLE TMP_ALL_FREIGHT_F';
           EXECUTE IMMEDIATE v_query;
           COMMIT;
-        If sFilterBy = 'PARENT' 
-        then
+        If sFilterBy = 'PARENT'  or sFilterBy IS NULL  then
            OPEN c1;
             ----DBMS_OUTPUT.PUT_LINE(sShary || '.' );
             LOOP
@@ -2006,8 +2009,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
             ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
             CLOSE c1;
             v_query2 :=  SQL%ROWCOUNT;
-        ELSIF sFilterBy = 'RMDBL'
-        then
+        ELSIF sFilterBy = 'RMDBL' then
          OPEN c2;
             ----DBMS_OUTPUT.PUT_LINE(sShary || '.' );
             LOOP
@@ -2024,8 +2026,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
             ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
             CLOSE c2;
             v_query2 :=  SQL%ROWCOUNT;
-        ELSIF sFilterBy = 'TERR'
-        then
+        ELSIF sFilterBy = 'TERR' then
          OPEN c3;
             ----DBMS_OUTPUT.PUT_LINE(sShary || '.' );
             LOOP
@@ -2042,8 +2043,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
             ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
             CLOSE c3;
             v_query2 :=  SQL%ROWCOUNT;
-        ELSIF sFilterBy = 'AREA'
-        then
+        ELSIF sFilterBy = 'AREA'  then
           OPEN c4;
             ----DBMS_OUTPUT.PUT_LINE(sShary || '.' );
             LOOP
@@ -2090,32 +2090,33 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
        -- If F_IS_TABLE_EEMPTY('TMP_FREIGHT') > 0 Then
           --sFileName := sCustomerCode || '-F8_Z_EOM_RUN_FREIGHT' || startdate || '-TO-' || enddate || '.csv';
           v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-          If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          If (sOp = 'PRJ' or sOp = 'DEV') Then
             EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'F8_Z_EOM_RUN_FREIGHT','DEV_ALL_FREIGHT_ALL','DEV_ALL_FREIGHT_F',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+             If (upper(SaveFreightFile_Y_OR_N) = 'Y') Then
+              sFileName := sCustomerCode || '-F8_Z_EOM_RUN_FREIGHT-' || startdate || '-TO-' || enddate || '-RunOn-' || sFileTime || '.csv';
+              Z2_TMP_FEES_TO_CSV(sFileName,'DEV_ALL_FREIGHT_F',sOp);
+            End If;
+            If (upper(Debug_Y_OR_N) = 'Y') then
+              --Z2_TMP_FEES_TO_CSV(sFileName,'DEV_ALL_FREIGHT_F',sOp);
+              DBMS_OUTPUT.PUT_LINE('F8_Z_EOM_RUN_FREIGHT for the date range '
+              || startdate || ' -- ' || enddate || ' - ' || v_query2
+              || ' records inserted into table DEV_ALL_FREIGHT_F in ' || round((dbms_utility.get_time-l_start)/100, 6)
+              || ' Seconds...for customer ' || sCustomerCode || ' filtered by ' || sFilterBy );
+            End If;
           Else
             EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'F8_Z_EOM_RUN_FREIGHT','TMP_ALL_FREIGHT_ALL','TMP_ALL_FREIGHT_F',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+              If (upper(SaveFreightFile_Y_OR_N) = 'Y') Then
+                sFileName := sCustomerCode || '-F8_Z_EOM_RUN_FREIGHT-' || startdate || '-TO-' || enddate || '-RunOn-' || sFileTime || '.csv';
+                Z2_TMP_FEES_TO_CSV(sFileName,'TMP_ALL_FREIGHT_F',sOp);
+              End If;
+            If (upper(Debug_Y_OR_N) = 'Y') then
+                --Z2_TMP_FEES_TO_CSV(sFileName,'TMP_ALL_FREIGHT_F',sOp);
+                DBMS_OUTPUT.PUT_LINE('F8_Z_EOM_RUN_FREIGHT for the date range '
+                || startdate || ' -- ' || enddate || ' - ' || v_query2
+                || ' records inserted into table TMP_ALL_FREIGHT_F in ' || round((dbms_utility.get_time-l_start)/100, 6)
+                || ' Seconds...for customer ' || sCustomerCode || ' filtered by ' || sFilterBy );
+              End If;
           End If;
-          sFileName := sCustomerCode || '-F8_Z_EOM_RUN_FREIGHT-' || startdate || '-TO-' || enddate || '-RunOn-' || sFileTime || '.csv';
-          
-          If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
-            --Z2_TMP_FEES_TO_CSV(sFileName,'DEV_ALL_FREIGHT_F',sOp);
-            DBMS_OUTPUT.PUT_LINE('F8_Z_EOM_RUN_FREIGHT for the date range '
-            || startdate || ' -- ' || enddate || ' - ' || v_query2
-            || ' records inserted into table DEV_ALL_FREIGHT_F in ' || round((dbms_utility.get_time-l_start)/100, 6)
-            || ' Seconds...for customer ' || sCustomerCode || ' filtered by ' || sFilterBy );
-          Else
-            --Z2_TMP_FEES_TO_CSV(sFileName,'TMP_ALL_FREIGHT_F',sOp);
-            DBMS_OUTPUT.PUT_LINE('F8_Z_EOM_RUN_FREIGHT for the date range '
-            || startdate || ' -- ' || enddate || ' - ' || v_query2
-            || ' records inserted into table TMP_ALL_FREIGHT_F in ' || round((dbms_utility.get_time-l_start)/100, 6)
-            || ' Seconds...for customer ' || sCustomerCode || ' filtered by ' || sFilterBy );
-          End If;
-          --DBMS_OUTPUT.PUT_LINE('Z2_TMP_FEES_TO_CSV for ' || sFileName || '.' );
-        --End If;
-        
-     -- Else
-        --DBMS_OUTPUT.PUT_LINE('F8_Z_EOM_RUN_FREIGHT rates are not empty - but there was no data, still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) ||
-        --' Seconds...for customer ' || sCustomerCode);
       END IF;
     EXCEPTION
       WHEN OTHERS THEN
@@ -2130,6 +2131,9 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
     /*   1. TMP_STOR_FEES   */
     /*   Prism Rate Field Used   */
     /*   A. RM_XX_FEE11 & RM_XX_FEE12   */
+    
+    /*REMOVE*/
+    
     PROCEDURE H4_EOM_ALL_STOR_FEES_old (
         p_array_size IN PLS_INTEGER DEFAULT 100
         ,startdate IN VARCHAR2-- := To_Date('1-Jun-2015') or format date as 01-Jun-15 -- use this when you want the date entered automatically
@@ -2139,6 +2143,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
         ,sOp IN VARCHAR2
         ,p_dev_bool in boolean
         ,p_intercompany_bool in boolean
+        ,Debug_Y_OR_N IN VARCHAR2 DEFAULT 'N'
       )
       IS
       TYPE ARRAY IS TABLE OF TMP_STOR_ALL_FEES%ROWTYPE;
@@ -2736,7 +2741,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
             
     
     nCheckpoint := 2;      
-    If ((sOp = 'PRJ' or sOp = 'PRJ_TEST') AND (sAnalysis IS NULL)) Then
+    If ((sOp = 'PRJ' or sOp = 'DEV') AND (sAnalysis IS NULL)) Then
           v_query := 'TRUNCATE TABLE DEV_STOR_ALL_FEES';
           EXECUTE IMMEDIATE v_query;
           
@@ -2759,7 +2764,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
         --END LOOP;
         DBMS_OUTPUT.PUT_LINE('finished storage for' || sCustomerCode || ' using cDEV cursor.' );
-    ElsIf ((sOp = 'PRJ' or sOp = 'PRJ_TEST') AND (sAnalysis IS NOT NULL)) Then
+    ElsIf ((sOp = 'PRJ' or sOp = 'DEV') AND (sAnalysis IS NOT NULL)) Then
           v_query := 'TRUNCATE TABLE DEV_STOR_ALL_FEES';
           EXECUTE IMMEDIATE v_query;
           
@@ -2782,7 +2787,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
         --END LOOP;
         DBMS_OUTPUT.PUT_LINE('finished storage for' || sCustomerCode || ' using cDEVAnal cursor.' );
-    ElsIf ((sOp != 'PRJ' or sOp != 'PRJ_TEST') AND (sAnalysis IS NULL)) Then
+    ElsIf ((sOp != 'PRJ' or sOp != 'DEV') AND (sAnalysis IS NULL)) Then
         v_query := 'TRUNCATE TABLE TMP_STOR_ALL_FEES';
         EXECUTE IMMEDIATE v_query;
         
@@ -2805,7 +2810,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           ----DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
         --END LOOP;
         DBMS_OUTPUT.PUT_LINE('finished storage for' || sCustomerCode || ' using c cursor.' );
-    ElsIf ((sOp != 'PRJ' or sOp != 'PRJ_TEST') AND (sAnalysis IS NOT NULL)) Then
+    ElsIf ((sOp != 'PRJ' or sOp != 'DEV') AND (sAnalysis IS NOT NULL)) Then
         v_query := 'TRUNCATE TABLE TMP_STOR_ALL_FEES';
         EXECUTE IMMEDIATE v_query;
         
@@ -2833,7 +2838,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
     End If;
         v_query2 :=  SQL%ROWCOUNT;
         COMMIT;
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
           If F_IS_TABLE_EEMPTY('DEV_STOR_ALL_FEES') > 0 Then
     
             v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
@@ -2873,7 +2878,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
    
     EXCEPTION
       WHEN OTHERS THEN
-        DBMS_OUTPUT.PUT_LINE('H4_EOM_ALL_STOR_FEES failed at checkpoint ' || nCheckpoint ||
+        DBMS_OUTPUT.PUT_LINE('H_STOR_FEES_B_FEES failed at checkpoint ' || nCheckpoint ||
                             ' with error ' || SQLCODE || ' : ' || SQLERRM);
   
         RAISE;
@@ -2887,13 +2892,14 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
     /*   1. TMP_STOR_FEES   */
     /*   Prism Rate Field Used   */
     /*   A. RM_XX_FEE11 null   */
-    PROCEDURE H4_EOM_ALL_STOR_FEES (
+    PROCEDURE H_STOR_FEES_A (
         p_array_size IN PLS_INTEGER DEFAULT 100
         ,startdate IN VARCHAR2-- := To_Date('1-Jun-2015') or format date as 01-Jun-15 -- use this when you want the date entered automatically
         ,enddate IN VARCHAR2-- := To_Date('30-Jun-2015')
         ,sCustomerCode IN VARCHAR2
         ,sAnalysis IN RM.RM_ANAL%TYPE
         ,sOp IN VARCHAR2
+        ,Debug_Y_OR_N IN VARCHAR2 DEFAULT 'N'
       )
       IS
       TYPE ARRAY IS TABLE OF TMP_STOR_ALL_FEES%ROWTYPE;
@@ -3446,11 +3452,11 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
             
     
     nCheckpoint := 2;      
-    If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+    If (sOp = 'PRJ' or sOp = 'DEV') Then
           DBMS_OUTPUT.PUT_LINE(sOp || ' - . And sAnalysis is ' || sAnalysis );
           v_query := 'TRUNCATE TABLE DEV_STOR_ALL_FEES';
           EXECUTE IMMEDIATE v_query;
-          If (sAnalysis = '21VICP') Then
+          If (sAnalysis != '') Then
             OPEN canalDev;
             ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
             LOOP
@@ -3489,7 +3495,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
     Else
         v_query := 'TRUNCATE TABLE TMP_STOR_ALL_FEES';
         EXECUTE IMMEDIATE v_query;
-          If (sAnalysis = '21VICP') Then
+          If (sAnalysis != '') Then
             OPEN canal;
             ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
             LOOP
@@ -3528,7 +3534,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
     End If;
         v_query2 :=  SQL%ROWCOUNT;
         COMMIT;
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
           If F_IS_TABLE_EEMPTY('DEV_STOR_ALL_FEES') > 0 Then
     
             v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
@@ -3572,12 +3578,12 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
    
     EXCEPTION
       WHEN OTHERS THEN
-        DBMS_OUTPUT.PUT_LINE('H4_EOM_ALL_STOR_FEES failed at checkpoint ' || nCheckpoint ||
+        DBMS_OUTPUT.PUT_LINE('H_STOR_FEES_A failed at checkpoint ' || nCheckpoint ||
                             ' with error ' || SQLCODE || ' : ' || SQLERRM);
   
         RAISE;
   
-    END H4_EOM_ALL_STOR_FEES;
+    END H_STOR_FEES_A;
   
   
     /*   H1_EOM_STD_STOR_FEES Run this once for each customer   */
@@ -3586,7 +3592,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
     /*   1. TMP_STOR_FEES   */
     /*   Prism Rate Field Used   */
     /*   A. RM_XX_FEE11 & RM_XX_FEE12   */
-    PROCEDURE H4_EOM_ALL_STOR (
+    PROCEDURE H_STOR_FEES_B (
         p_array_size IN PLS_INTEGER DEFAULT 100
         ,startdate IN VARCHAR2-- := To_Date('1-Jun-2015') or format date as 01-Jun-15 -- use this when you want the date entered automatically
         ,enddate IN VARCHAR2-- := To_Date('30-Jun-2015')
@@ -3594,9 +3600,11 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
         ,sAnalysis IN RM.RM_ANAL%TYPE
         ,sFilterBy IN VARCHAR2
         ,sOp IN VARCHAR2
+        ,Debug_Y_OR_N IN VARCHAR2 DEFAULT 'N'
+        ,SaveStorageFile_Y_OR_N IN VARCHAR2 DEFAULT 'N'
       )
       IS
-      TYPE ARRAY IS TABLE OF TMP_STOR_ALL_FEES%ROWTYPE;
+      TYPE ARRAY IS TABLE OF TMP_STOR_FEES%ROWTYPE;
       l_data ARRAY;
       v_time_taken VARCHAR2(205);
       v_out_tx          VARCHAR2(2000);
@@ -3609,7 +3617,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
       sFileTime VARCHAR2(56)  := TO_CHAR(SYSDATE,'YYYYMMDD HH24MISS');
       
         /* EOM Storage Fees */
-        --If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        --If (sOp = 'PRJ' or sOp = 'DEV') Then
           CURSOR c
           IS
           select *
@@ -3658,7 +3666,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           
   
           nCheckpoint := 2;
-          If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          If (sOp = 'PRJ' or sOp = 'DEV') Then
             v_query := 'TRUNCATE TABLE DEV_STOR_FEES';
             EXECUTE IMMEDIATE v_query;
             If (sCustomerCode != 'IAG') Then
@@ -3745,23 +3753,25 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           End If;
         v_query2 :=  SQL%ROWCOUNT;
         COMMIT;
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
           If F_IS_TABLE_EEMPTY('DEV_STOR_FEES') > 0 Then
           --add another quick data check to ensure the source data is ok
     
             v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-            EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'H4_EOM_ALL_STOR','IL','DEV_STOR_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
-            sFileName := sCustomerCode || '-H4_EOM_ALL_STOR-' || startdate || '-TO-' || enddate || '-RunOn-' || sFileTime ||  '.csv';
-            Z2_TMP_FEES_TO_CSV(sFileName,'DEV_STOR_FEES',sOp);
+            EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'H_STOR_FEES_B','IL','DEV_STOR_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+            sFileName := sCustomerCode || '-H_STOR_FEES_B-' || startdate || '-TO-' || enddate || '-RunOn-' || sFileTime ||  '.csv';
+            If (upper(SaveStorageFile_Y_OR_N) = 'Y') Then
+              Z2_TMP_FEES_TO_CSV(sFileName,'DEV_STOR_FEES',sOp);
+            End If;
             --DBMS_OUTPUT.PUT_LINE('Z2_TMP_FEES_TO_CSV for ' || sFileName || '.' );
             --uncomment above if you want to produce an exported file for all storage, about 5MB every time.
             --COMMIT;
-            --DBMS_OUTPUT.PUT_LINE('H4_EOM_ALL_STOR Fees for the date range '
+            --DBMS_OUTPUT.PUT_LINE('H_STOR_FEES_B Fees for the date range '
                 --|| startdate || ' -- ' || enddate || ' - ' || v_query2 || ' records inserted into table TMP_STOR_FEES in ' || (round((dbms_utility.get_time-l_start)/100, 6) ||
                -- ' Seconds...for customer ' || sCustomerCode ));
       
           --Else
-            --DBMS_OUTPUT.PUT_LINE('H4_EOM_ALL_STOR Std Shelf Storage Fees rates are not empty - but there was no data, still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) ||
+            --DBMS_OUTPUT.PUT_LINE('H_STOR_FEES_B Std Shelf Storage Fees rates are not empty - but there was no data, still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) ||
            -- ' Seconds...for customer ' || sCustomerCode);
           END IF;
         Else
@@ -3769,18 +3779,22 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           --add another quick data check to ensure the source data is ok
     
             v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-            EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'H4_EOM_ALL_STOR','IL','TMP_STOR_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
-            sFileName := sCustomerCode || '-H4_EOM_ALL_STOR-' || startdate || '-TO-' || enddate || '-RunOn-' || sFileTime ||  '.csv';
+            EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'H_STOR_FEES_B','IL','TMP_STOR_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
+            sFileName := sCustomerCode || '-H_STOR_FEES_B-' || startdate || '-TO-' || enddate || '-RunOn-' || sFileTime ||  '.csv';
+            
+            If (upper(SaveStorageFile_Y_OR_N) = 'Y') Then
+              Z2_TMP_FEES_TO_CSV(sFileName,'TMP_STOR_FEES',sOp);
+            End If;
             --Z2_TMP_FEES_TO_CSV(sFileName,'TMP_STOR_FEES',sOp);
             --DBMS_OUTPUT.PUT_LINE('Z2_TMP_FEES_TO_CSV for ' || sFileName || '.' );
             --uncomment above if you want to produce an exported file for all storage, about 5MB every time.
             --COMMIT;
-            --DBMS_OUTPUT.PUT_LINE('H4_EOM_ALL_STOR Fees for the date range '
+            --DBMS_OUTPUT.PUT_LINE('H_STOR_FEES_B Fees for the date range '
                 --|| startdate || ' -- ' || enddate || ' - ' || v_query2 || ' records inserted into table TMP_STOR_FEES in ' || (round((dbms_utility.get_time-l_start)/100, 6) ||
                -- ' Seconds...for customer ' || sCustomerCode ));
       
           --Else
-            --DBMS_OUTPUT.PUT_LINE('H4_EOM_ALL_STOR Std Shelf Storage Fees rates are not empty - but there was no data, still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) ||
+            --DBMS_OUTPUT.PUT_LINE('H_STOR_FEES_B Std Shelf Storage Fees rates are not empty - but there was no data, still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) ||
            -- ' Seconds...for customer ' || sCustomerCode);
           END IF;
         End If;
@@ -3789,12 +3803,12 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
    
     EXCEPTION
       WHEN OTHERS THEN
-        DBMS_OUTPUT.PUT_LINE('H4_EOM_ALL_STOR_FEES failed at checkpoint ' || nCheckpoint ||
+        DBMS_OUTPUT.PUT_LINE('H_STOR_FEES_A failed at checkpoint ' || nCheckpoint ||
                             ' with error ' || SQLCODE || ' : ' || SQLERRM);
   
         RAISE;
   
-    END H4_EOM_ALL_STOR;
+    END H_STOR_FEES_B;
       
     /*   E0_ALL_ORD_FEES Run this once for each customer   */
     /*   This gets all the Order Related Data   */
@@ -3810,6 +3824,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
         ,sAnalysis IN RM.RM_ANAL%TYPE
         ,sFilterBy IN VARCHAR2
         ,sOp IN VARCHAR2
+        ,Debug_Y_OR_N IN VARCHAR2 DEFAULT 'N'
       )
       IS
       TYPE ARRAY IS TABLE OF TMP_ALL_ORD_FEES%ROWTYPE;
@@ -4074,13 +4089,15 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
       OR sCust_Rates2  > 0
       OR sCust_Rates1  > 0
       THEN
-        --DBMS_OUTPUT.PUT_LINE('E1_PHONE_ORD_FEES rates are $' || sCust_Rates5 || '. Prism rate field is RM_XX_FEE03.');     
-        --DBMS_OUTPUT.PUT_LINE('E1_EMAIL_ORD_FEES rates are $' || sCust_Rates4 || '. Prism rate field is RM_XX_FEE02.');
-        --DBMS_OUTPUT.PUT_LINE('E1_FAX_ORD_FEES rates are $' || sCust_Rates3 || '. Prism rate field is RM_XX_FEE07.');
-        --DBMS_OUTPUT.PUT_LINE('E1_MAN_ORD_FEES rates are $' || sCust_Rates2 || '. Prism rate field is RM_XX_FEE01.');
-        --DBMS_OUTPUT.PUT_LINE('E1_?_ORD_FEES rates are $' || sCust_Rates1 || '. Prism rate field is RM_XX_FEE01.');
+        If (upper(Debug_Y_OR_N) = 'Y') Then
+          DBMS_OUTPUT.PUT_LINE('E1_PHONE_ORD_FEES rates are $' || sCust_Rates5 || '. Prism rate field is RM_XX_FEE03.');     
+          DBMS_OUTPUT.PUT_LINE('E1_EMAIL_ORD_FEES rates are $' || sCust_Rates4 || '. Prism rate field is RM_XX_FEE02.');
+          DBMS_OUTPUT.PUT_LINE('E1_FAX_ORD_FEES rates are $' || sCust_Rates3 || '. Prism rate field is RM_XX_FEE07.');
+          DBMS_OUTPUT.PUT_LINE('E1_MAN_ORD_FEES rates are $' || sCust_Rates2 || '. Prism rate field is RM_XX_FEE01.');
+          DBMS_OUTPUT.PUT_LINE('E1_?_ORD_FEES rates are $' || sCust_Rates1 || '. Prism rate field is RM_XX_FEE01.');
+        End If;
         nCheckpoint := 2;
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
           v_query := 'TRUNCATE TABLE DEV_ALL_ORD_FEES';
           EXECUTE IMMEDIATE v_query;
           OPEN cDEV;
@@ -4124,18 +4141,22 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           COMMIT;
       IF v_query2 > 0 THEN
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
           EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'E0_ALL_ORD_FEES','SH','DEV_ALL_ORD_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
         Else
           EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'E0_ALL_ORD_FEES','SH','TMP_ALL_ORD_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
         End If;
-        --DBMS_OUTPUT.PUT_LINE('E0_ALL_ORD_FEES for the date range '
-       -- || startdate || ' -- ' || enddate || ' - ' || v_query2
-       -- || ' records inserted into table TMP_ALL_ORD_FEES in ' || round((dbms_utility.get_time-l_start)/100, 6)
-       -- || ' Seconds...for customer ' || sCustomerCode );
-      --Else
-        --DBMS_OUTPUT.PUT_LINE('E0_ALL_ORD_FEES rates are not empty - but there was no data, still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) ||
-       -- ' Seconds...for customer ' || sCustomerCode);
+        If (upper(Debug_Y_OR_N) = 'Y') Then
+          DBMS_OUTPUT.PUT_LINE('E0_ALL_ORD_FEES for the date range '
+          || startdate || ' -- ' || enddate || ' - ' || v_query2
+          || ' records inserted into table TMP_ALL_ORD_FEES in ' || round((dbms_utility.get_time-l_start)/100, 6)
+          || ' Seconds...for customer ' || sCustomerCode );
+         End If;
+      Else
+        If (upper(Debug_Y_OR_N) = 'Y') Then
+          DBMS_OUTPUT.PUT_LINE('E0_ALL_ORD_FEES rates are not empty - but there was no data, still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) ||
+          ' Seconds...for customer ' || sCustomerCode);
+       End if;
       END IF;
     --Else
         --DBMS_OUTPUT.PUT_LINE('cE1_PHONE_ORD_FEES rates are $' || sCust_Rates5 || '. Prism rate field is RM_XX_FEE03.');     
@@ -4175,6 +4196,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
       ,sAnalysis IN RM.RM_ANAL%TYPE
       ,sFilterBy IN VARCHAR2
       ,sOp IN VARCHAR2
+      ,Debug_Y_OR_N IN VARCHAR2 DEFAULT 'N'
     )
     IS
     TYPE ARRAY IS TABLE OF TMP_STD_ORD_FEES%ROWTYPE;
@@ -4336,8 +4358,8 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
     IF sCust_Rates2 IS NOT NULL THEN
       --DBMS_OUTPUT.PUT_LINE('E4_STD_ORD_FEES rates are $' || sCust_Rates2 || '. Prism rate field is .');
     
-    nCheckpoint := 2;
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        nCheckpoint := 2;
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
           v_query := 'TRUNCATE TABLE DEV_STD_ORD_FEES';
           EXECUTE IMMEDIATE v_query;
           
@@ -4377,28 +4399,29 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           CLOSE c;
 
         End If;
-    v_query2 :=  SQL%ROWCOUNT;
-    COMMIT;
-
+      v_query2 :=  SQL%ROWCOUNT;
+      COMMIT;
+    Else
+      DBMS_OUTPUT.PUT_LINE('E4_STD_ORD_FEES no rates');
+    End If;
     IF v_query2 > 0 THEN
       v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      If (sOp = 'PRJ' or sOp = 'DEV') Then
         EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'E4_VERBAL_ORD_FEES','SH','DEV_VERBAL_ORD_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
       Else
         EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'E4_VERBAL_ORD_FEES','SH','TMP_VERBAL_ORD_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
       End If;
-      --DBMS_OUTPUT.PUT_LINE('E4_STD_ORD_FEES for the date range '
-      --|| startdate || ' -- ' || enddate || ' - ' || v_query2
-     -- || ' records inserted into table TMP_VERBAL_ORD_FEES in ' || round((dbms_utility.get_time-l_start)/100, 6)
-     -- || ' Seconds...for customer ' || sCustomerCode );
-    --Else
-     -- DBMS_OUTPUT.PUT_LINE('E4_STD_ORD_FEES rates are not empty - but there was no data, still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) ||
-     -- ' Seconds...for customer ' || sCustomerCode);
+      If (upper(Debug_Y_OR_N) = 'Y') Then
+        DBMS_OUTPUT.PUT_LINE('E4_STD_ORD_FEES for the date range '
+        || startdate || ' -- ' || enddate || ' - ' || v_query2
+        || ' records inserted into table TMP_VERBAL_ORD_FEES in ' || round((dbms_utility.get_time-l_start)/100, 6)
+        || ' Seconds...for customer ' || sCustomerCode );
+      End If;
+    Else
+      DBMS_OUTPUT.PUT_LINE('E4_STD_ORD_FEES rates are empty - skipped procedure to save time, still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) ||
+      ' Seconds...for customer ' || sCustomerCode);
     END IF;
-    --Else
-    --DBMS_OUTPUT.PUT_LINE('E4_STD_ORD_FEES rates are empty - skipped procedure to save time, still took ' || (round((dbms_utility.get_time-l_start)/100, 6)) ||
-    --' Seconds...for customer ' || sCustomerCode);
-  END IF;
+  --END IF;
   EXCEPTION
     WHEN OTHERS THEN
       DBMS_OUTPUT.PUT_LINE('E4_STD_ORD_FEES failed at checkpoint ' || nCheckpoint ||
@@ -4623,7 +4646,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
       
   
       nCheckpoint := 2;
-          If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          If (sOp = 'PRJ' or sOp = 'DEV') Then
             v_query := 'TRUNCATE TABLE DEV_DESTROY_ORD_FEES';
             EXECUTE IMMEDIATE v_query;
             OPEN cDEV;
@@ -4665,7 +4688,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
       COMMIT;
       IF v_query2 > 0 THEN
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
           EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'E5_DESTOY_ORD_FEES','SH','DEV_DESTROY_ORD_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
         Else
           EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'E5_DESTOY_ORD_FEES','SH','TMP_DESTROY_ORD_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
@@ -4797,7 +4820,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           s.SH_SPARE_INT_4,s.SH_CAMPAIGN,
           d.SD_NOTE_1,d.SD_COST_PRICE,
           d.SD_XX_FREIGHT_CHG
-    FROM      PWIN175.SD d
+    FROM  PWIN175.SD d
           INNER JOIN PWIN175.SH s  ON s.SH_ORDER  = d.SD_ORDER
           INNER JOIN PWIN175.ST t  ON t.ST_ORDER  = s.SH_ORDER
           LEFT JOIN Tmp_Group_Cust r ON r.sCust = s.SH_CUST
@@ -4992,7 +5015,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           --DBMS_OUTPUT.PUT_LINE('G1_SHRINKWRAP_FEES rates are $' || sCust_Rates || '. Prism rate field is RM_XX_FEE18');
           
           nCheckpoint := 2;
-           If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+           If (sOp = 'PRJ' or sOp = 'DEV') Then
             v_query := 'TRUNCATE TABLE DEV_SHRINKWRAP_FEES';
             EXECUTE IMMEDIATE v_query;
             OPEN cDEV;
@@ -5034,7 +5057,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
   
        IF v_query2 > 0 THEN
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
           EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'G1_SHRINKWRAP_FEES','ST','DEV_SHRINKWRAP_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
         Else
           EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'G1_SHRINKWRAP_FEES','ST','TMP_SHRINKWRAP_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
@@ -5277,7 +5300,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           
   
           nCheckpoint := 2;
-          If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          If (sOp = 'PRJ' or sOp = 'DEV') Then
             v_query := 'TRUNCATE TABLE DEV_STOCK_FEES';
             EXECUTE IMMEDIATE v_query;
             OPEN cDEV;
@@ -5320,7 +5343,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
   
        IF v_query2 > 0 THEN
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
           EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'G2_STOCK_FEES','SD','DEV_STOCK_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
         Else
           EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'G2_STOCK_FEES','SD','TMP_STOCK_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
@@ -5465,7 +5488,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
          
   
           nCheckpoint := 2;
-          If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          If (sOp = 'PRJ' or sOp = 'DEV') Then
              v_query := 'TRUNCATE TABLE DEV_STOCK_FEES';
             EXECUTE IMMEDIATE v_query;
             OPEN c;
@@ -5506,7 +5529,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
   
        IF v_query2 > 0 THEN
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
           EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'G2_STOCK_FEES','SD','DEV_STOCK_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
         Else
           EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'G2_STOCK_FEES','SD','TMP_STOCK_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
@@ -5739,7 +5762,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           ----DBMS_OUTPUT.PUT_LINE('G3_PACKING_FEES Inner rates are $' || sCust_Rates || '. G3_PACKING_FEES Outer rates are $' || sCust_Rates2 || '. Prism rate fields are RM_XX_FEE08 * RM_XX_FEE09.');      
           
           nCheckpoint := 2;
-          If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          If (sOp = 'PRJ' or sOp = 'DEV') Then
             v_query := 'TRUNCATE TABLE DEV_PACKING_FEES';
             EXECUTE IMMEDIATE v_query;
             OPEN cDEV;
@@ -5781,7 +5804,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
   
           IF v_query2 > 0 THEN
             v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-            If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+            If (sOp = 'PRJ' or sOp = 'DEV') Then
               EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'G3_PACKING_FEES','SL','DEV_PACKING_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
             Else
               EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'G3_PACKING_FEES','SL','TMP_PACKING_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
@@ -6073,7 +6096,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           ----DBMS_OUTPUT.PUT_LINE('G4_HANDLING_FEES rates are $' || sCust_Rates || '. Prism rate field is RM_XX_FEE06.');
           
           nCheckpoint := 2;
-          If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          If (sOp = 'PRJ' or sOp = 'DEV') Then
              v_query := 'TRUNCATE TABLE DEV_HANDLING_FEES';
             EXECUTE IMMEDIATE v_query;
             OPEN cDEV;
@@ -6115,7 +6138,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
   
          IF v_query2 > 0 THEN
             v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-            If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+            If (sOp = 'PRJ' or sOp = 'DEV') Then
               EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'G4_HANDLING_FEES_F','SL','DEV_HANDLING_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
             Else
               EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'G4_HANDLING_FEES_F','SL','TMP_HANDLING_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
@@ -6391,7 +6414,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           ----DBMS_OUTPUT.PUT_LINE('G4_HANDLING_FEES rates are $' || sCust_Rates || '. Prism rate field is RM_XX_FEE06.');
           
           nCheckpoint := 2;
-          If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          If (sOp = 'PRJ' or sOp = 'DEV') Then
             v_query := 'TRUNCATE TABLE DEV_PICK_FEES';
             EXECUTE IMMEDIATE v_query;
             OPEN cDEV;
@@ -6432,7 +6455,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
   
          IF v_query2 > 0 THEN
             v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-            If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+            If (sOp = 'PRJ' or sOp = 'DEV') Then
               EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'G4_HANDLING_FEES_F2','SL','DEV_PICK_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
             Else
               EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'G4_HANDLING_FEES_F2','SL','TMP_PICK_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
@@ -6800,7 +6823,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           
   
           nCheckpoint := 2;
-           If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+           If (sOp = 'PRJ' or sOp = 'DEV') Then
             v_query := 'TRUNCATE TABLE DEV_PICK_FEES';
             EXECUTE IMMEDIATE v_query;
               OPEN cDEV;
@@ -6841,7 +6864,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
   
       IF v_query2 > 0 THEN
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
           EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'G5_PICK_FEES_F','ST','DEV_PICK_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
         Else
           EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'G5_PICK_FEES_F','ST','TMP_PICK_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
@@ -7018,7 +7041,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
         
 
         nCheckpoint := 2;
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
           v_query := 'TRUNCATE TABLE DEV_PICK_FEES';
           EXECUTE IMMEDIATE v_query;
           OPEN c;
@@ -7059,7 +7082,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
 
     IF v_query2 > 0 THEN
       v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      If (sOp = 'PRJ' or sOp = 'DEV') Then
         EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'G5_PICK_FEES_F','ST','DEV_PICK_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
       Else
         EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'G5_PICK_FEES_F','ST','TMP_PICK_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
@@ -7305,7 +7328,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
        
   
       nCheckpoint := 2;
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
            v_query := 'TRUNCATE TABLE DEV_MISC_FEES';
           EXECUTE IMMEDIATE v_query;
           OPEN c;
@@ -7350,7 +7373,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
   
       IF v_query2 > 0 THEN
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
           EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'I_EOM_MISC_FEES','RM','DEV_MISC_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
         Else
           EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'I_EOM_MISC_FEES','RM','TMP_MISC_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
@@ -7847,7 +7870,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
         
   
       nCheckpoint := 2;
-      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      If (sOp = 'PRJ' or sOp = 'DEV') Then
           v_query := 'TRUNCATE TABLE DEV_CUSTOMER_FEES';
           EXECUTE IMMEDIATE v_query;
           OPEN c;
@@ -7891,7 +7914,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
     COMMIT;
     --RETURN;
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
           EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'J_EOM_CUSTOMER_FEES','RM','DEV_CUSTOMER_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
         Else
           EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'J_EOM_CUSTOMER_FEES','RM','TMP_CUSTOMER_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
@@ -8142,7 +8165,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
         
   
       nCheckpoint := 2;
-      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      If (sOp = 'PRJ' or sOp = 'DEV') Then
           v_query := 'TRUNCATE TABLE DEV_CUSTOMER_FEES';
           EXECUTE IMMEDIATE v_query;
           OPEN c;
@@ -8187,7 +8210,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
   
      IF v_query2 > 0 THEN
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
           EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'J_EOM_CUSTOMER_FEES_TAB','RM','DEV_CUSTOMER_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
         Else
           EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'J_EOM_CUSTOMER_FEES_TAB','RM','TMP_CUSTOMER_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
@@ -8413,7 +8436,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
       
   
       nCheckpoint := 2;
-       If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+       If (sOp = 'PRJ' or sOp = 'DEV') Then
            nCheckpoint := 11;
             v_query := 'TRUNCATE TABLE DEV_PAL_IN_FEES';
             EXECUTE IMMEDIATE v_query;
@@ -8469,7 +8492,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
         --' Seconds...for customer ' || sCustomerCode);
     IF v_query2 > 0 THEN
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
           EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'J_EOM_CUSTOMER_FEES_BB','RM','DEV_CUSTOMER_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
         Else
           EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'J_EOM_CUSTOMER_FEES_BB','RM','TMP_CUSTOMER_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
@@ -8583,7 +8606,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
        nCheckpoint := 2;
          EXECUTE IMMEDIATE QueryTable INTO sCust_Rates USING sCustomerCodeWBC;--Merch Ord Fee
        nCheckpoint := 3;
-         If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+         If (sOp = 'PRJ' or sOp = 'DEV') Then
            v_query := 'TRUNCATE TABLE DEV_CUSTOMER_FEES';
           EXECUTE IMMEDIATE v_query;
           OPEN c;
@@ -8624,7 +8647,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
     COMMIT;  
     IF v_query2 > 0 THEN
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
           EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'J_EOM_CUSTOMER_FEES_WBC','RM','DEV_CUSTOMER_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
         Else
           EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'J_EOM_CUSTOMER_FEES_WBC','RM','TMP_CUSTOMER_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
@@ -8796,7 +8819,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
         
   
       nCheckpoint := 2;
-          If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          If (sOp = 'PRJ' or sOp = 'DEV') Then
             v_query := 'TRUNCATE TABLE DEV_CUSTOMER_FEES';
           EXECUTE IMMEDIATE v_query;
           OPEN c;
@@ -8838,7 +8861,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
        -- END LOOP;
        
        nCheckpoint := 3;
-       If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+       If (sOp = 'PRJ' or sOp = 'DEV') Then
           OPEN o;
           ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
           LOOP
@@ -8880,7 +8903,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
   
     IF v_query2 > 0 THEN
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
           EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'J_EOM_CUSTOMER_FEES_VHA','RM','DEV_CUSTOMER_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
         Else
           EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'J_EOM_CUSTOMER_FEES_VHA','RM','TMP_CUSTOMER_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
@@ -8956,9 +8979,32 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
 --        EXECUTE IMMEDIATE v_query;
   
       nCheckpoint := 2;
-      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      If (sOp = 'PRJ' or sOp = 'DEV') Then
           --run specific formatting query for superpartners
            l_query := q'{
+           Select  to_date(f1.DESPDATE,'dd/mm/yyyy'),f1.ORDERNUM,f1.DESPNOTE,f1.CUSTOMER,
+            f1.ATTENTIONTO,f1.ADDRESS,f1.ADDRESS2,f1.SUBURB,f1.STATE,f1.POSTCODE,
+            f1.ITEM,f1.DESCRIPTION,f1.QTY
+                 ,CASE   WHEN f1.FEETYPE like 'Stock' AND LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE THEN (Select f2.SELLEXCL From DEV_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND f2.FEETYPE = 'Pick Fee'  AND ROWNUM = 1 ) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
+                        ELSE 0
+                        END AS "Line Charge"
+                ,CASE   WHEN f1.FEETYPE like 'Stock' AND LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE THEN (Select f2.SELLEXCL From DEV_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND f2.FEETYPE = 'Handeling Fee is ' ) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
+                        ELSE 0
+                        END AS "Order Despatch Charge"
+                ,CASE   WHEN f1.FEETYPE like 'Stock' AND (LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE)  AND  ((ADDRESS  NOT LIKE '%Casselden%' Or ADDRESS   NOT LIKE '%2 Lonsdale%')
+                          OR (ADDRESS2   NOT LIKE '%Casselden%' Or ADDRESS2   NOT LIKE '%2 Lonsdale%')) 
+                        THEN (Select f2.SELLEXCL From DEV_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND (f2.FEETYPE like 'Freight Fee' OR f2.FEETYPE like 'Manual Freight Fee') AND ROWNUM = 1) --AND ((UPPER(ADDRESS) NOT LIKE '%CASSELDEN%' Or UPPER(ADDRESS) NOT LIKE '2 LONSDALE%') OR (UPPER(ADDRESS2) NOT LIKE '%CASSELDEN%' Or UPPER(ADDRESS2) NOT LIKE '2 LONSDALE%')) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
+                        ELSE 0
+                        END AS "Freight Charge",
+          REPLACE(IM_XX_QTY_PER_PACK,'Box of ','') As "QTY",
+          NULL 
+          
+          From DEV_ALL_FEES_F f1, IM
+          Where f1.FEETYPE = 'Stock'
+          AND f1.ITEM = IM_STOCK
+          
+          UNION ALL
+           
           --Monday or the first day of the week
           Select NVL(TO_CHAR(TRUNC(CURRENT_DATE, 'DAY') -7),'') DespDate,NULL,NULL,NULL,
             NULL,NULL,NULL,NULL,NULL,NULL,
@@ -9102,15 +9148,15 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           l_query := q'{Select  to_date(f1.DESPDATE,'dd/mm/yyyy'),f1.ORDERNUM,f1.DESPNOTE,f1.CUSTOMER,
             f1.ATTENTIONTO,f1.ADDRESS,f1.ADDRESS2,f1.SUBURB,f1.STATE,f1.POSTCODE,
             f1.ITEM,f1.DESCRIPTION,f1.QTY
-                 ,CASE   WHEN f1.FEETYPE like 'Stock' AND LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE THEN (Select f2.SELLEXCL From DEV_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND f2.FEETYPE = 'Pick Fee' ) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
+                 ,CASE   WHEN f1.FEETYPE like 'Stock' AND LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE THEN (Select f2.SELLEXCL From TMP_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND f2.FEETYPE = 'Pick Fee'  AND ROWNUM = 1 ) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
                         ELSE 0
                         END AS "Line Charge"
-                ,CASE   WHEN f1.FEETYPE like 'Stock' AND LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE THEN (Select f2.SELLEXCL From DEV_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND f2.FEETYPE = 'Handeling Fee is ' ) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
+                ,CASE   WHEN f1.FEETYPE like 'Stock' AND LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE THEN (Select f2.SELLEXCL From TMP_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND f2.FEETYPE = 'Handeling Fee is ' ) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
                         ELSE 0
                         END AS "Order Despatch Charge"
                 ,CASE   WHEN f1.FEETYPE like 'Stock' AND (LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE)  AND  ((ADDRESS  NOT LIKE '%Casselden%' Or ADDRESS   NOT LIKE '%2 Lonsdale%')
                           OR (ADDRESS2   NOT LIKE '%Casselden%' Or ADDRESS2   NOT LIKE '%2 Lonsdale%')) 
-                        THEN (Select f2.SELLEXCL From DEV_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND (f2.FEETYPE like 'Freight Fee' OR f2.FEETYPE like 'Manual Freight Fee') AND ROWNUM = 1) --AND ((UPPER(ADDRESS) NOT LIKE '%CASSELDEN%' Or UPPER(ADDRESS) NOT LIKE '2 LONSDALE%') OR (UPPER(ADDRESS2) NOT LIKE '%CASSELDEN%' Or UPPER(ADDRESS2) NOT LIKE '2 LONSDALE%')) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
+                        THEN (Select f2.SELLEXCL From TMP_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND (f2.FEETYPE like 'Freight Fee' OR f2.FEETYPE like 'Manual Freight Fee') AND ROWNUM = 1) --AND ((UPPER(ADDRESS) NOT LIKE '%CASSELDEN%' Or UPPER(ADDRESS) NOT LIKE '2 LONSDALE%') OR (UPPER(ADDRESS2) NOT LIKE '%CASSELDEN%' Or UPPER(ADDRESS2) NOT LIKE '2 LONSDALE%')) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
                         ELSE 0
                         END AS "Freight Charge",
           REPLACE(IM_XX_QTY_PER_PACK,'Box of ','') As "QTY",
@@ -9139,7 +9185,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           Then 30.71
           ELSE 0
           END AS  "Freight Charge Cost",NULL,NULL
-          From DEV_ALL_FEES_F f1
+          From TMP_ALL_FEES_F f1
           Where f1.FEETYPE = 'Freight Fee' 
            AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%2 Lonsdale%')
           OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%2 Lonsdale%'))
@@ -9167,7 +9213,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           Then 30.71
           ELSE 0
           END AS  "Freight Charge Cost",NULL,NULL
-          From DEV_ALL_FEES_F f1
+          From TMP_ALL_FEES_F f1
           Where f1.FEETYPE = 'Freight Fee' 
            AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%2 Lonsdale%')
           OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%2 Lonsdale%'))
@@ -9194,7 +9240,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           Then 30.71
           ELSE 0
           END AS  "Freight Charge Cost",NULL,NULL
-          From DEV_ALL_FEES_F f1
+          From TMP_ALL_FEES_F f1
           Where f1.FEETYPE = 'Freight Fee' 
            AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%2 Lonsdale%')
           OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%2 Lonsdale%'))
@@ -9221,7 +9267,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           Then 30.71
           ELSE 0
           END AS  "Freight Charge Cost",NULL,NULL
-          From DEV_ALL_FEES_F f1
+          From TMP_ALL_FEES_F f1
           Where f1.FEETYPE = 'Freight Fee' 
            AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%2 Lonsdale%')
           OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%2 Lonsdale%'))
@@ -9254,7 +9300,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           END AS  "Freight Charge Cost",
           
           NULL,NULL
-          From DEV_ALL_FEES_F f1
+          From TMP_ALL_FEES_F f1
           Where f1.FEETYPE = 'Freight Fee' 
            AND ((ADDRESS  LIKE '%Casselden%' Or ADDRESS  LIKE '%2 Lonsdale%')
           OR (ADDRESS2  LIKE '%Casselden%' Or ADDRESS2  LIKE '%2 Lonsdale%'))
@@ -9340,7 +9386,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
   
     IF v_query2 > 0 THEN
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
           EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'J_EOM_CUSTOMER_FEES_SUP','RM','DEV_CUSTOMER_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
         Else
           EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'J_EOM_CUSTOMER_FEES_SUP','RM','TMP_CUSTOMER_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
@@ -9415,20 +9461,18 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
 --        EXECUTE IMMEDIATE v_query;
   
       nCheckpoint := 2;
-      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      If (sOp = 'PRJ' or sOp = 'DEV') Then
           --run specific formatting query for superpartners
            l_query := q'{Select  f1.DESPDATE,f1.ORDERNUM,f1.DESPNOTE,f1.CUSTOMER,
             f1.ATTENTIONTO,f1.ADDRESS,f1.ADDRESS2,f1.SUBURB,f1.STATE,f1.POSTCODE,
             f1.ITEM,f1.DESCRIPTION,f1.QTY
-                 ,CASE   WHEN f1.FEETYPE like 'Stock' AND LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE THEN (Select f2.SELLEXCL From DEV_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND f2.FEETYPE = 'Pick Fee'  AND ROWNUM = 1 ) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
+                 ,CASE   WHEN f1.FEETYPE like 'Stock' AND LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE THEN (Select distinct f2.SELLEXCL From DEV_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND f2.FEETYPE = 'Pick Fee'  AND ROWNUM = 1 ) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
                         ELSE 0
                         END AS "Line Charge"
-                ,CASE   WHEN f1.FEETYPE like 'Stock' AND LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE THEN (Select f2.SELLEXCL From DEV_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND f2.FEETYPE = 'Handeling Fee is ' ) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
+                ,CASE   WHEN f1.FEETYPE like 'Stock' AND LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE THEN (Select distinct f2.SELLEXCL From DEV_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND f2.FEETYPE = 'Handeling Fee is ' ) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
                         ELSE 0
                         END AS "Order Despatch Charge"
-                ,CASE   WHEN f1.FEETYPE like 'Stock' AND (LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE)  --AND  ((ADDRESS  NOT LIKE '%Casselden%' Or ADDRESS   NOT LIKE '%2 Lonsdale%')
-                          --OR (ADDRESS2   NOT LIKE '%Casselden%' Or ADDRESS2   NOT LIKE '%2 Lonsdale%')) 
-                        THEN (Select f2.SELLEXCL From DEV_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND (f2.FEETYPE like 'Freight Fee' OR f2.FEETYPE like 'Manual Freight Fee') AND ROWNUM = 1) --AND ((UPPER(ADDRESS) NOT LIKE '%CASSELDEN%' Or UPPER(ADDRESS) NOT LIKE '2 LONSDALE%') OR (UPPER(ADDRESS2) NOT LIKE '%CASSELDEN%' Or UPPER(ADDRESS2) NOT LIKE '2 LONSDALE%')) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
+                ,CASE   WHEN f1.FEETYPE like 'Stock' AND (LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE) THEN (Select f2.SELLEXCL From DEV_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND (f2.FEETYPE like 'Freight Fee' OR f2.FEETYPE like 'Manual Freight Fee') AND ROWNUM = 1) --AND ((UPPER(ADDRESS) NOT LIKE '%CASSELDEN%' Or UPPER(ADDRESS) NOT LIKE '2 LONSDALE%') OR (UPPER(ADDRESS2) NOT LIKE '%CASSELDEN%' Or UPPER(ADDRESS2) NOT LIKE '2 LONSDALE%')) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
                         ELSE 0
                         END AS "Freight Charge",
           REPLACE(IM_XX_QTY_PER_PACK,'Box of ','') As "QTY",
@@ -9446,17 +9490,13 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
        Select  f1.DESPDATE,f1.ORDERNUM,f1.DESPNOTE,f1.CUSTOMER,
             f1.ATTENTIONTO,f1.ADDRESS,f1.ADDRESS2,f1.SUBURB,f1.STATE,f1.POSTCODE,
             f1.ITEM,f1.DESCRIPTION,f1.QTY
-                 ,CASE   WHEN f1.FEETYPE like 'Pallet In Fee' --AND LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE 
-                        THEN f1.SELLEXCL --(Select f2.SELLEXCL From DEV_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND f2.FEETYPE = 'Pallet In Fee' ) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
+                 ,CASE   WHEN f1.FEETYPE like 'Pallet In Fee' --AND LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE  THEN f1.SELLEXCL --(Select f2.SELLEXCL From DEV_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND f2.FEETYPE = 'Pallet In Fee' ) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
                         ELSE 0
                         END AS "Pallet In Charge"
-                ,CASE   WHEN f1.FEETYPE like 'SLOWFEEPALLETS' --AND LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE 
-                        THEN f1.SELLEXCL --(Select f2.SELLEXCL From DEV_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND f2.FEETYPE = 'SLOWFEEPALLETS' ) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
+                ,CASE   WHEN f1.FEETYPE like 'SLOWFEEPALLETS' --AND LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE  THEN f1.SELLEXCL --(Select f2.SELLEXCL From DEV_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND f2.FEETYPE = 'SLOWFEEPALLETS' ) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
                         ELSE 0
                         END AS "SLOWFEEPALLETS Charge"
-                ,CASE   WHEN f1.FEETYPE like 'FEEPALLETS' --AND (LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE)  --AND  ((ADDRESS  NOT LIKE '%Casselden%' Or ADDRESS   NOT LIKE '%2 Lonsdale%')
-                          --OR (ADDRESS2   NOT LIKE '%Casselden%' Or ADDRESS2   NOT LIKE '%2 Lonsdale%')) 
-                        THEN f1.SELLEXCL --(Select f2.SELLEXCL From DEV_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND (f2.FEETYPE like 'FEEPALLETS') ) --AND ((UPPER(ADDRESS) NOT LIKE '%CASSELDEN%' Or UPPER(ADDRESS) NOT LIKE '2 LONSDALE%') OR (UPPER(ADDRESS2) NOT LIKE '%CASSELDEN%' Or UPPER(ADDRESS2) NOT LIKE '2 LONSDALE%')) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
+                ,CASE   WHEN f1.FEETYPE like 'FEEPALLETS' --AND (LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE)  THEN f1.SELLEXCL --(Select f2.SELLEXCL From DEV_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND (f2.FEETYPE like 'FEEPALLETS') ) --AND ((UPPER(ADDRESS) NOT LIKE '%CASSELDEN%' Or UPPER(ADDRESS) NOT LIKE '2 LONSDALE%') OR (UPPER(ADDRESS2) NOT LIKE '%CASSELDEN%' Or UPPER(ADDRESS2) NOT LIKE '2 LONSDALE%')) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
                         WHEN f1.FEETYPE like 'FEESHELFS' 
                          THEN f1.SELLEXCL
                         ELSE 0
@@ -9475,15 +9515,13 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           l_query := q'{Select  f1.DESPDATE,f1.ORDERNUM,f1.DESPNOTE,f1.CUSTOMER,
             f1.ATTENTIONTO,f1.ADDRESS,f1.ADDRESS2,f1.SUBURB,f1.STATE,f1.POSTCODE,
             f1.ITEM,f1.DESCRIPTION,f1.QTY
-                 ,CASE   WHEN f1.FEETYPE like 'Stock' AND LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE THEN (Select f2.SELLEXCL From DEV_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND f2.FEETYPE = 'Pick Fee'  AND ROWNUM = 1 ) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
+                 ,CASE   WHEN f1.FEETYPE like 'Stock' AND LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE THEN (Select distinct f2.SELLEXCL From TMP_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND f2.FEETYPE = 'Pick Fee'  AND ROWNUM = 1 ) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
                         ELSE 0
                         END AS "Line Charge"
-                ,CASE   WHEN f1.FEETYPE like 'Stock' AND LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE THEN (Select f2.SELLEXCL From DEV_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND f2.FEETYPE = 'Handeling Fee is ' ) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
+                ,CASE   WHEN f1.FEETYPE like 'Stock' AND LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE THEN (Select distinct f2.SELLEXCL From TMP_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND f2.FEETYPE = 'Handeling Fee is ' ) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
                         ELSE 0
                         END AS "Order Despatch Charge"
-                ,CASE   WHEN f1.FEETYPE like 'Stock' AND (LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE)  --AND  ((ADDRESS  NOT LIKE '%Casselden%' Or ADDRESS   NOT LIKE '%2 Lonsdale%')
-                          --OR (ADDRESS2   NOT LIKE '%Casselden%' Or ADDRESS2   NOT LIKE '%2 Lonsdale%')) 
-                        THEN (Select f2.SELLEXCL From DEV_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND (f2.FEETYPE like 'Freight Fee' OR f2.FEETYPE like 'Manual Freight Fee') AND ROWNUM = 1) --AND ((UPPER(ADDRESS) NOT LIKE '%CASSELDEN%' Or UPPER(ADDRESS) NOT LIKE '2 LONSDALE%') OR (UPPER(ADDRESS2) NOT LIKE '%CASSELDEN%' Or UPPER(ADDRESS2) NOT LIKE '2 LONSDALE%')) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
+                ,CASE   WHEN f1.FEETYPE like 'Stock' AND (LAG(f1.DESPNOTE, 1, 0) OVER (ORDER BY f1.DESPNOTE) != f1.DESPNOTE) THEN (Select f2.SELLEXCL From TMP_ALL_FEES_F f2 Where f2.ORDERNUM = f1.ORDERNUM AND (f2.FEETYPE like 'Freight Fee' OR f2.FEETYPE like 'Manual Freight Fee') AND ROWNUM = 1) --AND ((UPPER(ADDRESS) NOT LIKE '%CASSELDEN%' Or UPPER(ADDRESS) NOT LIKE '2 LONSDALE%') OR (UPPER(ADDRESS2) NOT LIKE '%CASSELDEN%' Or UPPER(ADDRESS2) NOT LIKE '2 LONSDALE%')) --As "Line Charge"-- AND LAG(FEETYPE, 1, 0) OVER (ORDER BY FEETYPE) = 'Pick Fee'  THEN LEAD(SELLEXCL, 2, 0) OVER (ORDER BY SELLEXCL)
                         ELSE 0
                         END AS "Freight Charge",
           REPLACE(IM_XX_QTY_PER_PACK,'Box of ','') As "QTY",
@@ -9565,7 +9603,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
   
     IF v_query2 > 0 THEN
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
           EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'J_EOM_CUSTOMER_FEES_AAS','RM','DEV_CUSTOMER_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
         Else
           EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'J_EOM_CUSTOMER_FEES_AAS','RM','TMP_CUSTOMER_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
@@ -9712,7 +9750,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
         ----DBMS_OUTPUT.PUT_LINE('K1_PAL_DESP_FEES rates are $' || sCust_Rates || '. Prism rate field is RM_XX_FEE17');
        
       nCheckpoint := 2;
-      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      If (sOp = 'PRJ' or sOp = 'DEV') Then
           v_query := 'TRUNCATE TABLE DEV_PAL_DESP_FEES';
         EXECUTE IMMEDIATE v_query;
           OPEN c;
@@ -9756,7 +9794,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
       v_query2 :=  SQL%ROWCOUNT;
     COMMIT;
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
           EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'K1_PAL_DESP_FEES','ST','DEV_PAL_DESP_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
         Else
           EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'K1_PAL_DESP_FEES','ST','TMP_PAL_DESP_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
@@ -9903,7 +9941,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
       ----DBMS_OUTPUT.PUT_LINE('K2_CTN_IN_FEES rates are $' || sCust_Rates || '. Prism rate field is RM_XX_FEE13');
         
       nCheckpoint := 2;
-      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      If (sOp = 'PRJ' or sOp = 'DEV') Then
            v_query := 'TRUNCATE TABLE DEV_CTN_IN_FEES';
           EXECUTE IMMEDIATE v_query;
           OPEN c;
@@ -9947,7 +9985,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
       v_query2 :=  SQL%ROWCOUNT;
     COMMIT;
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
           EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'K2_CTN_IN_FEES','ST','DEV_CTN_IN_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
         Else
           EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'K2_CTN_IN_FEES','ST','TMP_CTN_IN_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
@@ -10085,7 +10123,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
        -- --DBMS_OUTPUT.PUT_LINE('K3_PAL_IN_FEES rates are $' || sCust_Rates || '. Prism rate field is RM_XX_FEE14.');
         
       nCheckpoint := 2;
-       If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+       If (sOp = 'PRJ' or sOp = 'DEV') Then
            v_query := 'TRUNCATE TABLE DEV_PAL_IN_FEES';
         EXECUTE IMMEDIATE v_query;
           OPEN c;
@@ -10129,7 +10167,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
       v_query2 :=  SQL%ROWCOUNT;
     COMMIT;
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
           EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'K3_PAL_IN_FEES','ST','DEV_PAL_IN_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
         Else
           EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'K3_PAL_IN_FEES','ST','TMP_PAL_IN_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
@@ -10268,7 +10306,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
        -- --DBMS_OUTPUT.PUT_LINE('K3_PAL_IN_FEES rates are $' || sCust_Rates || '. Prism rate field is RM_XX_FEE14.');
         
       nCheckpoint := 2;
-      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      If (sOp = 'PRJ' or sOp = 'DEV') Then
           v_query := 'TRUNCATE TABLE DEV_PAL_IN_FEES';
         EXECUTE IMMEDIATE v_query;
           OPEN c;
@@ -10312,7 +10350,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
       v_query2 :=  SQL%ROWCOUNT;
     COMMIT;
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
           EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'K3_ALL_PAL_IN_FEES','ST','DEV_PAL_IN_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
         Else
           EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'K3_ALL_PAL_IN_FEES','ST','TMP_PAL_IN_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
@@ -10467,7 +10505,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
         
   
       nCheckpoint := 2;
-      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      If (sOp = 'PRJ' or sOp = 'DEV') Then
           v_query := 'TRUNCATE TABLE DEV_CTN_DESP_FEES';
         EXECUTE IMMEDIATE v_query;
           OPEN c;
@@ -10512,7 +10550,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
     v_query2 :=  SQL%ROWCOUNT;
   
       v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      If (sOp = 'PRJ' or sOp = 'DEV') Then
         EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'K4_CTN_DESP_FEES','ST','DEV_CTN_DESP_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
       Else
         EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'K4_CTN_DESP_FEES','ST','TMP_CTN_DESP_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
@@ -10883,17 +10921,17 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
                         --    ' and with new end date for this report is ' || TO_DATE(gds_new_end_date_in, 'yyyy-mm-dd') || ' : and the next report will start from ' || TO_DATE(gds_next_start_date_in, 'yyyy-mm-dd') || '  and end at the original end date being ' || TO_DATE(gds_next_end_date_in, 'yyyy-mm-dd'));
 --      	nCheckpoint := 2;
 --        
---          If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+--          If (sOp = 'PRJ' or sOp = 'DEV') Then
 --            If (F_IS_TABLE_EEMPTY('Dev_Group_Cust') <= 0) Then
 --              v_query  := 'TRUNCATE TABLE Dev_Group_Cust';
 --              EXECUTE IMMEDIATE v_query;
---              A_EOM_GROUP_CUST(sOp);
+--              A_TEMP_CUST_DATA(sOp);
 --            End If;
 --          Else
 --            If (F_IS_TABLE_EEMPTY('Tmp_Group_Cust') <= 0) Then
 --              v_query  := 'TRUNCATE TABLE Tmp_Group_Cust';
 --              EXECUTE IMMEDIATE v_query;
---              A_EOM_GROUP_CUST(sOp);
+--              A_TEMP_CUST_DATA(sOp);
 --            End If;
 --          End If;
 --          
@@ -10901,8 +10939,8 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
         
       
       --nbreakpoint := 3; 
-      -- If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
-      --EXECUTE IMMEDIATE 'BEGIN  A_EOM_GROUP_CUST(:sOp); END;' USING sOP;
+      -- If (sOp = 'PRJ' or sOp = 'DEV') Then
+      --EXECUTE IMMEDIATE 'BEGIN  A_TEMP_CUST_DATA(:sOp); END;' USING sOP;
          
        --Else
         -- EXECUTE IMMEDIATE 'BEGIN eom_report_pkg.GROUP_CUST_START; END;';
@@ -10911,7 +10949,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
        
   
      
-     If (sOp = 'PRJ' or sOp = 'PRJ_TEST') and (gds_analysis IS NULL) Then
+     If (sOp = 'PRJ' or sOp = 'DEV') and (gds_analysis IS NULL) Then
      nCheckpoint := 4;
          DBMS_OUTPUT.PUT_LINE('About to run cDEV ' || sCustomerCode || '_DESPATCH_REPORT '); 
          v_query := 'TRUNCATE TABLE DEV_DESP_REPT';
@@ -10939,7 +10977,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           --/COMMIT;
           DBMS_OUTPUT.PUT_LINE('Finished running cDEV ' || sCustomerCode || '_DESPATCH_REPORT' ); 
           
-      Elsif (sOp = 'PRJ' or sOp = 'PRJ_TEST') and (gds_analysis IS NOT NULL) Then
+      Elsif (sOp = 'PRJ' or sOp = 'DEV') and (gds_analysis IS NOT NULL) Then
       nCheckpoint := 5;
           DBMS_OUTPUT.PUT_LINE('About to run cDEVAnal ' || sCustomerCode || '_DESPATCH_REPORT ');
            v_query := 'TRUNCATE TABLE DEV_DESP_REPT';
@@ -10958,7 +10996,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
          -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
           CLOSE cDEVAnal;
           -- v_query2 :=  SQL%ROWCOUNT;
-       Elsif (sOp != 'PRJ' or sOp != 'PRJ_TEST') and (gds_analysis IS NULL) Then
+       Elsif (sOp != 'PRJ' or sOp != 'DEV') and (gds_analysis IS NULL) Then
        nCheckpoint := 6;
            v_query := 'TRUNCATE TABLE TMP_DESP_REPT';
           EXECUTE IMMEDIATE v_query;
@@ -10976,7 +11014,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
          -- --DBMS_OUTPUT.PUT_LINE(l_data(i).Customer || ' - ' || l_data(i).Parent || '.' );
           CLOSE c;
            --v_query2 :=  SQL%ROWCOUNT;
-       Elsif (sOp != 'PRJ' or sOp != 'PRJ_TEST') and (gds_analysis IS NOT NULL) Then
+       Elsif (sOp != 'PRJ' or sOp != 'DEV') and (gds_analysis IS NOT NULL) Then
         nCheckpoint := 7;
            v_query := 'TRUNCATE TABLE TMP_DESP_REPT';
           EXECUTE IMMEDIATE v_query;
@@ -11005,7 +11043,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
         sFileName := sCustomerCode || '_DESPATCH_REPORT-' || gds_start_date_in || '-TO-' || gds_end_date_in || '-RunOn-' || sFileTime || '_A.csv';
           
-          If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          If (sOp = 'PRJ' or sOp = 'DEV') Then
             EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,gds_start_date_in,gds_end_date_in,'L_DESPATCH_REPORT','DEV_DESP_REPT','ST',v_time_taken,SYSTIMESTAMP,sCustomerCode);
             Z2_TMP_FEES_TO_CSV(sFileName,'DEV_DESP_REPT',sOp);
           Else
@@ -11129,7 +11167,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
          
   
      nCheckpoint := 2;
-      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      If (sOp = 'PRJ' or sOp = 'DEV') Then
            v_query := 'TRUNCATE TABLE DEV_DESP_REPT2';
           EXECUTE IMMEDIATE v_query;
           OPEN c;
@@ -11168,7 +11206,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           v_query2 :=  SQL%ROWCOUNT;
       COMMIT; 
       v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-          If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+          If (sOp = 'PRJ' or sOp = 'DEV') Then
             EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,gds_start_date_in,gds_end_date_in,'L_DESPATCH_REPORTB','DEV_DESP_REPT2','ST',v_time_taken,SYSTIMESTAMP,'LINK');
             sFileName := 'LINK-L_DESPATCH_REPORTB-' || gds_start_date_in || '-TO-' || gds_end_date_in || '-RunOn-' || sFileTime || '_B.csv';
             Z2_TMP_FEES_TO_CSV(sFileName,'DEV_DESP_REPT2',sOp);
@@ -11371,7 +11409,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
   
       
       nCheckpoint := 2;
-       If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+       If (sOp = 'PRJ' or sOp = 'DEV') Then
           OPEN c2;
           ----DBMS_OUTPUT.PUT_LINE(sCust || '.' );
           LOOP
@@ -11411,7 +11449,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
     COMMIT;
     --RETURN;
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
           EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'Y_EOM_TMP_MERGE_ALL_FEES','DEV','DEV_ALL_FEES_F',v_time_taken,SYSTIMESTAMP,NULL);
         Else
           EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'Y_EOM_TMP_MERGE_ALL_FEES','TMP','TMP_ALL_FEES_F',v_time_taken,SYSTIMESTAMP,NULL);
@@ -11441,6 +11479,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
       SQLQuery   VARCHAR2(6000);
       v_query           VARCHAR2(2000);
       v_query2          VARCHAR2(32767);
+      v_query3          VARCHAR2(32767);
       nCheckpoint       NUMBER;
       sCourierm         VARCHAR2(20) := 'COURIERM';
       sCouriers         VARCHAR2(20) := 'COURIERS';
@@ -11452,7 +11491,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
       ----DBMS_OUTPUT.PUT_LINE(start_date || ' - ' || end_date || '.' || sCust );
        l_start number default dbms_utility.get_time;
   BEGIN
-   v_query := q'{INSERT INTO TMP_ALL_FEES
+   v_query3 := q'{INSERT INTO TMP_ALL_FEES
       Select  *
                 From TMP_ALL_FREIGHT_F 
                 WHERE FEETYPE = 'Freight Fee' AND rowid in
@@ -11537,20 +11576,31 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
             Select * From DEV_CUSTOMER_FEES
             UNION ALL
             Select * From DEV_STOR_FEES WHERE FEETYPE != 'UNKNOWN'}';
+  
+  nCheckpoint := 99;
+    If (sOp = 'PRJ' or sOp = 'DEV') Then
+			v_query := 'TRUNCATE TABLE DEV_ALL_FEES';
+		Else
+			v_query := 'TRUNCATE TABLE TMP_ALL_FEES';
+		End If;
+	
+	EXECUTE IMMEDIATE v_query;
+	COMMIT;
+   DBMS_OUTPUT.PUT_LINE('TRUNCATE TABLE DEV_ALL_FEES, sOp is ' || sOp );  
     
-  nCheckpoint := 2;
-      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+  nCheckpoint := 200;
+      If (sOp = 'PRJ' or sOp = 'DEV') Then
         EXECUTE IMMEDIATE v_query2;
       Else
-        EXECUTE IMMEDIATE v_query;
+        EXECUTE IMMEDIATE v_query3;
       End If;
-      
+     --DBMS_OUTPUT.PUT_LINE('v_query2 is ' || v_query2 );  
      
   
     COMMIT;
     --RETURN;
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
           EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'Y_EOM_TMP_MERGE_ALL_FEES2','DEV','DEV_ALL_FEES',v_time_taken,SYSTIMESTAMP,NULL);
         Else
           EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'Y_EOM_TMP_MERGE_ALL_FEES2','TMP','TMP_ALL_FEES',v_time_taken,SYSTIMESTAMP,NULL);
@@ -11591,7 +11641,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
       ----DBMS_OUTPUT.PUT_LINE(start_date || ' - ' || end_date || '.' || sCust );
        l_start number default dbms_utility.get_time;
   BEGIN
-  If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+  If (sOp = 'PRJ' or sOp = 'DEV') Then
    v_query := q'{INSERT INTO DEV_ALL_FEES_F
                 Select  * FROM DEV_ALL_FEES
                 WHERE PARENT = :sCust_start OR CUSTOMER = :sCust}';  
@@ -11606,7 +11656,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
     COMMIT;
     --RETURN;
         v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-        If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+        If (sOp = 'PRJ' or sOp = 'DEV') Then
           EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'Y_EOM_TMP_MERGE_ALL_FEES_FINAL','DEV_ALL_FEES','DEV_ALL_FEES_F',v_time_taken,SYSTIMESTAMP,NULL);
         Else
           EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'Y_EOM_TMP_MERGE_ALL_FEES_FINAL','TMP_ALL_FEES','TMP_ALL_FEES_F',v_time_taken,SYSTIMESTAMP,NULL);
@@ -11635,8 +11685,9 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
       ,sAnalysis_Start IN RM.RM_ANAL%TYPE  DEFAULT ''
       ,sFilterBy IN VARCHAR2 
       ,sOp IN VARCHAR2
-      ,p_dev_bool in boolean
-      ,p_intercompany_bool in boolean
+      ,Debug_Y_OR_N IN VARCHAR2 DEFAULT 'N'
+      ,SaveFreightFile_Y_OR_N IN VARCHAR2 DEFAULT 'N'
+      ,SaveStorageFile_Y_OR_N IN VARCHAR2 DEFAULT 'N'
 		)
 	AS
 		nCheckpoint  NUMBER;
@@ -11655,7 +11706,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
 		v_tmp_date VARCHAR2(12) := TO_DATE(end_date, 'DD-MON-YY');     
 	BEGIN
 		nCheckpoint := 1;
-		If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+		If (sOp = 'PRJ' or sOp = 'DEV') Then
 			v_query  := 'TRUNCATE TABLE "PWIN175"."DEV_ALL_FEES"';
 		Else
 			v_query  := 'TRUNCATE TABLE "PWIN175"."TMP_ALL_FEES"';
@@ -11664,30 +11715,30 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
 		sFileName := sCust_start || '-EOM-ADMIN-ORACLE-' || '-RunBy-' || sOp || '-RunOn-' || start_date || '-TO-' || end_date || '-RunAt-' || sFileTime || sFileSuffix;
    
 		nCheckpoint := 2;
-		If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+		If (sOp = 'PRJ' or sOp = 'DEV') Then
 			v_query  := 'TRUNCATE TABLE Dev_Group_Cust';
 		Else
 			v_query  := 'TRUNCATE TABLE Tmp_Group_Cust';
 		End If;
 		EXECUTE IMMEDIATE v_query;
     
-    --If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+    --If (sOp = 'PRJ' or sOp = 'DEV') Then
     --DBMS_OUTPUT.PUT_LINE('1st Need to run Tmp_Group_Cust for' || someVariable || ' as table is empty.' );
     --End If;
-		--Select (F_EOM_CHECK_LOG(v_tmp_date ,'Tmp_Group_Cust','A_EOM_GROUP_CUST')) INTO v_query_logfile From Dual;--v_query := q'{Select EOM_REPORT_PKG_TEST.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
+		--Select (F_EOM_CHECK_LOG(v_tmp_date ,'Tmp_Group_Cust','A_TEMP_CUST_DATA')) INTO v_query_logfile From Dual;--v_query := q'{Select EOM_REPORT_PKG_TEST.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
 		--If UPPER(v_query_logfile) != UPPER(v_tmp_date) Then
     
-    If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+    If (sOp = 'PRJ' or sOp = 'DEV') Then
       If F_IS_TABLE_EEMPTY('Dev_Group_Cust') <= 0 Then
         DBMS_OUTPUT.PUT_LINE('1st Need to run Tmp_Group_Cust for all customers as table is empty.' );
-        A_EOM_GROUP_CUST(sOp);
+        A_TEMP_CUST_DATA(sOp);
       Else
         DBMS_OUTPUT.PUT_LINE('1st No Need to run Tmp_Group_Cust for all customers as table is full of data - saved another 5 seconds.' );
       End If;
     Else
       If F_IS_TABLE_EEMPTY('Tmp_Group_Cust') <= 0 Then
         --DBMS_OUTPUT.PUT_LINE('1st Need to run Tmp_Group_Cust for all customers as table is empty.' );
-        A_EOM_GROUP_CUST(sOp);
+        A_TEMP_CUST_DATA(sOp);
         --Else
         --DBMS_OUTPUT.PUT_LINE('1st No Need to run Tmp_Group_Cust for all customers as table is full of data - saved another 5 seconds.' );
       End If;
@@ -11696,7 +11747,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
 		--v_query := q'{SELECT TO_CHAR(LAST_ANALYZED, 'DD-MON-YY') FROM DBA_TABLES WHERE TABLE_NAME = 'TMP_ADMIN_DATA_PICK_LINECOUNTS'}';
 		--EXECUTE IMMEDIATE v_query INTO vRtnVal;-- USING sCustomerCode;
 		--If F_IS_TABLE_EEMPTY('TMP_ADMIN_DATA_PICK_LINECOUNTS') <= 0 Then
-    If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+    If (sOp = 'PRJ' or sOp = 'DEV') Then
       Select (F_EOM_CHECK_LOG(v_tmp_date ,'DEV_ADMIN_DATA_PICK_LINECOUNTS','B_EOM_START_RUN_ONCE_DATA',sOp)) INTO v_query_logfile From Dual;--v_query := q'{Select EOM_REPORT_PKG_TEST.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
       If F_IS_TABLE_EEMPTY('DEV_ADMIN_DATA_PICK_LINECOUNTS') <= 0 Then
         		
@@ -11729,7 +11780,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
 		--If UPPER(v_query_logfile) != UPPER(v_tmp_date) OR F_IS_TABLE_EEMPTY('Tmp_Locn_Cnt_By_Cust') <= 0 Then
 		--DBMS_OUTPUT.PUT_LINE('3rd Need to RUN_ONCE Tmp_Locn_Cnt_By_Cust as C_EOM_START_ALL_TEMP_STOR_DATA for all customers as table is empty.result was ' || UPPER(v_query_logfile) || ' and end date was ' ||  UPPER(v_tmp_date) );
 		--EOM_REPORT_PKG_TEST.C_EOM_START_CUST_TEMP_DATA(sAnalysis_Start,sCust_start);
-    If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+    If (sOp = 'PRJ' or sOp = 'DEV') Then
       DBMS_OUTPUT.PUT_LINE('Running C_EOM_START_ALL_TEMP_STOR_DATA , date from is  ' || start_date || ' and to date is ' || end_date || ' and customer is ' || sCust_start  || '.');
     End If;
     C_EOM_START_ALL_TEMP_STOR_DATA(sAnalysis_Start,sCust_start,sOp);
@@ -11749,7 +11800,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
     else
       F_EOM_TMP_ALL_FREIGHT_ALL(p_array_size_start,start_date,end_date,sOp);
     end if;
-		F8_Z_EOM_RUN_FREIGHT(p_array_size_start,start_date,end_date,sCust_start,sFilterBy,sOp); 
+		F8_Z_EOM_RUN_FREIGHT(p_array_size_start,start_date,end_date,sCust_start,sFilterBy,sOp,Debug_Y_OR_N,SaveFreightFile_Y_OR_N); 
 		--DBMS_OUTPUT.PUT_LINE('Running F_EOM_PROCESS_RUN_CHECK for ALL based on to date from EOM logs - v_query_logfile is ' || v_query_logfile || '- for end date being ' || TO_DATE(end_date, 'DD-MON-YY') || ' and process was F_EOM_TMP_ALL_FREIGHT_ALL' );
    
 		--ElsIf v_query_result2  = 'RUNCUST' Then
@@ -11764,29 +11815,29 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
 		--End If;  
      
 		nCheckpoint := 6;
-		-- SELECT F_EOM_PROCESS_RUN_CHECK(TO_DATE(end_date, 'DD-MON-YY'),'TMP_STOR_ALL_FEES','H4_EOM_ALL_STOR_FEES','') INTO v_query_logfile FROM DUAL;
-		-- SELECT F_EOM_PROCESS_RUN_CHECK(TO_DATE(end_date, 'DD-MON-YY'),'TMP_STOR_ALL_FEES','H4_EOM_ALL_STOR_FEES',sCust_start)INTO v_query_result2 FROM DUAL;
+		-- SELECT F_EOM_PROCESS_RUN_CHECK(TO_DATE(end_date, 'DD-MON-YY'),'TMP_STOR_ALL_FEES','H_STOR_FEES_A','') INTO v_query_logfile FROM DUAL;
+		-- SELECT F_EOM_PROCESS_RUN_CHECK(TO_DATE(end_date, 'DD-MON-YY'),'TMP_STOR_ALL_FEES','H_STOR_FEES_A',sCust_start)INTO v_query_result2 FROM DUAL;
 		--If v_query_logfile = 'RUNBOTH' Then
     If (sOp = 'PRJ' or sOp = 'PAUL') Then
-      DBMS_OUTPUT.PUT_LINE('Running H4_EOM_ALL_STOR_FEES , date from is  ' || start_date || ' and to date is ' || end_date || ' and customer is ' || sCust_start  || '.');
+      DBMS_OUTPUT.PUT_LINE('Running H_STOR_FEES_A , date from is  ' || start_date || ' and to date is ' || end_date || ' and customer is ' || sCust_start  || '.');
     End If;
-		H4_EOM_ALL_STOR_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sOp);
-		H4_EOM_ALL_STOR(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
+		H_STOR_FEES_A(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sOp);
+		H_STOR_FEES_B(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp,Debug_Y_OR_N,SaveStorageFile_Y_OR_N);
 		DBMS_OUTPUT.PUT_LINE('Running F_EOM_PROCESS_RUN_CHECK for ALL based on to date from EOM logs - v_query_logfile is ' || 
     v_query_logfile || '- for end date being ' || TO_DATE(end_date, 'DD-MON-YY') || 'sCust_start was ' || sCust_start || ' and sAnalysis_Start was ' || sAnalysis_Start ||
-    ' and process was H4_EOM_ALL_STOR_FEES' );
+    ' and process was H_STOR_FEES_A' );
 		--ElsIf v_query_result2 = 'RUNCUST' Then
-		-- IQ_EOM_REPORTING.H4_EOM_ALL_STOR(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
-		-- DBMS_OUTPUT.PUT_LINE('Running F_EOM_PROCESS_RUN_CHECK for CUST based on to date from EOM logs - v_query_result2 is ' || v_query_result2 || '-  for end date being ' || TO_DATE(end_date, 'DD-MON-YY') || ' and process was H4_EOM_ALL_STOR_FEES' );
+		-- IQ_EOM_REPORTING.H_STOR_FEES_B(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy);
+		-- DBMS_OUTPUT.PUT_LINE('Running F_EOM_PROCESS_RUN_CHECK for CUST based on to date from EOM logs - v_query_result2 is ' || v_query_result2 || '-  for end date being ' || TO_DATE(end_date, 'DD-MON-YY') || ' and process was H_STOR_FEES_A' );
 		-- Else
 		-- DBMS_OUTPUT.PUT_LINE('Running F_EOM_PROCESS_RUN_CHECK storage nothing' || 'v_query_result2 is ' || v_query_result2 || '-- v_query_logfile is ' || v_query_logfile || '-' );
 		-- End If;
         
 		nCheckpoint := 71; --E0_ALL_ORD_FEES
-    If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+    If (sOp = 'PRJ' or sOp = 'DEV') Then
       DBMS_OUTPUT.PUT_LINE('Running E0_ALL_ORD_FEES , date from is  ' || start_date || ' and to date is ' || end_date || ' and customer is ' || sCust_start  || '.');
     End If;    
-		E0_ALL_ORD_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
+		E0_ALL_ORD_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp,Debug_Y_OR_N);
       
 		/*IQ_EOM_REPORTING.E1_PHONE_ORD_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start);
 		  nCheckpoint := 72;
@@ -11795,24 +11846,24 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
 		  IQ_EOM_REPORTING.E3_FAX_ORD_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start);
 		*/  
 		nCheckpoint := 74;
-    If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+    If (sOp = 'PRJ' or sOp = 'DEV') Then
       DBMS_OUTPUT.PUT_LINE('Running E4_STD_ORD_FEES , date from is  ' || start_date || ' and to date is ' || end_date || ' and customer is ' || sCust_start  || '.');
     End If;     
-		E4_STD_ORD_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
+		E4_STD_ORD_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp,Debug_Y_OR_N);
 
 		nCheckpoint := 75;
-    If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+    If (sOp = 'PRJ' or sOp = 'DEV') Then
       DBMS_OUTPUT.PUT_LINE('Running E5_DESTOY_ORD_FEES , date from is  ' || start_date || ' and to date is ' || end_date || ' and customer is ' || sCust_start  || '.');
     End If;  
 		E5_DESTOY_ORD_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
 
 		nCheckpoint := 81;
-    If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+    If (sOp = 'PRJ' or sOp = 'DEV') Then
       DBMS_OUTPUT.PUT_LINE('Running G1_SHRINKWRAP_FEES , date from is  ' || start_date || ' and to date is ' || end_date || ' and customer is ' || sCust_start  || '.');
     End If;
 		G1_SHRINKWRAP_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
 		nCheckpoint := 82;
-     If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+     If (sOp = 'PRJ' or sOp = 'DEV') Then
       DBMS_OUTPUT.PUT_LINE('Running G2_STOCK_FEES , date from is  ' || start_date || ' and to date is ' || end_date || ' and customer is ' || sCust_start  || '.');
     End If;   
 		G2_STOCK_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
@@ -11821,7 +11872,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
       
       
 		nCheckpoint := 84;
-    If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+    If (sOp = 'PRJ' or sOp = 'DEV') Then
   
       Select (F_EOM_CHECK_CUST_LOG(sCust_start ,'DEV_HANDLING_FEES','G4_HANDLING_FEES_F',sOp)) INTO v_query_result2 From Dual;
       Select (F_EOM_CHECK_LOG(v_tmp_date ,'DEV_HANDLING_FEES','G4_HANDLING_FEES_F',sOp)) INTO v_query_logfile From Dual;
@@ -11829,9 +11880,9 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
        Select (F_EOM_CHECK_CUST_LOG(sCust_start ,'TMP_HANDLING_FEES','G4_HANDLING_FEES_F',sOp)) INTO v_query_result2 From Dual;
        Select (F_EOM_CHECK_LOG(v_tmp_date ,'TMP_HANDLING_FEES','G4_HANDLING_FEES_F',sOp)) INTO v_query_logfile From Dual;
     End If;
-    If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+    If (sOp = 'PRJ' or sOp = 'DEV') Then
       If F_IS_TABLE_EEMPTY('DEV_HANDLING_FEES') <= 0 Then
-       If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+       If (sOp = 'PRJ' or sOp = 'DEV') Then
         DBMS_OUTPUT.PUT_LINE('Running DEV_HANDLING_FEES , date from is  ' || start_date || ' and to date is ' || end_date || ' and customer is ' || sCust_start  || '.');
       End If;  
         --DBMS_OUTPUT.PUT_LINE('7th Need to RUN_ONCE G4_HANDLING_FEES_F for all customers as table is empty. result was ' || UPPER(v_query_result2) 
@@ -11912,7 +11963,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
     End If;
       
 		nCheckpoint := 85;
-    If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+    If (sOp = 'PRJ' or sOp = 'DEV') Then
       Select (F_EOM_CHECK_CUST_LOG(sCust_start ,'DEV_PICK_FEES','G5_PICK_FEES_F',sOp)) INTO v_query_result2 From Dual;--v_query := q'{Select IQ_EOM_REPORTING.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
       Select (F_EOM_CHECK_LOG(v_tmp_date ,'DEV_PICK_FEES','G5_PICK_FEES_F',sOp)) INTO v_query_logfile From Dual;
       If F_IS_TABLE_EEMPTY('DEV_PICK_FEES') <= 0 Then
@@ -11922,7 +11973,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
         -- || ' and this date was ' ||  UPPER(v_tmp_date)
         --  );
         
-      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      If (sOp = 'PRJ' or sOp = 'DEV') Then
         DBMS_OUTPUT.PUT_LINE('Running G5_PICK_FEES_F , date from is  ' || start_date || ' and to date is ' || end_date || ' and customer is ' || sCust_start  || '.');
       End If;  
         
@@ -12001,32 +12052,39 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
     End If;
     
 		nCheckpoint := 9;
-      If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+      If (sOp = 'PRJ' or sOp = 'DEV') Then
         DBMS_OUTPUT.PUT_LINE('Running I_EOM_MISC_FEES , date from is  ' || start_date || ' and to date is ' || end_date || ' and customer is ' || sCust_start  || '.');
       End If;  
 		I_EOM_MISC_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
 
 		nCheckpoint := 10;
-    If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+    If (sOp = 'PRJ' or sOp = 'DEV') Then
       DBMS_OUTPUT.PUT_LINE('Running K1_PAL_DESP_FEES , date from is  ' || start_date || ' and to date is ' || end_date || ' and customer is ' || sCust_start  || '.');
     End If;  
 		K1_PAL_DESP_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
 		nCheckpoint := 11;
-		If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+		If (sOp = 'PRJ' or sOp = 'DEV') Then
       DBMS_OUTPUT.PUT_LINE('Running K2_CTN_IN_FEES , date from is  ' || start_date || ' and to date is ' || end_date || ' and customer is ' || sCust_start  || '.');
     End If;  
 		K2_CTN_IN_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
 		nCheckpoint := 12;
-		If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+		If (sOp = 'PRJ' or sOp = 'DEV') Then
       DBMS_OUTPUT.PUT_LINE('Running K3_PAL_IN_FEES , date from is  ' || start_date || ' and to date is ' || end_date || ' and customer is ' || sCust_start  || '.');
     End If;  
 		K3_PAL_IN_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
 		nCheckpoint := 13;
-		If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+		If (sOp = 'PRJ' or sOp = 'DEV') Then
       DBMS_OUTPUT.PUT_LINE('Running K4_CTN_DESP_FEES , date from is  ' || start_date || ' and to date is ' || end_date || ' and customer is ' || sCust_start  || '.');
     End If;  
 		K4_CTN_DESP_FEES(p_array_size_start,start_date,end_date,sCust_start,sAnalysis_Start,sFilterBy,sOp);
-
+    
+    If (sOp = 'PRJ' or sOp = 'DEV') Then
+			v_query := 'TRUNCATE TABLE DEV_CUSTOMER_FEES';
+		Else
+			v_query := 'TRUNCATE TABLE TMP_CUSTOMER_FEES';
+		End If;
+		EXECUTE IMMEDIATE v_query;
+		COMMIT;
 
 		If ( sCust_start = 'VHAAUS' ) Then
 			nCheckpoint := 14;
@@ -12047,7 +12105,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
 
       
 		nCheckpoint := 99;
-		If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+		If (sOp = 'PRJ' or sOp = 'DEV') Then
 			v_query := 'TRUNCATE TABLE DEV_ALL_FEES';
 		Else
 			v_query := 'TRUNCATE TABLE TMP_ALL_FEES';
@@ -12055,9 +12113,10 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
 		EXECUTE IMMEDIATE v_query;
 		COMMIT;
 		Y_EOM_TMP_MERGE_ALL_FEES2(sOp);
-     
+    DBMS_OUTPUT.PUT_LINE('TRUNCATE TABLE DEV_ALL_FEES, sOp is ' || sOp );
+    
 		nCheckpoint := 100;
-		If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+		If (sOp = 'PRJ' or sOp = 'DEV') Then
 			v_query := 'TRUNCATE TABLE DEV_ALL_FEES_F';
 		Else
 			v_query := 'TRUNCATE TABLE TMP_ALL_FEES_F';
@@ -12070,7 +12129,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
 		----DBMS_OUTPUT.PUT_LINE('START Z TMP_ALL_FEES for ' || sFileName|| ' saved in ' || sPath );
 		If ( sCust_start = 'V-SUPPAR' ) Then
 			nCheckpoint := 151;
-			If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+			If (sOp = 'PRJ' or sOp = 'DEV') Then
         DBMS_OUTPUT.PUT_LINE('Running J_EOM_CUSTOMER_FEES_SUP , date from is  ' || start_date || ' and to date is ' || end_date || ' and customer is ' || sCust_start  || '.');
       End If;  
 		J_EOM_CUSTOMER_FEES_SUP(p_array_size_start,start_date,end_date,sCust_start,sFileName,sOp);
@@ -12078,13 +12137,16 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
 			nCheckpoint := 152;
 			J_EOM_CUSTOMER_FEES_AAS(p_array_size_start,start_date,end_date,sCust_start,sFileName,sOp);
     Else
-			Z1_TMP_ALL_FEES_TO_CSV(sFileName,sOp);
+			Z1_TMP_ALL_FEES_TO_CSV(sFileName,sOp,Debug_Y_OR_N);
+      If (upper(Debug_Y_OR_N) = 'Y') Then
+        DBMS_OUTPUT.PUT_LINE('Z EOM Successfully Ran EOM_RUN_ALL for all.' );
+      End If;
 		End If;
 		v_query2 :=  SQL%ROWCOUNT;
 		-- --DBMS_OUTPUT.PUT_LINE('Z EOM Successfully Ran EOM_RUN_ALL for ' || sCust_start|| ' in ' ||(round((dbms_utility.get_time-l_start)/100, 2) ||
 		--' Seconds...' );
 		v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
-    If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+    If (sOp = 'PRJ' or sOp = 'DEV') Then
       EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'Z_EOM_RUN_ALL','MERGE','DEV',v_time_taken,SYSTIMESTAMP,sCust_start);
 		Else
       EOM_REPORT_PKG_TEST.EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'Z_EOM_RUN_ALL','MERGE','TMP',v_time_taken,SYSTIMESTAMP,sCust_start);
@@ -12197,7 +12259,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
           RETURN v_rtn_rslt;
     END F_EOM_CHECK_CUST_LOG;
     
-    PROCEDURE Z1_TMP_ALL_FEES_TO_CSV( p_filename in varchar2,sOp IN VARCHAR2 )
+    PROCEDURE Z1_TMP_ALL_FEES_TO_CSV( p_filename in varchar2,sOp IN VARCHAR2,Debug_Y_OR_N IN VARCHAR2 DEFAULT 'N' )
     is
         l_output        utl_file.file_type;
         l_theCursor     integer default dbms_sql.open_cursor;
@@ -12212,7 +12274,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
         sPath VARCHAR2(60) :=  'EOM_ADMIN_ORDERS';
         l_start number default dbms_utility.get_time;
    begin
-         If (sOp = 'PRJ' or sOp = 'PRJ_TEST') Then
+         If (sOp = 'PRJ' or sOp = 'DEV') Then
           l_query  := 'select * from TMP_ALL_FEES_F';
         Else
           l_query  := 'select * from TMP_ALL_FEES_F';
@@ -12247,15 +12309,16 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
        execute immediate 'alter session set nls_date_format=''dd-MON-yy'' ';
       -- v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
        --IQ_EOM_REPORTING.EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'Z1_TMP_ALL_FEES_TO_CSV','CSV','TMP_ALL_FEES_F',v_time_taken,SYSTIMESTAMP,sCustomerCode);
-     
-       --DBMS_OUTPUT.PUT_LINE('Z TMP_ALL_FEES for ' || p_filename || ' saved in ' || sPath );
+      If (upper(Debug_Y_OR_N) = 'Y') Then
+       DBMS_OUTPUT.PUT_LINE('Z TMP_ALL_FEES for ' || p_filename || ' saved in ' || sPath );
+      End If;
     exception
        when others then
            execute immediate 'alter session set nls_date_format=''dd-MON-yy'' ';
       raise;
    end Z1_TMP_ALL_FEES_TO_CSV;
     
-    PROCEDURE Z2_TMP_FEES_TO_CSV( p_filename in varchar2, p_in_table in varchar2,sOp IN VARCHAR2 )
+    PROCEDURE Z2_TMP_FEES_TO_CSV( p_filename in varchar2, p_in_table in varchar2,sOp IN VARCHAR2  )
     is
         l_output        utl_file.file_type;
         l_theCursor     integer default dbms_sql.open_cursor;
@@ -12451,8 +12514,9 @@ BEGIN
       ,sAnalysis_Start IN RM.RM_ANAL%TYPE
       ,sFilterBy IN VARCHAR2
       ,sOp IN VARCHAR2
-       ,p_dev_bool in boolean
-        ,p_intercompany_bool in boolean
+      ,Debug_Y_OR_N  in VARCHAR2
+      ,SaveFreightFile_Y_OR_N IN VARCHAR2 DEFAULT 'N'
+      ,SaveStorageFile_Y_OR_N IN VARCHAR2 DEFAULT 'N'
   )
   IS
   CURSOR EOM_CUSTS IS
@@ -12496,7 +12560,7 @@ BEGIN
         DBMS_OUTPUT.PUT_line ('Running EOM # ' || i || ' cust is  ' || rec.RM_CUST || ' and dates are start ' || start_date  || ' and from ' || end_date || ' .');
         --Now run Z3_EOM_RUN_ALL
         If F_SLOW_DOWN(60) = TRUE THEN
-          Z3_EOM_RUN_ALL(p_array_size_start,start_date,end_date,rec.RM_CUST,sAnalysis_Start,sFilterBy,sOp,p_dev_bool,p_intercompany_bool);
+          Z3_EOM_RUN_ALL(p_array_size_start,start_date,end_date,rec.RM_CUST,sAnalysis_Start,sFilterBy,sOp,Debug_Y_OR_N,SaveFreightFile_Y_OR_N,SaveStorageFile_Y_OR_N);
         END IF;
      END LOOP;
      
