@@ -40,7 +40,20 @@ create or replace PACKAGE BODY EOM AS
 	nCheckpoint := 0;
   --execute dbms_output.enable(NULL);
   If (upper(RunAutoALL) = 'Y') Then
-     IQ_EOM_REPORTING.EOM_AUTO_RUN_ALL(p_array_size_start,start_date,end_date,check_date,Customer,Analysis,FilterBy,Op,Debug_Y_OR_N);
+    -- IQ_EOM_REPORTING.EOM_AUTO_RUN_ALL(p_array_size_start,start_date,end_date,check_date,Customer,Analysis,FilterBy,Op,Debug_Y_OR_N,SaveFreightFile_Y_OR_N,SaveStorageFile_Y_OR_N);
+    IQ_EOM_REPORTING.EOM_AUTO_RUN_ALL(
+    P_ARRAY_SIZE_START => P_ARRAY_SIZE_START,
+    START_DATE => START_DATE,
+    END_DATE => END_DATE,
+    CHECK_DATE => CHECK_DATE,
+    SCUST_START => Customer,
+    SANALYSIS_START => Analysis,
+    SFILTERBY => FilterBy,
+    SOP => Op,
+    DEBUG_Y_OR_N => DEBUG_Y_OR_N,
+    SAVEFREIGHTFILE_Y_OR_N => SAVEFREIGHTFILE_Y_OR_N,
+    SAVESTORAGEFILE_Y_OR_N => SAVESTORAGEFILE_Y_OR_N
+  );
   End If;
 
 
@@ -135,37 +148,37 @@ create or replace PACKAGE BODY EOM AS
 	End If;
 	
 	nCheckpoint := 2.5;
-	--Select (F_EOM_CHECK_LOG(v_tmp_date ,'Tmp_Group_Cust','A_EOM_GROUP_CUST')) INTO v_query_logfile From Dual;--v_query := q'{Select EOM_REPORT_PKG.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
+	--Select (F_EOM_CHECK_LOG(v_tmp_date ,'Tmp_Group_Cust','A_TEMP_CUST_DATA')) INTO v_query_logfile From Dual;--v_query := q'{Select EOM_REPORT_PKG.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
 	--If UPPER(v_query_logfile) != UPPER(v_tmp_date) Then
     If (upper(Inter_Y_OR_No) = 'Y') Then
 		If (Op = 'PRJ' or Op = 'DEV') Then
 			If F_IS_TABLE_EEMPTY('Dev_Group_Cust',Debug_Y_OR_N) <= 0 Then
 				If (upper(Debug_Y_OR_N) = 'Y') Then
-					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Need to run A_EOM_GROUP_CUST(Op) for all customers as table Dev_Group_Cust is empty. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
+					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Need to run A_TEMP_CUST_DATA(Op) for all customers as table Dev_Group_Cust is empty. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
 				End If;
-				EOM_INTERCO_REPORTING.A_EOM_GROUP_CUST(Op,Debug_Y_OR_N);
+				EOM_INTERCO_REPORTING.A_TEMP_CUST_DATA(Op,Debug_Y_OR_N);
 				Select F_IS_TABLE_EEMPTY('Dev_Group_Cust',Debug_Y_OR_N) INTO vRetTblCount From Dual;
 				If (upper(Debug_Y_OR_N) = 'Y') Then
-					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Ran A_EOM_GROUP_CUST(Op) for all customers. Table Dev_Group_Cust has ' || vRetTblCount || ' records. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
+					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Ran A_TEMP_CUST_DATA(Op) for all customers. Table Dev_Group_Cust has ' || vRetTblCount || ' records. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
 				End If;
 			Else
 				If (upper(Debug_Y_OR_N) = 'Y') Then
-					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' No Need to run A_EOM_GROUP_CUST(Op) for all customers as table Dev_Group_Cust is full of data - saved another 5 seconds. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
+					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' No Need to run A_TEMP_CUST_DATA(Op) for all customers as table Dev_Group_Cust is full of data - saved another 5 seconds. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
 				End If;
 			End If;
 		Else
 			If F_IS_TABLE_EEMPTY('Tmp_Group_Cust',Debug_Y_OR_N) <= 0 Then
 				If (upper(Debug_Y_OR_N) = 'Y') Then
-					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Need to run A_EOM_GROUP_CUST(Op) for all customers as table Tmp _Group_Cust is empty. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
+					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Need to run A_TEMP_CUST_DATA(Op) for all customers as table Tmp _Group_Cust is empty. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
 				End If;
-				EOM_INTERCO_REPORTING.A_EOM_GROUP_CUST(Op,Debug_Y_OR_N);
+				EOM_INTERCO_REPORTING.A_TEMP_CUST_DATA(Op,Debug_Y_OR_N);
 				Select F_IS_TABLE_EEMPTY('Tmp_Group_Cust',Debug_Y_OR_N) INTO vRetTblCount From Dual;
 				If (upper(Debug_Y_OR_N) = 'Y') Then
-					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Ran A_EOM_GROUP_CUST(Op) for all customers. Table Tmp_Group_Cust has ' || vRetTblCount || ' records. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
+					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Ran A_TEMP_CUST_DATA(Op) for all customers. Table Tmp_Group_Cust has ' || vRetTblCount || ' records. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
 				End If;
 			Else
 				If (upper(Debug_Y_OR_N) = 'Y') Then
-					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' No Need to run A_EOM_GROUP_CUST(Op) for all customers as table Tmp_Group_Cust is full of data - saved another 5 seconds. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
+					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' No Need to run A_TEMP_CUST_DATA(Op) for all customers as table Tmp_Group_Cust is full of data - saved another 5 seconds. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
 				End If;
 			End If;
 		End If;
@@ -173,31 +186,31 @@ create or replace PACKAGE BODY EOM AS
 		If (Op = 'PRJ' or Op = 'DEV') Then
 			If F_IS_TABLE_EEMPTY('Dev_Group_Cust',Debug_Y_OR_N) <= 0 Then
 				If (upper(Debug_Y_OR_N) = 'Y') Then
-					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Need to run A_EOM_GROUP_CUST(Op) for all customers as table Dev_Group_Cust is empty. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
+					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Need to run A_TEMP_CUST_DATA(Op) for all customers as table Dev_Group_Cust is empty. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
 				End If;
-				IQ_EOM_REPORTING.A_EOM_GROUP_CUST(Op,Debug_Y_OR_N);
+				IQ_EOM_REPORTING.A_TEMP_CUST_DATA(Op,Debug_Y_OR_N);
 				Select F_IS_TABLE_EEMPTY('Dev_Group_Cust',Debug_Y_OR_N) INTO vRetTblCount From Dual;
 				If (upper(Debug_Y_OR_N) = 'Y') Then
-					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Ran A_EOM_GROUP_CUST(Op) for all customers. Table Dev_Group_Cust has ' || vRetTblCount || ' records. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
+					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Ran A_TEMP_CUST_DATA(Op) for all customers. Table Dev_Group_Cust has ' || vRetTblCount || ' records. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
 				End If;
 			Else
 				If (upper(Debug_Y_OR_N) = 'Y') Then
-					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' No Need to run A_EOM_GROUP_CUST(Op) for all customers as table Dev_Group_Cust is full of data - saved another 5 seconds. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
+					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' No Need to run A_TEMP_CUST_DATA(Op) for all customers as table Dev_Group_Cust is full of data - saved another 5 seconds. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
 				End If;
 			End If;
 		Else
 			If F_IS_TABLE_EEMPTY('Tmp_Group_Cust',Debug_Y_OR_N) <= 0 Then
 				If (upper(Debug_Y_OR_N) = 'Y') Then
-					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Need to run A_EOM_GROUP_CUST(Op) for all customers as table Tmp_Group_Cust is empty. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
+					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Need to run A_TEMP_CUST_DATA(Op) for all customers as table Tmp_Group_Cust is empty. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
 				End If;
-				IQ_EOM_REPORTING.A_EOM_GROUP_CUST(Op,Debug_Y_OR_N);
+				IQ_EOM_REPORTING.A_TEMP_CUST_DATA(Op,Debug_Y_OR_N);
 				Select F_IS_TABLE_EEMPTY('Tmp_Group_Cust',Debug_Y_OR_N) INTO vRetTblCount From Dual;
 				If (upper(Debug_Y_OR_N) = 'Y') Then
-					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Ran A_EOM_GROUP_CUST(Op) for all customers. Table Tmp_Group_Cust has ' || vRetTblCount || ' records. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
+					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Ran A_TEMP_CUST_DATA(Op) for all customers. Table Tmp_Group_Cust has ' || vRetTblCount || ' records. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
 				End If;
 			Else
 				If (upper(Debug_Y_OR_N) = 'Y') Then
-					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' No Need to run A_EOM_GROUP_CUST(Op) for all customers as table Tmp_Group_Cust is full of data - saved another 5 seconds. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
+					DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' No Need to run A_TEMP_CUST_DATA(Op) for all customers as table Tmp_Group_Cust is full of data - saved another 5 seconds. This comes from EOM @ checkpoint ' || nCheckpoint || '.' );
 				End If;
 			End If;
 		End If;
@@ -427,7 +440,7 @@ create or replace PACKAGE BODY EOM AS
 	
 	nCheckpoint := 74;
     If (upper(Inter_Y_OR_No) = 'Y') Then
-      EOM_INTERCO_REPORTING.E4_STD_ORD_FEES(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op,Debug_Y_OR_N);
+      EOM_INTERCO_REPORTING.E4_STD_ORD_FEES(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
       If (upper(Debug_Y_OR_N) = 'Y') Then
             DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Running E4_STD_ORD_FEES for ALL based on to date from EOM logs');
       End If;
@@ -438,10 +451,10 @@ create or replace PACKAGE BODY EOM AS
       End If;
     End If;
     If (upper(Debug_Y_OR_N) = 'Y') Then
-	  DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');
-	End If;
+      DBMS_OUTPUT.PUT_LINE('.........................................END CHECKPOINT ' || nCheckpoint  || '.............................................');
+    End If;
     
-	nCheckpoint := 75;
+    nCheckpoint := 75;
     If (upper(Inter_Y_OR_No) = 'Y') Then
       EOM_INTERCO_REPORTING.E5_DESTOY_ORD_FEES(p_array_size_start,start_date,end_date,Customer,Analysis,FilterBy,Op);
       If (upper(Debug_Y_OR_N) = 'Y') Then
