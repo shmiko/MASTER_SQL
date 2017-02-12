@@ -4,7 +4,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
     /*   1. Tmp_Group_Cust   */
     /*   Runs in about 5 seconds   */
     /*   Tested and Working 17/7/15   */
-    PROCEDURE A_EOM_GROUP_CUST(sOp IN VARCHAR2,Debug_Y_OR_N IN VARCHAR2 DEFAULT 'Y') AS
+    PROCEDURE A_TEMP_CUST_DATA(sOp IN VARCHAR2,Debug_Y_OR_N IN VARCHAR2 DEFAULT 'N') AS
       nCheckpoint  NUMBER;
       l_start number default dbms_utility.get_time;
       v_query2 VARCHAR2(32767);
@@ -137,9 +137,9 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
       --  ' Seconds...' ));
       v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
       If (sOp = 'PRJ' or sOp = 'DEV') Then
-        EOM_INSERT_LOG(SYSTIMESTAMP ,NULL,NULL,'A_EOM_GROUP_CUST','RM','Dev_Group_Cust2',v_time_taken,SYSTIMESTAMP,NULL);
+        EOM_INSERT_LOG(SYSTIMESTAMP ,NULL,NULL,'A_TEMP_CUST_DATA','RM','Dev_Group_Cust2',v_time_taken,SYSTIMESTAMP,NULL);
       Else
-        EOM_INSERT_LOG(SYSTIMESTAMP ,NULL,NULL,'A_EOM_GROUP_CUST','RM','Tmp_Group_Cust2',v_time_taken,SYSTIMESTAMP,NULL);
+        EOM_INSERT_LOG(SYSTIMESTAMP ,NULL,NULL,'A_TEMP_CUST_DATA','RM','Tmp_Group_Cust2',v_time_taken,SYSTIMESTAMP,NULL);
       End If;
       If (upper(Debug_Y_OR_N) = 'Y') Then
         DBMS_OUTPUT.PUT_LINE('INTERCOMPANY - A EOM Group Cust temp tables  - There was ' || v_query2 || ' records inserted in ' ||  (round((dbms_utility.get_time-l_start)/100, 6) || ' Seconds...for all customers '));
@@ -147,10 +147,10 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
       RETURN;
     EXCEPTION
       WHEN OTHERS THEN
-        DBMS_OUTPUT.PUT_LINE('INTERCOMPANY - A_EOM_GROUP_CUST failed at checkpoint ' || nCheckpoint ||
+        DBMS_OUTPUT.PUT_LINE('INTERCOMPANY - A_TEMP_CUST_DATA failed at checkpoint ' || nCheckpoint ||
                             ' with error ' || SQLCODE || ' : ' || SQLERRM);
         RAISE;
-    END A_EOM_GROUP_CUST;
+    END A_TEMP_CUST_DATA;
   
     /*   B Run this once for all customer data   */
     /*   This gets Break Prices, Pickslip Data, Pick Line Data, Batch Prices   */
@@ -169,7 +169,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
        ,sCust IN VARCHAR2
        ,PreData IN RM.RM_ACTIVE%TYPE := 0
        ,sOp IN VARCHAR2
-       ,Debug_Y_OR_N IN VARCHAR2 DEFAULT 'Y'
+       ,Debug_Y_OR_N IN VARCHAR2 DEFAULT 'N'
        )
     AS
       --v_out_tx          VARCHAR2(32767);
@@ -303,7 +303,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
        -- ' Seconds...' ));
       v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
       EOM_INSERT_LOG(SYSTIMESTAMP ,start_date,end_date,'B_EOM_START_RUN_ONCE_DATA','ST/SL','TMP_ADMIN_DATA_PICK_LINECOUNTS',v_time_taken,SYSTIMESTAMP,NULL);
-      --EOM_INSERT_LOG(SYSTIMESTAMP ,NULL,NULL,'A_EOM_GROUP_CUST','RM','Tmp_Group_Cust2',v_time_taken,SYSTIMESTAMP,NULL,sOp);
+      --EOM_INSERT_LOG(SYSTIMESTAMP ,NULL,NULL,'A_TEMP_CUST_DATA','RM','Tmp_Group_Cust2',v_time_taken,SYSTIMESTAMP,NULL,sOp);
       --EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'ZZ_EOM_CUST_QRY_ALL_TMP','FORMATTING','TMP_ALL_FEES',v_time_taken,SYSTIMESTAMP,NULL);
      
       --DBMS_OUTPUT.PUT_LINE('B_EOM_START_RUN_ONCE_DATA for the date range '
@@ -335,7 +335,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
        sAnalysis IN RM.RM_ANAL%TYPE
        ,sCust IN RM.RM_CUST%TYPE
        ,sOp IN VARCHAR2
-       ,Debug_Y_OR_N IN VARCHAR2 DEFAULT 'Y'
+       ,Debug_Y_OR_N IN VARCHAR2 DEFAULT 'N'
       )
     AS
       v_time_taken VARCHAR2(205);
@@ -452,6 +452,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
         ,enddate IN VARCHAR2-- := To_Date('30-Jun-2015')
         ,sOp IN VARCHAR2
         ,sAnalysis IN VARCHAR2
+        ,Debug_Y_OR_N IN VARCHAR2 DEFAULT 'N'
       )
       IS    
       --If (sOp = 'PRJ' or sOp = 'DEV') Then
@@ -667,7 +668,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
           t.ST_PSLIP               AS "DespNote",
           substr(To_Char(d.SD_ADD_DATE),0,10)            AS "DespatchDate",
           substr(To_Char(s.SH_ADD_DATE),0,10) AS "OrderDate",
-          CASE  WHEN  d.SD_STOCK = 'COURIERM' and d.SD_SELL_PRICE >= 0.1 AND   d.SD_ADD_OP != 'SERV2'  THEN 'Manual Freight Fee'
+          CASE  WHEN  d.SD_SELL_PRICE >= 0.1 AND   d.SD_ADD_OP = 'RV'  THEN 'Manual Freight Fee'
                 WHEN  d.SD_STOCK = 'COURIER' AND d.SD_SELL_PRICE >= 0.1 AND LTRIM(RTRIM(d.SD_XX_PICKLIST_NUM)) IS NOT NULL AND d.SD_ADD_OP like 'SERV%' THEN 'Freight Fee'
                 WHEN  d.SD_ADD_OP != 'RV' AND   d.SD_ADD_OP != 'SERV2' AND d.SD_XX_FREIGHT_CHG > 0.1 THEN 'XX Manual Freight Fee'
                 WHEN  d.SD_ADD_OP = 'SERV2' AND d.SD_XX_FREIGHT_CHG > 0.1 THEN 'XX? Manual Freight Fee'
@@ -704,7 +705,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
                 WHEN  d.SD_ADD_OP != 'RV' AND   d.SD_ADD_OP != 'SERV2' AND d.SD_SELL_PRICE >= 0.1 THEN f_calc_freight_fee(d.SD_SELL_PRICE,TRIM(d.SD_NOTE_1),r.sGroupCust,d.SD_ORDER)  * 1.1
                 ELSE d.SD_INCL   
           END AS "DIncl",
-          d.SD_XX_FREIGHT_CHG                   AS "ReportingPrice",
+          d.SD_XX_FREIGHT_CHG                   AS "ReportingPrice1",
           CASE  WHEN regexp_substr(SD_NOTE_1,'\d') IS NOT NULL THEN TO_NUMBER(SD_NOTE_1) --TO_NUMBER(d.SD_NOTE_1,'fm999999.99999999','nls_numeric_characters = ''.,''')      
                 ELSE TO_NUMBER('999')
           END AS "ReportingPrice",
@@ -736,7 +737,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
           LEFT OUTER JOIN PWIN175.ST t  ON LTRIM(RTRIM(t.ST_PICK))  = LTRIM(RTRIM(d.SD_XX_PICKLIST_NUM))
           LEFT JOIN Dev_Group_Cust r ON r.sCust = s.SH_CUST
     WHERE  d.SD_STOCK IN ('COURIERM','COURIERS','COURIER','DETENTIONTIMEM','DETENTIONTIMES','FREIGHTDUTY')
-    AND   d.SD_ADD_DATE >= startdate AND d.SD_ADD_DATE <= enddate
+    AND   d.SD_ADD_DATE between startdate AND enddate
     AND   r.sCust IN (SELECT RM_CUST FROM RM WHERE RM_ANAL = sAnalysis AND RM_TYPE = 0 AND RM_ACTIVE = 1 )
     
     GROUP BY  
@@ -1315,6 +1316,8 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
         ,sFilterBy IN VARCHAR2
         ,sOp IN VARCHAR2
         ,sAnalysis IN VARCHAR2
+        ,Debug_Y_OR_N IN VARCHAR2 DEFAULT 'N'
+        ,SaveFreightFile_Y_OR_N IN VARCHAR2 DEFAULT 'N'
       )
       IS
       TYPE ARRAY IS TABLE OF TMP_ALL_FREIGHT_F%ROWTYPE;
@@ -1424,13 +1427,19 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
           sFileName := sCustomerCode || '-F8_Z_EOM_RUN_FREIGHT-' || startdate || '-TO-' || enddate || '-RunOn-' || sFileTime || '.csv';
           
           If (sOp = 'PRJ' or sOp = 'DEV') Then
-            Z2_TMP_FEES_TO_CSV(sFileName,'DEV_ALL_FREIGHT_F',sOp);
+            If (upper(SaveFreightFile_Y_OR_N) = 'Y') Then
+              sFileName := sCustomerCode || '-F8_Z_EOM_RUN_FREIGHT-' || startdate || '-TO-' || enddate || '-RunOn-' || sFileTime || '.csv';
+              Z2_TMP_FEES_TO_CSV(sFileName,'DEV_ALL_FREIGHT_F',sOp);
+            End If;
             DBMS_OUTPUT.PUT_LINE('F8_Z_EOM_RUN_FREIGHT for the date range '
             || startdate || ' -- ' || enddate || ' - ' || v_query2
             || ' records inserted into table DEV_ALL_FREIGHT_F in ' || round((dbms_utility.get_time-l_start)/100, 6)
             || ' Seconds...for customer ' || sCustomerCode || ' filtered by ' || sFilterBy );
           Else
-            Z2_TMP_FEES_TO_CSV(sFileName,'TMP_ALL_FREIGHT_F',sOp);
+            If (upper(SaveFreightFile_Y_OR_N) = 'Y') Then
+                sFileName := sCustomerCode || '-F8_Z_EOM_RUN_FREIGHT-' || startdate || '-TO-' || enddate || '-RunOn-' || sFileTime || '.csv';
+                Z2_TMP_FEES_TO_CSV(sFileName,'TMP_ALL_FREIGHT_F',sOp);
+              End If;
             DBMS_OUTPUT.PUT_LINE('F8_Z_EOM_RUN_FREIGHT for the date range '
             || startdate || ' -- ' || enddate || ' - ' || v_query2
             || ' records inserted into table TMP_ALL_FREIGHT_F in ' || round((dbms_utility.get_time-l_start)/100, 6)
@@ -1463,7 +1472,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
         ,sCustomerCode IN VARCHAR2
         ,sAnalysis IN RM.RM_ANAL%TYPE
         ,sOp IN VARCHAR2
-        ,Debug_Y_OR_N IN VARCHAR2 DEFAULT 'Y'
+        ,Debug_Y_OR_N IN VARCHAR2 DEFAULT 'N'
       )
       IS
       TYPE ARRAY IS TABLE OF TMP_STOR_ALL_FEES%ROWTYPE;
@@ -1873,7 +1882,8 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
         ,sAnalysis IN RM.RM_ANAL%TYPE
         ,sFilterBy IN VARCHAR2
         ,sOp IN VARCHAR2
-        ,Debug_Y_OR_N IN VARCHAR2 DEFAULT 'Y'
+        ,Debug_Y_OR_N IN VARCHAR2 DEFAULT 'N'
+        ,SaveStorageFile_Y_OR_N IN VARCHAR2 DEFAULT 'N'
       )
       IS
       TYPE ARRAY IS TABLE OF TMP_STOR_FEES%ROWTYPE;
@@ -1981,7 +1991,9 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
             v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
             EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'H_STOR_FEES_B','IL','DEV_STOR_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
             sFileName := sCustomerCode || '-H_STOR_FEES_B-' || startdate || '-TO-' || enddate || '-RunOn-' || sFileTime ||  '.csv';
-            Z2_TMP_FEES_TO_CSV(sFileName,'DEV_STOR_FEES',sOp);
+            If (upper(SaveStorageFile_Y_OR_N) = 'Y') Then
+              Z2_TMP_FEES_TO_CSV(sFileName,'DEV_STOR_FEES',sOp);
+            End If;
             --DBMS_OUTPUT.PUT_LINE('Z2_TMP_FEES_TO_CSV for ' || sFileName || '.' );
             --uncomment above if you want to produce an exported file for all storage, about 5MB every time.
             --COMMIT;
@@ -2000,7 +2012,9 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
             v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
             EOM_INSERT_LOG(SYSTIMESTAMP ,startdate,enddate,'H_STOR_FEES_B','IL','TMP_STOR_FEES',v_time_taken,SYSTIMESTAMP,sCustomerCode);
             sFileName := sCustomerCode || '-H_STOR_FEES_B-' || startdate || '-TO-' || enddate || '-RunOn-' || sFileTime ||  '.csv';
-            Z2_TMP_FEES_TO_CSV(sFileName,'TMP_STOR_FEES',sOp);
+            If (upper(SaveStorageFile_Y_OR_N) = 'Y') Then
+              Z2_TMP_FEES_TO_CSV(sFileName,'TMP_STOR_FEES',sOp);
+            End If;
             --DBMS_OUTPUT.PUT_LINE('Z2_TMP_FEES_TO_CSV for ' || sFileName || '.' );
             --uncomment above if you want to produce an exported file for all storage, about 5MB every time.
             --COMMIT;
@@ -2039,6 +2053,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
         ,sAnalysis IN RM.RM_ANAL%TYPE
         ,sFilterBy IN VARCHAR2
         ,sOp IN VARCHAR2
+         ,Debug_Y_OR_N IN VARCHAR2 DEFAULT 'N'
       )
       IS
       TYPE ARRAY IS TABLE OF TMP_ALL_ORD_FEES%ROWTYPE;
@@ -3310,7 +3325,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
         ,sAnalysis IN RM.RM_ANAL%TYPE
         ,sFilterBy IN VARCHAR2
         ,sOp IN VARCHAR2
-        ,Debug_Y_OR_N IN VARCHAR2 DEFAULT 'Y'
+        ,Debug_Y_OR_N IN VARCHAR2 DEFAULT 'N'
       )
       IS
       TYPE ARRAY IS TABLE OF TMP_STOCK_FEES%ROWTYPE;
@@ -9872,7 +9887,9 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
       ,sAnalysis_Start IN RM.RM_ANAL%TYPE
       ,sFilterBy IN VARCHAR2
       ,sOp IN VARCHAR2
-      ,Debug_Y_OR_N IN VARCHAR2 DEFAULT 'Y'
+      ,Debug_Y_OR_N  in VARCHAR2
+      ,SaveFreightFile_Y_OR_N IN VARCHAR2 DEFAULT 'N'
+      ,SaveStorageFile_Y_OR_N IN VARCHAR2 DEFAULT 'N'
 		)
 	AS
 		nCheckpoint  NUMBER;
@@ -9913,25 +9930,25 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
 		End If;
 		EXECUTE IMMEDIATE v_query;
 		
-		--Select (F_EOM_CHECK_LOG(v_tmp_date ,'Tmp_Group_Cust','A_EOM_GROUP_CUST')) INTO v_query_logfile From Dual;--v_query := q'{Select EOM_REPORT_PKG.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
+		--Select (F_EOM_CHECK_LOG(v_tmp_date ,'Tmp_Group_Cust','A_TEMP_CUST_DATA')) INTO v_query_logfile From Dual;--v_query := q'{Select EOM_REPORT_PKG.EOM_CHECK_LOG(TO_CHAR(end_date,'DD-MON-YY') ,'TMP_ALL_FREIGHT_ALL','F_EOM_TMP_ALL_FREIGHT_ALL') }';--q'{INSERT INTO TMP_EOM_LOGS VALUES (SYSTIMESTAMP ,:startdate,:enddate,'F_EOM_TMP_ALL_FREIGHT_ALL','NONE','TMP_ALL_FREIGHT_ALL',:v_time_taken,SYSTIMESTAMP )  }';
 		--If UPPER(v_query_logfile) != UPPER(v_tmp_date) Then
     If (sOp = 'PRJ' or sOp = 'DEV') Then
       If F_IS_TABLE_EEMPTY('Dev_Group_Cust',Debug_Y_OR_N) <= 0 Then
-        DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Need to run A_EOM_GROUP_CUST(sOp) for all customers as table Dev_Group_Cust is empty.' );
-        A_EOM_GROUP_CUST(sOp);
+        DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Need to run A_TEMP_CUST_DATA(sOp) for all customers as table Dev_Group_Cust is empty.' );
+        A_TEMP_CUST_DATA(sOp);
         Select F_IS_TABLE_EEMPTY('Dev_Group_Cust',Debug_Y_OR_N) INTO vRetTblCount From Dual;
-        DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Ran A_EOM_GROUP_CUST(sOp) for all customers. Table Dev_Group_Cust has ' || vRetTblCount || ' records.' );
+        DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Ran A_TEMP_CUST_DATA(sOp) for all customers. Table Dev_Group_Cust has ' || vRetTblCount || ' records.' );
       Else
-        DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' No Need to run A_EOM_GROUP_CUST(sOp) for all customers as table Dev_Group_Cust is full of data - saved another 5 seconds.' );
+        DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' No Need to run A_TEMP_CUST_DATA(sOp) for all customers as table Dev_Group_Cust is full of data - saved another 5 seconds.' );
       End If;
     Else
       If F_IS_TABLE_EEMPTY('Tmp_Group_Cust',Debug_Y_OR_N) <= 0 Then
-        DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Need to run A_EOM_GROUP_CUST(sOp) for all customers as table Tmp_Group_Cust is empty.' );
-        A_EOM_GROUP_CUST(sOp);
+        DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Need to run A_TEMP_CUST_DATA(sOp) for all customers as table Tmp_Group_Cust is empty.' );
+        A_TEMP_CUST_DATA(sOp);
         Select F_IS_TABLE_EEMPTY('Tmp_Group_Cust',Debug_Y_OR_N) INTO vRetTblCount From Dual;
-        DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Ran A_EOM_GROUP_CUST(sOp) for all customers. Table Tmp_Group_Cust has ' || vRetTblCount || ' records.' );
+        DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' Ran A_TEMP_CUST_DATA(sOp) for all customers. Table Tmp_Group_Cust has ' || vRetTblCount || ' records.' );
       Else
-        DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' No Need to run A_EOM_GROUP_CUST(sOp) for all customers as table Tmp_Group_Cust is full of data - saved another 5 seconds.' );
+        DBMS_OUTPUT.PUT_LINE(nCheckpoint || ' No Need to run A_TEMP_CUST_DATA(sOp) for all customers as table Tmp_Group_Cust is full of data - saved another 5 seconds.' );
       End If;
     End If;
     
@@ -10294,7 +10311,10 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
 			nCheckpoint := 15;
 			J_EOM_CUSTOMER_FEES_SUP(p_array_size_start,start_date,end_date,sCust_start,sFileName,sOp);
 		Else
-			Z1_TMP_ALL_FEES_TO_CSV(sFileName,sOp);
+			Z1_TMP_ALL_FEES_TO_CSV(sFileName,sOp ,Debug_Y_OR_N);
+      If (upper(Debug_Y_OR_N) = 'Y') Then
+        DBMS_OUTPUT.PUT_LINE('Z EOM Successfully Ran EOM_RUN_ALL.' );
+      End If;
 		End If;
 		v_query2 :=  SQL%ROWCOUNT;
 		-- --DBMS_OUTPUT.PUT_LINE('Z EOM Successfully Ran EOM_RUN_ALL for ' || sCust_start|| ' in ' ||(round((dbms_utility.get_time-l_start)/100, 2) ||
@@ -10413,7 +10433,7 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
           RETURN v_rtn_rslt;
     END F_EOM_CHECK_CUST_LOG;
     
-    PROCEDURE Z1_TMP_ALL_FEES_TO_CSV( p_filename in varchar2,sOp IN VARCHAR2 )
+    PROCEDURE Z1_TMP_ALL_FEES_TO_CSV( p_filename in varchar2,sOp IN VARCHAR2,Debug_Y_OR_N IN VARCHAR2 DEFAULT 'N' )
     is
         l_output        utl_file.file_type;
         l_theCursor     integer default dbms_sql.open_cursor;
@@ -10464,7 +10484,9 @@ create or replace PACKAGE BODY           "EOM_INTERCO_REPORTING" AS
       -- v_time_taken := TO_CHAR(TO_NUMBER((round((dbms_utility.get_time-l_start)/100, 6))));
        --IQ_EOM_REPORTING.EOM_INSERT_LOG(SYSTIMESTAMP ,sysdate,sysdate,'Z1_TMP_ALL_FEES_TO_CSV','CSV','TMP_ALL_FEES_F',v_time_taken,SYSTIMESTAMP,sCustomerCode);
      
-       --DBMS_OUTPUT.PUT_LINE('Z TMP_ALL_FEES for ' || p_filename || ' saved in ' || sPath );
+        If (upper(Debug_Y_OR_N) = 'Y') Then
+         DBMS_OUTPUT.PUT_LINE('Z TMP_ALL_FEES for ' || p_filename || ' saved in ' || sPath );
+        End If;
     exception
        when others then
            execute immediate 'alter session set nls_date_format=''dd-MON-yy'' ';
@@ -10667,6 +10689,9 @@ BEGIN
       ,sAnalysis_Start IN RM.RM_ANAL%TYPE
       ,sFilterBy IN VARCHAR2
       ,sOp IN VARCHAR2
+      ,Debug_Y_OR_N  in VARCHAR2
+      ,SaveFreightFile_Y_OR_N IN VARCHAR2 DEFAULT 'N'
+      ,SaveStorageFile_Y_OR_N IN VARCHAR2 DEFAULT 'N'
   )
   IS
   CURSOR EOM_CUSTS IS
@@ -10701,7 +10726,7 @@ BEGIN
         --DBMS_OUTPUT.PUT_line ('Running EOM # ' || i || ' cust is  ' || rec.RM_CUST);
         --Now run Z3_EOM_RUN_ALL
         If F_SLOW_DOWN(60) = TRUE THEN
-          Z3_EOM_RUN_ALL(p_array_size_start,start_date,end_date,rec.RM_CUST,sAnalysis_Start,sFilterBy,sOp);
+          Z3_EOM_RUN_ALL(p_array_size_start,start_date,end_date,rec.RM_CUST,sAnalysis_Start,sFilterBy,sOp,Debug_Y_OR_N,SaveFreightFile_Y_OR_N,SaveStorageFile_Y_OR_N);
         END IF;
      END LOOP;
      
