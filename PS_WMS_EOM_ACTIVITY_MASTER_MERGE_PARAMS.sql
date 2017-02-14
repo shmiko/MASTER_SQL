@@ -9,14 +9,23 @@ SET @JavelinLetter = 'W'
 --SET @JavelinNumber = @JavelinLetter + '%' -- Note: Use this to get all Javelin Orders
 SET @OWNumber = ''					-- Note: Use this to get a single javelin Order - Tested W1719524
 SET @customer = ''
+
+
 SELECT --TOP 1
 	'1'																				as Tag,
 	'Line Picking Fee'																as "Description",
 	Trans.ACT_PPU																	as UnitPrice,
-	DEBTOR.[DATAFLEX RECNUM ONE]													as ID,
+	[LiveData].[dbo].[ufnGetPickLineCount](SALES_ORDER.SO_ID)						as Qty,
+	'Each'																			as UnitOfIssDesc, 
+	(Trans.ACT_PPU * [LiveData].[dbo].[ufnGetPickLineCount](SALES_ORDER.SO_ID))		as SellExcl, 
+	((Trans.ACT_PPU * [LiveData].[dbo].[ufnGetPickLineCount](SALES_ORDER.SO_ID)) *   1.1)			
+																					as SellIncl, 
+	'Pick Fee'																		as FeeType, 
+	CAST('FEEPICK'	as nvarchar)													as Item, 
+	--DEBTOR.[DATAFLEX RECNUM ONE]													as ID,
 	DEBTOR.[AC NO]																	as Customer,
-	SALES_ORDER.BILL_TO_ID															as CustomerId, 
-	SALES_ORDER.CUST_ID																as ParentId, 
+	--SALES_ORDER.BILL_TO_ID															as CustomerId, 
+	--SALES_ORDER.CUST_ID																as ParentId, 
 	DEBTOR.NAMES																	as Parent, 
 	SO_LINE_ITEM.COST_CENTER														as CostCentre,
 	SALES_ORDER.SO_ID																as OrderNum, 
@@ -25,14 +34,7 @@ SELECT --TOP 1
 	PACKS.PICK_ID																	as PickSlip,
 	PACKS.PICK_ID																	as DespNote,
 	CONVERT(VARCHAR(8),PACKS.SHIP_DATE,3) 											as DespDate, 
-	'Pick Fee'																		as FeeType, 
-	CAST('FEEPICK'	as nvarchar)													as Item, 
-	[LiveData].[dbo].[ufnGetPickLineCount](SALES_ORDER.SO_ID)						as Qty,
 	'1'																				as UOI, 
-	'Each'																			as UnitOfIssDesc, 
-	(Trans.ACT_PPU * [LiveData].[dbo].[ufnGetPickLineCount](SALES_ORDER.SO_ID))		as SellExcl, 
-	((Trans.ACT_PPU * [LiveData].[dbo].[ufnGetPickLineCount](SALES_ORDER.SO_ID)) *   1.1)			
-																					as SellIncl, 
 	ISNULL(Recipient.COMPANY_NAME,'')												as DeliverTo, 
 	ISNULL((RECIPIENT.FIRST_NAME 
 		+ ' ' 
@@ -96,10 +98,17 @@ SELECT --TOP 1
 	'2'																				as Tag,
 	'Despatch Handeling Fee'														as "Description",
 	Trans.ACT_PPU																	as UnitPrice,
-	DEBTOR.[DATAFLEX RECNUM ONE]													as ID,
+	[LiveData].[dbo].[ufnGetPickLineCount](SALES_ORDER.SO_ID)						as Qty,
+	'Each'																			as UnitOfIssDesc, 
+	(Trans.ACT_PPU)																	as SellExcl, 
+	((Trans.ACT_PPU) *   1.1)			
+																					as SellIncl, 
+	'Handeling Fee'																	as FeeType, 
+	CAST('FEEHANDLING'	as nvarchar)												as Item, 
+	--DEBTOR.[DATAFLEX RECNUM ONE]													as ID,
 	DEBTOR.[AC NO]																	as Customer,
-	SALES_ORDER.BILL_TO_ID															as CustomerId, 
-	SALES_ORDER.CUST_ID																as ParentId, 
+	--SALES_ORDER.BILL_TO_ID															as CustomerId, 
+	--SALES_ORDER.CUST_ID																as ParentId, 
 	DEBTOR.NAMES																	as Parent, 
 	SO_LINE_ITEM.COST_CENTER														as CostCentre,
 	SALES_ORDER.SO_ID																as OrderNum, 
@@ -108,14 +117,7 @@ SELECT --TOP 1
 	PACKS.PICK_ID																	as PickSlip,
 	PACKS.PICK_ID																	as DespNote,
 	CONVERT(VARCHAR(8),PACKS.SHIP_DATE,3) 											as DespDate, 
-	'Handeling Fee'																	as FeeType, 
-	CAST('FEEHANDLING'	as nvarchar)												as Item, 
-	[LiveData].[dbo].[ufnGetPickLineCount](SALES_ORDER.SO_ID)						as Qty,
 	'1'																				as UOI, 
-	'Each'																			as UnitOfIssDesc, 
-	(Trans.ACT_PPU)																	as SellExcl, 
-	((Trans.ACT_PPU) *   1.1)			
-																					as SellIncl, 
 	ISNULL(Recipient.COMPANY_NAME,'')												as DeliverTo, 
 	ISNULL((RECIPIENT.FIRST_NAME 
 		+ ' ' 
@@ -180,10 +182,16 @@ SELECT
 	'3'																				as Tag,
 	o.ORIGIN_NAME + ' Order Entry Fee'												as "Description",
 	po.SOOriginCharge																as UnitPrice,
-	DEBTOR.[DATAFLEX RECNUM ONE]													as ID,
+	'1'																				as Qty,
+	'Each'																			as UnitOfIssDesc, 
+	po.SOOriginCharge 																as SellExcl, 
+	(po.SOOriginCharge *  1.1)														as SellIncl, 
+	o.ORIGIN_NAME + ' Order Entry Fee'												as FeeType, 
+	CAST('FEEORDER'	as nvarchar)													as Item, 
+	--DEBTOR.[DATAFLEX RECNUM ONE]													as ID,
 	DEBTOR.[AC NO]																	as Customer,
-	SALES_ORDER.BILL_TO_ID															as CustomerId, 
-	SALES_ORDER.CUST_ID																as ParentId, 
+	--SALES_ORDER.BILL_TO_ID															as CustomerId, 
+	--SALES_ORDER.CUST_ID																as ParentId, 
 	DEBTOR.NAMES																	as Parent, 
 	SALES_ORDER.[COMPANY CODE]														as CostCentre,
 	SALES_ORDER.SO_ID																as OrderNum, 
@@ -192,13 +200,7 @@ SELECT
 	''																				as PickSlip,
 	''																				as DespNote,
 	CONVERT(VARCHAR(8),SALES_ORDER.CREATED_DATE,3)									as DespDate, 
-	o.ORIGIN_NAME + ' Order Entry Fee'												as FeeType, 
-	CAST('FEEORDER'	as nvarchar)													as Item, 
-	'1'																				as Qty,
 	'1'																				as UOI, 
-	'Each'																			as UnitOfIssDesc, 
-	po.SOOriginCharge 																as SellExcl, 
-	(po.SOOriginCharge *  1.1)														as SellIncl, 
 	ISNULL(Recipient.COMPANY_NAME,'')												as DeliverTo, 
 	ISNULL((RECIPIENT.FIRST_NAME 
 		+ ' ' 
@@ -265,10 +267,17 @@ SELECT
 	'4'																				as Tag,
 	'Emergency Fee'																	as "Description",
 	Trans.ACT_PPU																	as UnitPrice,
-	DEBTOR.[DATAFLEX RECNUM ONE]													as ID,
+	'1'																				as Qty,
+	'Each'																			as UnitOfIssDesc, 
+	 
+	Trans.ACT_PPU 																	as SellExcl, 
+	(Trans.ACT_PPU *  1.1)															as SellIncl, 
+	'Emergency Fee'																	as FeeType, 
+	CAST('EMERQSRFEE'	as nvarchar)												as Item, 
+	--DEBTOR.[DATAFLEX RECNUM ONE]													as ID,
 	DEBTOR.[AC NO]																	as Customer,
-	SALES_ORDER.BILL_TO_ID															as CustomerId, 
-	SALES_ORDER.CUST_ID																as ParentId, 
+	--SALES_ORDER.BILL_TO_ID															as CustomerId, 
+	--SALES_ORDER.CUST_ID																as ParentId, 
 	DEBTOR.NAMES																	as Parent, 
 	SALES_ORDER.[COMPANY CODE]														as CostCentre,
 	SALES_ORDER.SO_ID																as OrderNum, 
@@ -277,14 +286,7 @@ SELECT
 	''																				as PickSlip,
 	''																				as DespNote,
 	CONVERT(VARCHAR(8),SALES_ORDER.CREATED_DATE,3)									as DespDate, 
-	'Emergency Fee'																	as FeeType, 
-	CAST('EMERQSRFEE'	as nvarchar)												as Item, 
-	'1'																				as Qty,
 	'1'																				as UOI, 
-	'Each'																			as UnitOfIssDesc, 
-	 
-	Trans.ACT_PPU 																	as SellExcl, 
-	(Trans.ACT_PPU *  1.1)															as SellIncl, 
 	ISNULL(Recipient.COMPANY_NAME,'')												as DeliverTo, 
 	ISNULL((RECIPIENT.FIRST_NAME 
 		+ ' ' 
@@ -353,10 +355,18 @@ UNION
 SELECT '5',
 	SO_LINE_ITEM.ITEM_DESCRIPTION													as Description,
 	SO_LINE_ITEM_PRICE.UNIT_PRICE													as UnitPrice,
-	DEBTOR.[DATAFLEX RECNUM ONE]													as ID,
+	SO_LINE_ITEM.PACK_QTY															as Qty,
+	PAPSIZE.[UNIT ISSUE DESC]														as UnitOfIssDesc, 
+	((SO_LINE_ITEM_PRICE.UNIT_PRICE * SO_LINE_ITEM.PACK_QTY))		
+																					as SellExcl, 
+	((SO_LINE_ITEM_PRICE.UNIT_PRICE * SO_LINE_ITEM.PACK_QTY) 
+		* 1.1)																		as SellIncl, 
+	'Item'																			as FeeType, 
+	CAST(PAPSIZE.[INVENTORY CODE] as nvarchar)										as Item, 
+	--DEBTOR.[DATAFLEX RECNUM ONE]													as ID,
 	DEBTOR.[AC NO]																	as Customer,
-	SALES_ORDER.BILL_TO_ID															as CustomerId, 
-	SALES_ORDER.CUST_ID																as ParentId, 
+	--SALES_ORDER.BILL_TO_ID															as CustomerId, 
+	--SALES_ORDER.CUST_ID																as ParentId, 
 	DEBTOR.NAMES																	as Parent, 
 	SO_LINE_ITEM.COST_CENTER														as CostCentre,
 	SALES_ORDER.SO_ID																as OrderNum, 
@@ -365,15 +375,7 @@ SELECT '5',
 	SO_LINE_ITEM.PICK_ID															as PickSlip,
 	ISNULL(OrderShipTo.ShippingComment,'')											as DespNote,
 	CONVERT(VARCHAR(8),PACKAGE.SHIP_DATE,3) 										as DespDate, 
-	'Item'																			as FeeType, 
-	CAST(PAPSIZE.[INVENTORY CODE] as nvarchar)										as Item, 
-	SO_LINE_ITEM.PACK_QTY															as Qty,
 	PAPSIZE.[UNIT OF ISSUE]															as UOI,
-	PAPSIZE.[UNIT ISSUE DESC]														as UnitOfIssDesc, 
-	((SO_LINE_ITEM_PRICE.UNIT_PRICE * SO_LINE_ITEM.PACK_QTY))		
-																					as SellExcl, 
-	((SO_LINE_ITEM_PRICE.UNIT_PRICE * SO_LINE_ITEM.PACK_QTY) 
-		* 1.1)																		as SellIncl, 
 	RECIPIENT.COMPANY_NAME															as DeliverTo, 
 	(RECIPIENT.FIRST_NAME 
 		+ ' ' 
@@ -417,10 +419,16 @@ SELECT
 	'6'				as Tag,
 	'Ship Ref:' + PACKAGE.TRACKING_NO												as Description,
 	SO_CHARGE.AMOUNT																as UnitPrice, 
-	DEBTOR.[DATAFLEX RECNUM ONE]													as ID,
+	'1'																				as Qty,
+	'Each'																			as UnitOfIssDesc, 
+	SO_CHARGE.AMOUNT																as SellExcl, 
+	(SO_CHARGE.AMOUNT *  1.1)														as SellIncl, 
+	'Shipping'																		as FeeType, 
+	cast('COURIER' as nvarchar)														as Item, 
+	--DEBTOR.[DATAFLEX RECNUM ONE]													as ID,
 	DEBTOR.[AC NO]																	as Customer,
-	SALES_ORDER.BILL_TO_ID															as CustomerId, 
-	SALES_ORDER.CUST_ID																as ParentId, 
+	--SALES_ORDER.BILL_TO_ID															as CustomerId, 
+	--SALES_ORDER.CUST_ID																as ParentId, 
 	DEBTOR.NAMES																	as Parent, 
 	''																				as CostCentre,
 	SALES_ORDER.SO_ID																as OrderNum, 
@@ -429,13 +437,7 @@ SELECT
 	PACKAGE.PICK_ID																	as PickSlip,
 	''																				as DespNote, 
 	CONVERT(VARCHAR(8),PACKAGE.SHIP_DATE,3)											as DespDate, 
-	'Shipping'																		as FeeType, 
-	cast('COURIER' as nvarchar)														as Item, 
-	'1'																				as Qty,
 	'1'																				as UOI	, 
-	'Each'																			as UnitOfIssDesc, 
-	SO_CHARGE.AMOUNT																as SellExcl, 
-	(SO_CHARGE.AMOUNT *  1.1)														as SellIncl, 
 	ISNULL(Recipient.COMPANY_NAME,'')												as DeliverTo, 
 	ISNULL((RECIPIENT.FIRST_NAME 
 		+ ' ' 
@@ -463,5 +465,47 @@ WHERE ISNULL(SO_CHARGE.SO_ID, '0')		>		0
 	and (PACKAGE.SHIP_DATE > = @Datetime1 and PACKAGE.SHIP_DATE <= @Datetime2)
 	and PICKS.PICK_STATUS = '21'
 
-Order by SALES_ORDER.SO_ID,1 ASC
+UNION 
+
+SELECT --TOP 1
+	'1'																				as Tag,
+	'Admin Fee'																		as "Description",
+	Charges.charge																	as UnitPrice,
+	'1'																				as Qty,
+	'Each'																			as UnitOfIssDesc, 
+	Charges.charge																	as SellExcl, 
+	Charges.charge *   1.1															as SellIncl, 
+	'Admin Fee'																		as FeeType, 
+	CAST(chargeType	as nvarchar)													as Item, 
+	DEBTOR.[AC NO]																	as Customer,
+	DEBTOR.NAMES																	as Parent, 
+	NULL																			as CostCentre,
+	'1'																				as OrderNum, 
+	''																				as OrderWareNum, 
+	''																				as CustRef, 
+	''																				as PickSlip,
+	''																				as DespNote,
+	CONVERT(VARCHAR, DATEADD(DAY, 0 ,SYSDATETIME()), 121) 							as DespDate, 
+	'1'																				as UOI, 
+	''																				as DeliverTo, 
+	''																				as AttentionTo,
+	''																				as Address1, 
+	''																				as Address3, 
+	''																				as Address3, 
+	''																				as Suburb, 
+	''																				as "State", 
+	''																				as PostCode, 
+	''																				as Country,
+	'0'																				as "Weight", 
+	'0'																				as "Packages"
+FROM  [LiveData].[dbo].[Charges]
+	INNER JOIN [LiveData].[dbo].DEBTOR												ON DEBTOR.[AC NO] = [Charges].[CustomerID]
+	
+WHERE 
+	[LiveData].[dbo].[Charges].chargeType	 = 'ADMIN FEE'
+
+
+
+
+Order by DEBTOR.[AC NO],SALES_ORDER.SO_ID,1 ASC
 

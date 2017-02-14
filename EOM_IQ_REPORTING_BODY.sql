@@ -11533,6 +11533,7 @@ create or replace PACKAGE BODY           "IQ_EOM_REPORTING" AS
             Select * From TMP_CUSTOMER_FEES
             UNION ALL
             Select * From TMP_STOR_FEES WHERE FEETYPE != 'UNKNOWN'}';
+			
 
     v_query2 := q'{INSERT INTO DEV_ALL_FEES
       Select  *
